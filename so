@@ -1,0 +1,171 @@
+func showOptions() {
+	form := tview.NewForm()
+	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	form.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	form.SetItemPadding(0)
+
+	useProsignsCb := tview.NewCheckbox().SetLabel("Use Prosigns")
+	extendedPuncCb := tview.NewCheckbox().SetLabel("All Punctuation")
+	useSkipCb := tview.NewCheckbox().SetLabel("Use Skip")
+
+	skipListInput := tview.NewInputField().SetLabel("Skip List").SetFieldWidth(35)
+	skipListInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	skipListInput.SetPlaceholder(" e.g. <AR> <SK>").SetPlaceholderTextColor(tcell.ColorYellow)
+
+	delayOptions := []string{"0", "1", "2", "3", "4", "5"}
+	delayDropDown := tview.NewDropDown().SetLabel("Start Delay (sec)").SetOptions(delayOptions, nil)
+
+	repeatOptions := []string{"2", "3", "4", "5", "6", "7", "8", "9"}
+	repeatDropDown := tview.NewDropDown().SetLabel("Repeat Limit").SetOptions(repeatOptions, nil)
+
+	randomOrderCb := tview.NewCheckbox().SetLabel("Random Order")
+	randomWordsCb := tview.NewCheckbox().SetLabel("Random Words")
+	wordBuilderCb := tview.NewCheckbox().SetLabel("Word Builder")
+
+	startMsgCb := tview.NewCheckbox().SetLabel("Start Msg")
+	startMsgInput := tview.NewInputField().SetLabel("Start Msg Text").SetFieldWidth(20)
+	startMsgInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorGreen) // Green Text!
+	startMsgInput.SetText("VVV <KA>")                                                           // Your exact default
+
+	endMsgCb := tview.NewCheckbox().SetLabel("End Msg")
+	endMsgInput := tview.NewInputField().SetLabel("End Msg Text").SetFieldWidth(20)
+	endMsgInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorGreen) // Green Text!
+	endMsgInput.SetText("<AR>")                                                               // Your exact default
+
+	resetState := func() {
+		useProsignsCb.SetChecked(config.User.UseProsigns)
+		extendedPuncCb.SetChecked(config.User.UseExtendedPunctuation)
+		useSkipCb.SetChecked(config.User.UseSkip)
+		skipListInput.SetText(config.User.SkipList)
+		randomOrderCb.SetChecked(config.User.RandomOrder)
+		randomWordsCb.SetChecked(config.User.RandomWords)
+		wordBuilderCb.SetChecked(config.User.WordBuilder)
+		startMsgCb.SetChecked(config.User.StartMsg)
+
+		if config.User.StartMsgText != "" {
+			startMsgInput.SetText(config.User.StartMsgText)
+		}
+
+		endMsgCb.SetChecked(config.User.EndMsg)
+		if config.User.EndMsgText != "" {
+			endMsgInput.SetText(config.User.EndMsgText)
+		}
+
+		dIdx := 0
+		for i, opt := range delayOptions {
+			if opt == fmt.Sprintf("%d", config.User.StartDelay) {
+				dIdx = i
+				break
+			}
+		}
+		delayDropDown.SetCurrentOption(dIdx)
+
+		rIdx := 0
+		for i, opt := range repeatOptions {
+			if opt == fmt.Sprintf("%d", config.User.RepeatLimit) {
+				rIdx = i
+				break
+			}
+		}
+		repeatDropDown.SetCurrentOption(rIdx)
+	}
+
+	resetState()
+
+	form.AddFormItem(useProsignsCb)
+	form.AddFormItem(extendedPuncCb)
+	form.AddFormItem(useSkipCb)
+	form.AddFormItem(skipListInput)
+	form.AddFormItem(delayDropDown)
+	form.AddFormItem(repeatDropDown)
+	form.AddFormItem(randomOrderCb)
+	form.AddFormItem(randomWordsCb)
+	form.AddFormItem(wordBuilderCb)
+	form.AddFormItem(startMsgCb)
+	form.AddFormItem(startMsgInput)
+	form.AddFormItem(endMsgCb)
+	form.AddFormItem(endMsgInput)
+
+	onSave := func() {
+		isRandWords := randomWordsCb.IsChecked()
+		isWB := wordBuilderCb.IsChecked()
+		isSkip := useSkipCb.IsChecked()
+
+		var errors []string
+
+		if isWB && isRandWords {
+			errors = append(errors, "Word Builder and Random Words cannot both be enabled. Random Words disabled.")
+			isRandWords = false
+		}
+
+		rawSkipFields := strings.Fields(skipListInput.GetText())
+		skipMap := make(map[string]bool)
+		var cleanSkips []string
+		for _, w := range rawSkipFields {
+			lw := strings.ToLower(w)
+			if !skipMap[lw] {
+				skipMap[lw] = true
+				cleanSkips = append(cleanSkips, lw)
+			}
+		}
+		formattedSkipList := strings.Join(cleanSkips, " ")
+
+		apply := func() {
+			config.User.UseProsigns = useProsignsCb.IsChecked()
+			config.User.UseExtendedPunctuation = extendedPuncCb.IsChecked()
+			config.User.UseSkip = isSkip
+			config.User.SkipList = formattedSkipList
+			config.User.RandomOrder = randomOrderCb.IsChecked()
+			config.User.RandomWords = isRandWords
+			config.User.WordBuilder = isWB
+			config.User.StartMsg = startMsgCb.IsChecked()
+			config.User.StartMsgText = startMsgInput.GetText()
+			config.User.EndMsg = endMsgCb.IsChecked()
+			config.User.EndMsgText = endMsgInput.GetText()
+
+			dIdx, _ := delayDropDown.GetCurrentOption()
+			config.User.StartDelay, _ = strconv.Atoi(delayOptions[dIdx])
+
+			rIdx, _ := repeatDropDown.GetCurrentOption()
+			config.User.RepeatLimit, _ = strconv.Atoi(repeatOptions[rIdx])
+
+			config.SaveConfig()
+			morse.RebuildMorseTable(config.User.UseExtendedPunctuation, config.User.UseSkip, config.User.SkipList)
+
+			updateBlueLine()
+			pages.RemovePage("options")
+			app.SetFocus(inputArea)
+		}
+
+		if len(errors) > 0 {
+			showErrorModal(errors, func() { app.SetFocus(form) })
+		} else {
+			apply()
+		}
+	}
+
+	onReset := func() {
+		resetState()
+	}
+
+	form.AddButton("Save", onSave)
+	form.AddButton("Reset", onReset)
+
+	applyFocusStyles(form)
+	form.SetBorder(false)
+
+	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
+	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	footerView.SetText("\n[yellow]ESC to Close[-]\n")
+
+	optionsContainer := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(form, 0, 1, true).
+		AddItem(footerView, 2, 1, false)
+
+	optionsContainer.SetBorder(true).SetTitle(" Options ")
+	optionsContainer.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+
+	pages.AddPage("options", createModal(optionsContainer, 65, 23), true, true)
+	app.SetFocus(optionsContainer)
+}
+
