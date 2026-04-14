@@ -103,11 +103,12 @@ func buildWordBuffer(ctx PlayContext, p TimingProfile) {
 
 func RunIWR(text string, iwrMan *IWRManager) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	/* WDL
 	log.Printf("=== ENGINE SPURT | Mode: Std:%v Farns:%v Words:%v | CharSpd: %d | EffSpd: %d | Tone: %dHz | IWR:%v (%dwpm) ===",
 		config.User.UseStandard, config.User.UseFarnsworth, config.User.UseWordsworth,
 		config.User.CharacterSpeed, config.User.EffectiveSpeed, config.User.Tone,
 		config.User.IWREnabled, config.User.IWRSpeed)
-
+		*/
 	words := strings.Fields(text)
 
 	if config.User.RandomOrder {
@@ -296,3 +297,4 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		OnStatusUpdate("STOP") // let UI know
 	}
 }
+

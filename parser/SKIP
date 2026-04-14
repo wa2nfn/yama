@@ -46,19 +46,16 @@ func ApplySkip(text string) string {
 		return text
 	}
 
-	// 1. Expand contractions BEFORE we start blindly ripping out characters.
-	// This saves the words (e.g., "DON'T" -> "DO NOT") before the apostrophe is swallowed.
-	if skipChars['\''] {
-		text = expandContractions(text)
-	}
-
-	// 2. Remove Prosigns
 	for ps := range skipProSigns {
 		text = strings.ReplaceAll(text, strings.ToUpper(ps), "")
 		text = strings.ReplaceAll(text, strings.ToLower(ps), "")
 	}
 
-	// 3. Remove Skipped Characters
+	
+	if skipChars['\''] {
+		text = expandContractions(text)
+	}
+
 	var sb strings.Builder
 	for _, r := range text {
 		if !skipChars[r] {
@@ -66,27 +63,17 @@ func ApplySkip(text string) string {
 		}
 	}
 
-	// Assuming CompressSpace is a helper function elsewhere in your parser package
 	return CompressSpace(sb.String())
 }
 
-func expandContractions(text string) string {
-	
-	// Safely peek at the first 80 characters of the incoming text
-	/*
-	peek := text
-	if len(peek) > 80 {
-		peek = peek[:80] + "..."
-	}
-	*/
 
-	// Track if we actually do anything
-	replacementsMade := 0
+func expandContractions(rawInput string) string {
+    	// The single quote exists in the table!
+	var work string
 
 	for contraction, expansion := range config.Contractions {
-		original := text
-		text = strings.ReplaceAll(text, contraction, expansion)
+		work = strings.ReplaceAll(rawInput, contraction, expansion)
+		rawInput = work
 	}
-
-	return text
+	return work // remaining chars for the SkipList filter to handle
 }

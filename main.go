@@ -74,14 +74,6 @@ func checkIWRFiles() (targetPath string, isFirstRun bool) {
 	return fallbackPath, true
 }
 
-var contractions = map[string]string{
-	"CAN'T": "CANNOT", "WON'T": "WILL NOT", "DON'T": "DO NOT",
-	"I'M": "I AM", "I'VE": "I HAVE", "I'LL": "I WILL", "I'D": "I WOULD",
-	"YOU'RE": "YOU ARE", "YOU'VE": "YOU HAVE", "YOU'LL": "YOU WILL", "YOU'D": "YOU WOULD",
-	"HE'S": "HE IS", "SHE'S": "SHE IS", "IT'S": "IT IS",
-	"AREN'T": "ARE NOT", "COULDN'T": "COULD NOT", "DIDN'T": "DID NOT",
-}
-
 func main() {
 
 	config.LoadConfig() // config.go now handles all defaults natively!
@@ -290,9 +282,12 @@ func main() {
 			showToneSpeed()
 			return nil
 		case tcell.KeyCtrlO:
-			showOptions()
+			// Lock out the Options menu unless fully stopped/idle
+			if currentState != StatePlaying && currentState != StatePaused {
+				showOptions()
+			}
 			return nil
-		case tcell.KeyCtrlH:
+				case tcell.KeyCtrlH:
 			showHelp()
 			return nil
 		case tcell.KeyCtrlD:
@@ -357,11 +352,4 @@ func main() {
 	if info, err := os.Stat("yama.log"); err == nil && info.Size() == 0 {
 		os.Remove("yama.log")
 	}
-}
-
-func ExpandContractions(input string) string {
-	for contraction, expansion := range contractions {
-		input = strings.ReplaceAll(input, contraction, expansion)
-	}
-	return input
 }

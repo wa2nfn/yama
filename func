@@ -1,0 +1,9 @@
+func ExpandContractions(rawInput string) string {
+    	// The single quote exists in the table!
+	var work string
+	for contraction, expansion := range config.Contractions {
+		work = strings.ReplaceAll(rawInput, contraction, expansion)
+		rawInput = work
+	}
+	return work // remaining chars for the SkipList filter to handle
+}

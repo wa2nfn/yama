@@ -9,6 +9,14 @@ import (
 
 var User UserSettings
 
+var Contractions = map[string]string{
+	"CAN'T": "CANNOT", "WON'T": "WILL NOT", "DON'T": "DO NOT",
+	"I'M": "I AM", "I'VE": "I HAVE", "I'LL": "I WILL", "I'D": "I WOULD",
+	"YOU'RE": "YOU ARE", "YOU'VE": "YOU HAVE", "YOU'LL": "YOU WILL", "YOU'D": "YOU WOULD",
+	"HE'S": "HE IS", "SHE'S": "SHE IS", "IT'S": "IT IS",
+	"AREN'T": "ARE NOT", "COULDN'T": "COULD NOT", "DIDN'T": "DID NOT",
+}
+
 // UserSettings holds all user-adjustable features for the YAMA morse code generator.
 type UserSettings struct {
 	// Timing Modes

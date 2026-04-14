@@ -148,7 +148,7 @@ func refreshUI(state AppState) {
 		menu = "[#00FF00]P[white]ause  [#00FF00]S[white]top"
 	case StatePaused:
 		statusLine.SetText(" [#00FF00]Paused")
-		menu = "[#00FF00]R[white]esume  [#00FF00]S[white]top  [#00FF00]T[white]iming  [#00FF00]O[white]ption"
+		menu = "[#00FF00]R[white]esume  [#00FF00]S[white]top  [#00FF00]T[white]iming "
 	}
 	header.SetText("[#00FF00::b] YAMA - Yet Another Morse App [white::-]\n" + menu)
 }
@@ -397,8 +397,7 @@ func showFile() {
 				txt := string(data)
 				txt = strings.ReplaceAll(txt, "\r", "")
 				txt = strings.ReplaceAll(txt, "\n", " ")
-
-				txt = ExpandContractions(txt)
+				txt = strings.ToUpper(txt)
 
 				if config.User.UseSkip {
 					parser.SetSkipList(config.User.SkipList, morse.ProSignTable)
@@ -813,18 +812,20 @@ func showToneSpeed() {
 			}
 		}
 
-		if iwrSpd < config.MinIWRSpeed || iwrSpd > config.MaxIWRSpeed {
-			errors = append(errors, fmt.Sprintf("IWR Speed clamped to %d-%d", config.MinIWRSpeed, config.MaxIWRSpeed))
-			if iwrSpd < config.MinIWRSpeed {
-				iwrSpd = config.MinIWRSpeed
-			} else {
-				iwrSpd = config.MaxIWRSpeed
+		if iwrCheckbox.IsChecked(){
+			if iwrSpd < config.MinIWRSpeed || iwrSpd > config.MaxIWRSpeed {
+				errors = append(errors, fmt.Sprintf("IWR Speed clamped to %d-%d", config.MinIWRSpeed, config.MaxIWRSpeed))
+				if iwrSpd < config.MinIWRSpeed {
+					iwrSpd = config.MinIWRSpeed
+				} else {
+					iwrSpd = config.MaxIWRSpeed
+				}
 			}
-		}
 
-		if iwrSpd <= charSpd {
-			errors = append(errors, "IWR Speed must be > Character Speed")
-			iwrSpd = charSpd + 1
+			if iwrSpd <= charSpd {
+				errors = append(errors, "IWR Speed must be > Character Speed")
+				iwrSpd = charSpd + 1
+			}
 		}
 
 		apply := func() {
@@ -889,15 +890,15 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 	clearStats()
 
 	rawInput := inputArea.GetText()
+	rawInput = strings.ToUpper(rawInput)
 
-	text := ExpandContractions(rawInput)
-
+	// before any lookups are done
 	if config.User.UseSkip {
 		parser.SetSkipList(config.User.SkipList, morse.ProSignTable)
-		text = parser.ApplySkip(text)
+		rawInput = parser.ApplySkip(rawInput)
 	}
 
-	fullTextToPlay = colorTagRegex.ReplaceAllString(text, "")
+	fullTextToPlay = colorTagRegex.ReplaceAllString(rawInput, "")
 
 	actualText = ""
 	inputArea.SetText("", false)
@@ -964,7 +965,7 @@ func showIWRWelcomeModal() {
 	if docDir, err := os.UserConfigDir(); err == nil {
 		globalPath = filepath.Join(docDir, "YAMA", "yamaIWR.txt")
 	} else {
-		globalPath = fmt.Sprintf("%s/yamaIWR.txt", os.UserHomeDir)
+		globalPath = fmt.Sprintf("%s/yamaIWR.txt", os.UserConfigDir)
 	}
 
 	welcomeText := fmt.Sprintf(`[yellow]Welcome to YAMA[-]
@@ -1196,3 +1197,4 @@ func createDefaultIWRFile(path string) error {
 	defaultContent := []byte("<BT>\n<AR>\n<SK>\n")
 	return os.WriteFile(path, defaultContent, 0644)
 }
+
