@@ -1,8 +1,0 @@
-func ExpandContractions(input string) string {
-//	work := strings.ToUpper(input)
-	work := input
-	for contraction, expansion := range Contractions {
-		work = strings.ReplaceAll(work, contraction, expansion)
-	}
-	return work // remaining chars for the SkipList filter to handle
-}

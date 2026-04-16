@@ -2,7 +2,6 @@ package morse
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -34,18 +33,28 @@ func ExportWAVBatch(fullText string, targetDir string, baseName string, maxWords
 
 	fileCount := 0
 
-	// 3. Slice the words array into chunks
-	for i := 0; i < len(words); i += maxWords {
+	// 3. Slice the words array into chunks using the 10% peek-ahead rule
+	for len(words) > 0 {
 		if fileCount >= maxFiles {
 			break
 		}
 
-		end := i + maxWords
-		if end > len(words) {
-			end = len(words)
+		chunkSize := maxWords
+
+		// THE PEEK-AHEAD:
+		// If the remaining words are less than or equal to 110% of a normal chunk,
+		// just take all of them to prevent a tiny final file.
+		if len(words) <= int(float64(maxWords)*1.10) {
+			chunkSize = len(words)
+		} else if chunkSize > len(words) {
+			chunkSize = len(words)
 		}
 
-		chunkWords := words[i:end]
+		// Slice off the chunk
+		chunkWords := words[:chunkSize]
+		
+		// Advance the remaining words array
+		words = words[chunkSize:] 
 
 		// 4. Run the exact IWR engine filters on this specific chunk
 		playlist := buildPlaylistFromWords(chunkWords)
@@ -61,7 +70,6 @@ func ExportWAVBatch(fullText string, targetDir string, baseName string, maxWords
 		// Force the 11025 sample rate here to ensure consistent 8-bit sizing
 		err := RenderWAVToFile(playlist, fileName, 11025)
 		if err != nil {
-			log.Printf("Failed to render %s: %v", fileName, err)
 			return generatedFiles, err
 		}
 

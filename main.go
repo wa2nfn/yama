@@ -1,15 +1,19 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 	"yama/config"
 	"yama/morse"
 
+	"golang.org/x/term"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -53,7 +57,6 @@ var (
 	colorTagRegex = regexp.MustCompile(`\[.*?\]`)
 )
 
-// checkIWRFiles acts as the traffic cop before the engine tries to load.
 func checkIWRFiles() (targetPath string, isFirstRun bool) {
 	localPath := "./yamaIWR.txt"
 
@@ -63,22 +66,30 @@ func checkIWRFiles() (targetPath string, isFirstRun bool) {
 	}
 	fallbackPath := filepath.Join(configDir, "YAMA", "yamaIWR.txt")
 
+	// 1. Check if the local file exists
 	if _, err := os.Stat(localPath); err == nil {
 		return localPath, false
 	}
 
+	// 2. Check if the fallback/AppData file exists
 	if _, err := os.Stat(fallbackPath); err == nil {
 		return fallbackPath, false
 	}
 
+	// 3. If neither exists, generate the default using your function!
+	if createErr := createDefaultIWRFile(fallbackPath); createErr == nil {
+		return fallbackPath, true // true = First Run
+	}
+
+	// Fallback return if everything fails
 	return fallbackPath, true
 }
 
 func main() {
+	ensureTerminal()
 
 	config.LoadConfig() // config.go now handles all defaults natively!
 
-	// Tell Go to write all logs cleanly to a file
 	logFile, _ := os.OpenFile("yama.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	log.SetOutput(logFile)
 
@@ -98,9 +109,19 @@ func main() {
 	morse.SetManager(iwrMan) // Set it globally immediately
 
 	// 2. The Traffic Cop: check if file exists
-	_, isFirstRun := checkIWRFiles() // <-- Empty parentheses, and an underscore at the start!
+	targetPath, firstRunCheck := checkIWRFiles()
+	isFirstRun = firstRunCheck // Safely update the GLOBAL variable, no ':=' shadowing
 
-	if !isFirstRun {
+	if isFirstRun {
+		// FIX: Create the directory and the file immediately so it's not a "first run" next time!
+		err := os.MkdirAll(filepath.Dir(targetPath), 0755)
+		if err == nil {
+			// Write a default empty file (or add some starter instructions/words)
+			os.WriteFile(targetPath, []byte("# Add your PureCW IWR words here, one per line.\n"), 0644)
+		} else {
+			log.Printf("Failed to create IWR directory: %v", err)
+		}
+	} else {
 		// Only trigger the load if we proved it already exists
 		_, err := iwrMan.LoadIWRFile()
 		if err != nil {
@@ -240,28 +261,9 @@ func main() {
 		}
 
 		switch event.Key() {
-		case tcell.KeyCtrlA:
+		case tcell.KeyCtrlB:
+			// used B so A can be for Audio
 			showAbout()
-			return nil
-		case tcell.KeyCtrlX:
-			err := morse.ResetAudioDevice()
-
-			if err != nil {
-				// Red alert if it failed
-				statusLine.SetText(" [red]Audio reset failed! Check device.")
-				log.Printf("Ctrl-X Audio Reset Failed: %v", err)
-			} else {
-				// Friendly yellow confirmation if it worked
-				statusLine.SetText(" [yellow]Audio connection reset triggered.")
-			}
-
-			// Clear the status message back to normal after 2 seconds
-			go func() {
-				time.Sleep(2 * time.Second)
-				app.QueueUpdateDraw(func() {
-					refreshUI(currentState)
-				})
-			}()
 			return nil
 		case tcell.KeyCtrlP, tcell.KeyCtrlR:
 			handlePlayPause(iwrMan)
@@ -287,7 +289,11 @@ func main() {
 				showOptions()
 			}
 			return nil
-				case tcell.KeyCtrlH:
+		case tcell.KeyCtrlA: 
+			// A stolen for Audio 
+			showImpairments()
+			return nil
+		case tcell.KeyCtrlH:
 			showHelp()
 			return nil
 		case tcell.KeyCtrlD:
@@ -306,13 +312,11 @@ func main() {
 		case tcell.KeyCtrlW:
 			// Only allow Wave export if we aren't playing and actually have text
 			if currentState != StatePlaying && len(inputArea.GetText()) > 0 {
-
 				// Bypass the dir selector and use the text file's original directory
 				target := currentFileDir
 				if target == "" {
 					target, _ = os.UserHomeDir() // Fallback if they typed text manually
 				}
-
 				showWaveModal(target) // <-- Jumps straight to your Wave form!
 			}
 			return nil
@@ -352,4 +356,50 @@ func main() {
 	if info, err := os.Stat("yama.log"); err == nil && info.Size() == 0 {
 		os.Remove("yama.log")
 	}
+}
+
+func ensureTerminal() {
+	// 1. Check if standard input is attached to a terminal
+	if term.IsTerminal(int(os.Stdin.Fd())) {
+		return
+	}
+
+	// 2. Get the absolute path to the current executable
+	exe, err := os.Executable()
+	if err != nil {
+		os.Exit(1)
+	}
+
+	// 3. Handle non-terminal execution based on the OS
+	switch runtime.GOOS {
+	case "windows":
+		// Pop a native Windows dialog: Yes = PowerShell, No = CMD, Cancel = Exit
+		script := fmt.Sprintf(`
+			Add-Type -AssemblyName PresentationFramework
+			$res = [System.Windows.MessageBox]::Show("App requires a terminal. Restart in PowerShell (Yes), Command Prompt (No), or Exit (Cancel)?", "PureCW IWR", 'YesNoCancel', 'Question')
+			if ($res -eq 'Yes') { Start-Process powershell.exe -ArgumentList "-NoExit -Command & '%s'" }
+			if ($res -eq 'No') { Start-Process cmd.exe -ArgumentList '/k "%s"' }
+		`, exe, exe)
+		exec.Command("powershell", "-NoProfile", "-Command", script).Run()
+
+	case "darwin":
+		// Mac: Automatically pop open Terminal.app and run the executable
+		script := fmt.Sprintf(`tell application "Terminal" to do script "%s"`, exe)
+		exec.Command("osascript", "-e", script).Run()
+
+	case "linux":
+		fallthrough
+	default:
+		// Linux: Too many terminal choices. Try displaying a GUI warning.
+		msg := "Please start this application manually from a terminal window."
+
+		// Try zenity first (common on GNOME)
+		if err := exec.Command("zenity", "--warning", "--text="+msg).Run(); err != nil {
+			// Fallback to kdialog (common on KDE)
+			exec.Command("kdialog", "--msgbox", msg).Run()
+		}
+	}
+
+	// Exit the silent/GUI instance so the user doesn't have hanging background processes
+	os.Exit(0)
 }

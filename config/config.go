@@ -34,6 +34,14 @@ type UserSettings struct {
 	IWRSpeed   int  `json:"iwr_speed"`
 	IWRTone    int  `json:"iwr_tone"`
 
+	// Audio Impairments
+
+	NoiseStaticLevel  int `json:"noise_static_level"`
+	NoiseFadingLevel  int `json:"noise_fading_level"`
+	NoiseToneDriftLevel  int `json:"noise_tone_drift_level"`
+	NoiseSpeedDriftLevel int `json:"noise_speed_drift_level"`
+	NoiseKeyClick   bool `json:"noise_key_click"`
+
 	// Output Options
 	UseWave bool `json:"UseWave"` // Note: Matches the exact capitalization from your JSON
 

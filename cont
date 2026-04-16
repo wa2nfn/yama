@@ -1,8 +1,0 @@
-func ExpandContractions(input string) string {
-	// only if apostrophe is missing 
-
-	for contraction, expansion := range contractions {
-		input = strings.ReplaceAll(input, contraction, expansion)
-	}
-	return input
-}

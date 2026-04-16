@@ -10,6 +10,7 @@ type Token struct {
 	Duration float64 // The literal time in seconds
 }
 
+/* WDL
 func GenerateTokens(pattern string, tp TimingProfile) []Token {
 	var tokens []Token
 
@@ -32,6 +33,7 @@ func GenerateTokens(pattern string, tp TimingProfile) []Token {
 	}
 	return tokens
 }
+*/
 
 // Tokenize breaks a string like "bi<ar>ll" into ["b", "i", "<ar>", "l", "l"]
 func Tokenize(input string) []string {

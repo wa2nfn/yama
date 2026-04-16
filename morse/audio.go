@@ -3,66 +3,36 @@ package morse
 import (
 	"bytes"
 	"encoding/binary"
-	"log"
 	"math"
+	"math/rand"
 	"sync"
 	"time"
+	"yama/config"
 
 	"github.com/ebitengine/oto/v3"
 )
 
 var (
-	otoCtx     *oto.Context
-	once       sync.Once
-	audioReady bool
-	// The new structured queue
-	queue []audioBlock
+	otoCtx               *oto.Context
+	once                 sync.Once
+	audioReady           bool
+	queue                []audioBlock
+	AudioHardwareDead    bool
+	SimTime              float64
+	activeCrashSamples   int     // Tracks remaining samples in a lightning crash
+	activeCrashIntensity float32 // Tracks the volume of the current crash
 )
 
 const SampleRate = 44100
 
 type audioBlock struct {
-	samples []byte // Swapped to raw bytes
+	samples []byte
 	char    string
 	index   int
 }
 
-type PCMData struct{ Samples []byte } // Swapped to raw bytes
+type PCMData struct{ Samples []byte }
 
-func TonePCM(freq float64, duration int, vol float64) PCMData {
-	buf := make([]byte, duration*2) // *2 because 16-bit audio needs 2 bytes per sample
-	ramp := int(math.Round(0.005 * float64(SampleRate)))
-	if ramp*2 > duration {
-		ramp = duration / 2
-	}
-	for i := 0; i < duration; i++ {
-		angle := 2.0 * math.Pi * freq * float64(i) / float64(SampleRate)
-		amp := float32(vol)
-		if i < ramp {
-			amp *= float32(i) / float32(ramp)
-		} else if i > duration-ramp {
-			amp *= float32(duration-i) / float32(ramp)
-		}
-
-		// Calculate the float and instantly convert to 16-bit Little Endian bytes
-		s := float32(math.Sin(angle)) * amp
-		v := int16(s * 32767)
-		binary.LittleEndian.PutUint16(buf[i*2:], uint16(v))
-	}
-	return PCMData{Samples: buf}
-}
-
-func SilencePCM(duration int) PCMData {
-	buf := make([]byte, duration*2)
-	// Low floor to prevent driver sleep/popping (0.0001 * 32767 = ~3)
-	v := uint16(int16(3))
-	for i := 0; i < duration; i++ {
-		binary.LittleEndian.PutUint16(buf[i*2:], v)
-	}
-	return PCMData{Samples: buf}
-}
-
-// QueuePCM now accepts the raw bytes
 func QueuePCM(samples []byte, char string, index int) {
 	queue = append(queue, audioBlock{
 		samples: samples,
@@ -77,87 +47,110 @@ func Flush() {
 		return
 	}
 
-	for _, block := range queue {
-		// 1. Instantly abort the queue if the user hits Stop
+	for i := 0; i < len(queue); i++ {
+		block := queue[i]
+
 		if IsStopping {
 			break
 		}
 
-		// Sync Trigger: Update UI immediately before playing this specific block
 		if block.char != "" && OnWordChange != nil {
 			OnWordChange(block.char, block.index)
 		}
 
-		// Look how much cleaner this is! Zero float-to-byte math inside the loop.
 		p := otoCtx.NewPlayer(bytes.NewReader(block.samples))
 		p.Play()
 
-		// Wait for this specific sound unit to finish
+		sampleCount := len(block.samples) / 2
+		expectedDuration := time.Duration(sampleCount) * time.Second / time.Duration(SampleRate)
+
+		timeout := time.Now().Add(expectedDuration + 3*time.Second)
+
 		for p.IsPlaying() {
-			// 2. Instantly abort mid-beep if the user hits Stop
 			if IsStopping {
 				break
 			}
+
+			if time.Now().After(timeout) {
+				go func() { _ = p.Close() }()
+				IsStopping = true
+				AudioHardwareDead = true
+				break
+			}
+
 			time.Sleep(1 * time.Millisecond)
 		}
 
-		// 3. CRITICAL: Release the hardware buffer so Oto doesn't go permanently silent
-		p.Close()
+		if IsStopping {
+			break
+		}
+
+		if time.Now().Before(timeout) {
+			p.Close()
+		}
 	}
 
-	// Always reset the queue so the next Run starts completely fresh
 	queue = nil
 }
 
 func InitAudio() error {
 	var err error
 	once.Do(func() {
-		op := &oto.NewContextOptions{
-			SampleRate:   SampleRate, // Ensure SampleRate is defined (e.g., 24000)
-			ChannelCount: 1,
-			Format:       oto.FormatSignedInt16LE,
-		}
-		ctx, ready, e := oto.NewContext(op)
-		if e != nil {
-			err = e
-			return
-		}
-		<-ready
-		otoCtx = ctx
-		audioReady = true
+		err = startAudioEngine()
 	})
 	return err
 }
 
-// Helper function to force Windows to lock onto the new audio endpoint
-func ResetAudioDevice() error {
-	if otoCtx == nil {
-		return nil
+func startAudioEngine() error {
+	op := &oto.NewContextOptions{
+		SampleRate:   SampleRate,
+		ChannelCount: 1,
+		Format:       oto.FormatSignedInt16LE,
 	}
-	log.Println("Audio hardware error detected. Kicking Windows Audio Context...")
+	ctx, ready, e := oto.NewContext(op)
+	if e != nil {
+		return e
+	}
+	<-ready
+	otoCtx = ctx
+	audioReady = true
+	return nil
+}
 
-	if err := otoCtx.Suspend(); err != nil {
-		log.Printf("Suspend error: %v", err)
-		// You might still want to continue to Resume even if Suspend throws a fit
+/* WDL
+func ResetAudioDevice() error {
+	audioReady = false
+
+	if otoCtx != nil {
+		done := make(chan struct{})
+		go func() {
+			otoCtx.Suspend()
+			close(done)
+		}()
+		
+		select {
+		case <-done:
+		case <-time.After(200 * time.Millisecond):
+		}
 	}
 
 	time.Sleep(100 * time.Millisecond)
 
-	if err := otoCtx.Resume(); err != nil {
-		log.Printf("Resume error: %v", err)
-		return err // Let the caller know the audio engine is dead
+	if err := startAudioEngine(); err != nil {
+		log.Printf("Failed to re-initialize audio engine: %v", err)
+		return err
 	}
 
 	return nil
 }
+*/
 
 // ==========================================
-// 🌊 WAV EXPORT AUDIO MATH (8-Bit Unsigned)
+// WAV EXPORT AUDIO MATH (8-Bit Unsigned)
 // ==========================================
 
-// TonePCM8Bit generates 8-bit unsigned PCM to keep WAV files 75% smaller.
 func TonePCM8Bit(freq float64, duration int, vol float64, targetSampleRate int) PCMData {
-	buf := make([]byte, duration) // 1 byte per sample
+	buf := make([]byte, duration)
 	ramp := int(math.Round(0.005 * float64(targetSampleRate)))
 	if ramp*2 > duration {
 		ramp = duration / 2
@@ -171,7 +164,6 @@ func TonePCM8Bit(freq float64, duration int, vol float64, targetSampleRate int) 
 			amp *= float32(duration-i) / float32(ramp)
 		}
 
-		// 8-bit WAV must be UNSIGNED (center 128)
 		s := float32(math.Sin(angle)) * amp
 		v := uint8((s * 127.0) + 128.0)
 		buf[i] = v
@@ -179,11 +171,167 @@ func TonePCM8Bit(freq float64, duration int, vol float64, targetSampleRate int) 
 	return PCMData{Samples: buf}
 }
 
-// SilencePCM8Bit generates 8-bit unsigned silence.
 func SilencePCM8Bit(duration int) PCMData {
 	buf := make([]byte, duration)
 	for i := 0; i < duration; i++ {
-		buf[i] = 128 // Center point for unsigned 8-bit audio
+		buf[i] = 128
 	}
+	return PCMData{Samples: buf}
+}
+
+// ==========================================
+// 🎧 LIVE PLAYBACK ENGINE WITH IMPAIRMENTS
+// ==========================================
+
+func TonePCM(freq float64, duration int, vol float64) PCMData {
+	// SPEED DRIFT
+	var speedMod float64 = 0.0
+	switch config.User.NoiseSpeedDriftLevel {
+	case 1: speedMod = 0.05
+	case 2: speedMod = 0.15
+	case 3: speedMod = 0.30
+	}
+	if speedMod > 0 {
+		speedFactor := 1.0 + (speedMod * math.Sin(SimTime*2.0*math.Pi/19.0))
+		duration = int(float64(duration) * speedFactor)
+	}
+
+	// TONE DRIFT
+	var toneMod float64 = 0.0
+	switch config.User.NoiseToneDriftLevel {
+	case 1: toneMod = 10.0
+	case 2: toneMod = 30.0
+	case 3: toneMod = 60.0
+	}
+	if toneMod > 0 {
+		freq += toneMod * math.Sin(SimTime*2.0*math.Pi/25.0)
+	}
+
+	// FADING / QSB
+	switch config.User.NoiseFadingLevel {
+	case 1: vol *= 0.80 + (0.20 * math.Sin(SimTime*2.0*math.Pi/15.0))
+	case 2: vol *= 0.60 + (0.40 * math.Sin(SimTime*2.0*math.Pi/15.0))
+	case 3: vol *= 0.525 + (0.475 * math.Sin(SimTime*2.0*math.Pi/15.0))
+	}
+
+	// STATIC / QRN BASE HISS
+	var staticVol float32 = 0.0
+	switch config.User.NoiseStaticLevel {
+	case 1: staticVol = 0.05
+	case 2: staticVol = 0.15
+	case 3: staticVol = 0.40
+	}
+
+	buf := make([]byte, duration*2)
+	ramp := int(math.Round(0.005 * float64(SampleRate)))
+
+	// KEY CLICKS (Bypass the smooth ramp)
+	if config.User.NoiseKeyClick {
+		ramp = 0
+	}
+
+	if ramp*2 > duration {
+		ramp = duration / 2
+	}
+
+	for i := 0; i < duration; i++ {
+		angle := 2.0 * math.Pi * freq * float64(i) / float64(SampleRate)
+		amp := float32(vol)
+
+		if ramp > 0 {
+			if i < ramp {
+				amp *= float32(i) / float32(ramp)
+			} else if i > duration-ramp {
+				amp *= float32(duration-i) / float32(ramp)
+			}
+		}
+
+		s := float32(math.Sin(angle)) * amp
+
+		// THE DIRTY RELAY: Key Click transient (3ms spark)
+		if config.User.NoiseKeyClick {
+			if i < 132 || i > duration-132 {
+				s += 0.6 + (rand.Float32() * 0.4)
+			}
+		}
+
+		// STATIC HISS & LIGHTNING CRASHES
+		if staticVol > 0 {
+			if activeCrashSamples == 0 && rand.Float32() < 0.00001 {
+				activeCrashSamples = rand.Intn(int(SampleRate / 2)) 
+				activeCrashIntensity = (rand.Float32() * 0.6) + (float32(config.User.NoiseStaticLevel) * 0.1)
+			}
+
+			noise := (rand.Float32() * 2.0) - 1.0
+			currentNoise := noise * staticVol
+
+			if activeCrashSamples > 0 {
+				currentNoise += noise * activeCrashIntensity
+				activeCrashSamples--
+			}
+
+			s += currentNoise
+		}
+
+		if s > 1.0 { s = 1.0 }
+		if s < -1.0 { s = -1.0 }
+
+		v := int16(s * 32767)
+		binary.LittleEndian.PutUint16(buf[i*2:], uint16(v))
+	}
+
+	SimTime += float64(duration) / float64(SampleRate)
+	return PCMData{Samples: buf}
+}
+
+func SilencePCM(duration int) PCMData {
+	var speedMod float64 = 0.0
+	switch config.User.NoiseSpeedDriftLevel {
+	case 1: speedMod = 0.05
+	case 2: speedMod = 0.15
+	case 3: speedMod = 0.30
+	}
+	if speedMod > 0 {
+		speedFactor := 1.0 + (speedMod * math.Sin(SimTime*2.0*math.Pi/19.0))
+		duration = int(float64(duration) * speedFactor)
+	}
+
+	var staticVol float32 = 0.0
+	switch config.User.NoiseStaticLevel {
+	case 1: staticVol = 0.05
+	case 2: staticVol = 0.15
+	case 3: staticVol = 0.40
+	}
+
+	buf := make([]byte, duration*2)
+
+	for i := 0; i < duration; i++ {
+		var v int16 = 3
+
+		if staticVol > 0 {
+			if activeCrashSamples == 0 && rand.Float32() < 0.00001 {
+				activeCrashSamples = rand.Intn(int(SampleRate / 2))
+				activeCrashIntensity = (rand.Float32() * 0.6) + (float32(config.User.NoiseStaticLevel) * 0.1)
+			}
+
+			noise := (rand.Float32() * 2.0) - 1.0
+			currentNoise := noise * staticVol
+
+			if activeCrashSamples > 0 {
+				currentNoise += noise * activeCrashIntensity
+				activeCrashSamples--
+			}
+
+			s := currentNoise
+			if s > 1.0 { s = 1.0 }
+			if s < -1.0 { s = -1.0 }
+
+			v = int16(s * 32767)
+		}
+
+		binary.LittleEndian.PutUint16(buf[i*2:], uint16(v))
+	}
+
+	SimTime += float64(duration) / float64(SampleRate)
 	return PCMData{Samples: buf}
 }

@@ -3,7 +3,6 @@ package morse
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,6 +31,7 @@ var (
 	PauseStart    time.Time
 	TotalPaused   time.Duration
 	isFirstRun    bool = true
+	IsStopping 	bool
 )
 
 func SetManager(m *IWRManager) {
@@ -138,6 +138,7 @@ func (m *IWRManager) LoadIWRFile() (bool, error) {
 	return isFirstRun, nil
 }
 
+/* WDL
 func (m *IWRManager) ResetSessionStats() {
 	NonIWRCount = 0
 	StartTime = time.Now()
@@ -146,6 +147,7 @@ func (m *IWRManager) ResetSessionStats() {
 		word.StrokeCount = 0
 	}
 }
+*/
 
 func (m *IWRManager) Match(word string) bool {
 	// Everything is already clean and uppercase, so just check the map instantly!
@@ -153,24 +155,25 @@ func (m *IWRManager) Match(word string) bool {
 	return exists
 }
 
+/* WDL
 // You can drop this helper function near your IWR loading logic
 func getIWRFilePath() string {
 	localPath := "yamaIWR.txt"
 
 	// 1. Check the local working directory first
 	if _, err := os.Stat(localPath); err == nil {
-		log.Printf("Found local IWR file: %s", localPath)
+		//log.Printf("Found local IWR file: %s", localPath)
 		return localPath
 	}
 
 	// 2. Fallback to the AppData location if local doesn't exist
-	// (Adjust the AppData path string below to match your existing logic)
 	appDataDir, _ := os.UserConfigDir()
 	appDataPath := filepath.Join(appDataDir, "Yama", "yamaIWR.txt")
 
-	log.Printf("Local file not found, defaulting to AppData: %s", appDataPath)
+	//log.Printf("Local file not found, defaulting to AppData: %s", appDataPath)
 	return appDataPath
 }
+*/
 
 func createDefaultIWRFile(filePath string) error {
 	// Ensure the directory actually exists before we try to write to it

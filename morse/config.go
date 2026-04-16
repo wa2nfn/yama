@@ -67,16 +67,6 @@ func GetTiming(isIWR bool, user config.UserSettings) TimingProfile {
 
 	validateTimingSelection(user.UseFarnsworth, user.UseWordsworth, user.UseStandard)
 
-	/* WDL 
-	log.Printf("=== DEBUG TIMING PROFILE | Tone: %dHz | Dit: %.0fms | Dah: %.0fms | IntElem: %.0fms | CharSp: %.0fms | WordSp: %.0fms ===",
-		tone,
-		charUnit*1000,
-		charUnit*3*1000,
-		charUnit*1000,
-		charSpace*1000,
-		wordUnit*7*1000)
-		*/
-
 	return TimingProfile{
 		Tone:         tone,
 		DotDuration:  charUnit,

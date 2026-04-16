@@ -26,6 +26,12 @@ var currentInputFile string
 var currentFileDir string
 
 func handlePlayPause(iwrMan *morse.IWRManager) {
+	// 1. SAFETY LOCK: Prevent playback/interaction if the audio engine is dead
+	if morse.AudioHardwareDead {
+		statusLine.SetText(" [red::b]FATAL: Audio hardware lost. Restart app.[::-]")
+		return
+	}
+
 	if currentState == StateIdle || currentState == StateStopped {
 		startAudioSequence(iwrMan)
 	} else if currentState == StatePlaying {
@@ -58,7 +64,7 @@ func runEngine(parsedText string, iwrMan *morse.IWRManager) {
 			app.QueueUpdateDraw(func() {
 				isBlocked = false
 				currentState = StateStopped
-				statusLine.SetText(" [#00FF00]Engine Crashed!")
+				statusLine.SetText(" [red::b]Engine Crashed![::-]")
 				refreshUI(StateStopped)
 			})
 		}
@@ -91,7 +97,14 @@ func stopAudio() {
 	updateVisibility()
 
 	currentState = StateStopped
-	statusLine.SetText(" [#00FF00]Stopped")
+	
+	// Ensure a manual stop doesn't overwrite a hardware death warning
+	if morse.AudioHardwareDead {
+		statusLine.SetText(" [red::b]ERROR: Audio Device Disconnected! Restart App.[::-]")
+	} else {
+		statusLine.SetText(" [#00FF00]Stopped")
+	}
+	
 	refreshUI(StateStopped)
 }
 
@@ -132,8 +145,15 @@ func refreshUI(state AppState) {
 		if state == StateStopped {
 			status = "Stopped"
 		}
-		statusLine.SetText(" [#00FF00]" + status)
-		menu = "[#00FF00]F[white]ile  [#00FF00]P[white]lay  [#00FF00]T[white]iming  [#00FF00]O[white]ption  [#00FF00]A[white]bout  [#00FF00]H[white]elp  [#00FF00]Q[white]uit"
+		
+		// INTERCEPT STATUS: If the watchdog aborted the run, warn the user!
+		if morse.AudioHardwareDead {
+			statusLine.SetText(" [red::b]ERROR: Audio Device Disconnected! Restart App.[::-]")
+		} else {
+			statusLine.SetText(" [#00FF00]" + status)
+		}
+		
+		menu = "[#00FF00]F[white]ile  [#00FF00]P[white]lay  [#00FF00]T[white]iming  [#00FF00]A[white]udio  [#00FF00]O[white]ption  [#00FF00]H[white]elp  [#00FF00]Q[white]uit a[#00FF00]B[white]out"
 
 		if hasText {
 			menu = strings.Replace(menu, "[#00FF00]P[white]lay", "[#00FF00]P[white]lay  [#00FF00]W[white]ave  [#00FF00]E[white]rase", 1)
@@ -145,10 +165,10 @@ func refreshUI(state AppState) {
 
 	case StatePlaying:
 		statusLine.SetText(" [#00FF00]Playing")
-		menu = "[#00FF00]P[white]ause  [#00FF00]S[white]top"
+		menu = "[#00FF00]P[white]ause  [#00FF00]S[white]top [#00FF00]A[white]udio"
 	case StatePaused:
 		statusLine.SetText(" [#00FF00]Paused")
-		menu = "[#00FF00]R[white]esume  [#00FF00]S[white]top  [#00FF00]T[white]iming "
+		menu = "[#00FF00]R[white]esume  [#00FF00]S[white]top  [#00FF00]T[white]iming  [#00FF00]A[white]udio"
 	}
 	header.SetText("[#00FF00::b] YAMA - Yet Another Morse App [white::-]\n" + menu)
 }
@@ -177,7 +197,7 @@ func createModal(p tview.Primitive, width, height int) tview.Primitive {
 }
 
 func showErrorModal(errors []string, onDismiss func()) {
-	msg := "[yellow::b]Configuration Adjustments Required:[::-]\n\n"
+	msg := "[yellow::b]Configuration Adjustments ReqGuired:[::-]\n\n"
 	for _, e := range errors {
 		msg += "- " + e + "\n"
 	}
@@ -249,25 +269,130 @@ func showStats() {
 
 func showHelp() {
 	helpText := `
- [yellow]Keyboard Shortcuts:[-]
- [green]Ctrl-P:[-] Play / Pause / Resume
- [green]Ctrl-S:[-] Stop Audio
- [green]Ctrl-F:[-] File Explorer
- [green]Ctrl-T:[-] Tone & Speed Settings
- [green]Ctrl-O:[-] General Options
- [green]Ctrl-W:[-] Generate WAV Files
- [green]Ctrl-E:[-] Erase Input
- [green]Ctrl-D:[-] View Session Stats
- [green]Space:[-] Play / Pause
- [green]Ctrl-Q:[-] Quit App
- [green]ESC:[-]    Close Modals / Stop Audio
-	`
-	tv := tview.NewTextView().SetDynamicColors(true).SetText(helpText)
-	tv.SetBackgroundColor(tcell.GetColor(AppBackgroundColor)).SetBorder(true).SetTitle(" Help ")
-	tv.SetScrollable(true)
 
-	pages.AddPage("help", createModal(tv, 40, 17), true, true)
-	app.SetFocus(tv)
+                         [yellow::b]Welcome to YAMA - Yet Another Morse App[::-]
+
+Whether you are looking for clean, predictable code practice or want to test your copying limits against a simulated ionospheric storm, YAMA is built to help you. 
+
+[green::b]Getting Started: Entering Text[::-]
+[white]Before YAMA can play anything, it needs some text! You have two easy ways to do this:
+1. Type or Paste: Simply click into the main Text Input box and type or paste your practice text directly. (cursor keys, backspace, delete supported)
+2. Load a File: Press [yellow]Ctrl-F[-] to open the File Selector and browse for any standard '.txt' file on your computer.
+
+[green::b]Dynamic Menus & Navigation[::-]
+[white]YAMA is operated entirely via keyboard shortcuts. Keep an eye on the top menu bar — it is dynamic. YAMA will only show you the shortcuts that make sense for what you are currently doing. For example, you cannot open the Options menu while audio is actively playing, and therefore there will not be an Open label and Ctrl-O will be ignored, Wave export shortcut will only appear when you actually have text loaded to export. 
+
+If you ever get stuck in a menu, just press [yellow]ESC[-] to safely close it without saving. (Note: insert or removal of headphones can trigger a Windows hand of the app requiring an app restart.)
+
+[white]Ctrl Key | Menu Name  | Purpose[-]
+---------|------------|--------------------------------------------------------
+Ctrl-F   | File       | Open a .txt file for playback
+Ctrl-P   | Play/Pause | Start or pause the current loaded input text
+Ctrl-S   | Stop       | Halt playback immediately (cannot be resumed)
+Ctrl-W   | Wave       | Export current text to .wav file(s)
+Ctrl-E   | Erase      | Clear the current text input aka screen clear
+Ctrl-T   | Timing     | Speed, Tone, and IWR settings
+Ctrl-O   | Option     | Parser, messaging, and text processing options
+Ctrl-A   | Audio      | Audio impacting impairements (QRN, QSB, Drift, etc.)
+Ctrl-D   | Data-Stats | View session statistics and IWR counts 
+Ctrl-B   | aBout      | App info and License
+Ctrl-H   | Help       | This screen
+Ctrl-Q   | Quit       | Exit YAMA
+ESC      | Close      | Cancel/Close menus without saving
+Spacebar | Hide/Unhide| Toggle text visibility during playback
+
+[green::b]Supported Characters & Punctuation[::-]
+[white]YAMA naturally supports standard letters [yellow]A-Z[-] and numbers [yellow]0-9[-]. 
+
+[white]Basic punctuation: [yellow]. , ? /[-]
+[white]Full punctuation (Enable in Options): [yellow]: ; " @ '[-]
+
+[green::b]ProSigns & Equivalents[::-]
+[white]Supported ProSigns: <AR> <AS> <BT> <KA> <SK> <VA> <VE> <SN> <BK> <HH> <DU> <SOS> <CH>.
+If "Use Prosigns" is disabled in Options, bracketed ProSigns will be ignored. However, the standard keyboard equivalents [yellow]+[-] (<AR>), [yellow]=[-] (<BT>), and [yellow]-[-] (<DU>) will still play, unless added to the Skip List in the Options screen. (Note, any other use of '<' or '>' is ignored.
+
+[green::b]Option Screen (Ctrl-O) - Settings[::-]
+[white]Setting               | Description
+----------------------|---------------------------------------------------------
+Use Prosigns          | Toggles support for bracketed ProSigns (e.g., <AR>).
+                      | Does NOT effect [yelloe]-+=[-]. (Note: <BK> is sounded as  "B K").
+All Punctuation       | Toggles support for extended punctuation marks.
+Use Skip              | Enables the Skip List filtering during playback.
+Skip List             | Define specific characters or ProSigns to silently ignore.
+                      | Entered without any separators. e.g. XY7<BT>=
+Start Delay           | Adds a countdown timer (in seconds) before playback begins.
+Repeat Limit          | Caps consecutive repeating characters to prevent runaway sequences .
+                      | sometimes used in books under titles. Default 3 or many words effected.
+Random Order          | Shuffles the playback order of the entire document's words.
+Random Words          | Scrambles the letters within individual words. e.g. a code group
+                      | Mutually exclusive with the IWR function.  
+Word Builder          | Plays words progressively (e.g., T, TH, THE) for comprehension.
+                      | Mutually exclusive with IWR. IWR speed is used to sound the last word.
+Start Msg             | Toggles injecting a custom message at the beginning of the text.
+Start Msg Text        | The specific text to play at the start (e.g., VVV <KA>).
+End Msg               | Toggles injecting a custom message at the end of the text.
+End Msg Text          | The specific text to play at the end (e.g., <AR>).
+
+[green::b]The Skip List & Contractions[::-]
+[white]You can define specific characters or ProSigns to silently skip during playback (Options -> Skip List). 
+[yellow]Important Apostrophe Rule:[-] If you add the apostrophe (') to your skip list, YAMA will automatically expand 17 common English contractions before removing the remaining apostrophes (e.g., "DON'T" safely becomes "DO NOT").
+
+[green::b]Audio Screen (Ctrl-A) - Audio Impairements[::-]
+[white]Setting               | Description
+----------------------|---------------------------------------------------------
+Static (QRN)          | Injects constant background hiss and random lightning crashes.
+Fading (QSB)          | Simulates a slow ionospheric roll, dipping and recovering volume.
+Tone Drift            | Simulates an unstable oscillator, bending the pitch up and down.
+Speed Drift           | Simulates a tired operator by slowly expanding/contracting timing.
+Key Clicks            | Injects a harsh electrical spark at the start and end of elements.
+
+[green::b]WAV File Export (Ctrl-W)[::-]
+[white]YAMA exports 8-bit Mono audio. To prevent disk exhaustion, exports are capped at 5,000 words and automatically chunked into sequential files of roughly 10 minutes each.
+
+[green::b]System Files (Misc)[::-]
+• [blue]yama_config.json:[-] Automatically manages your saved settings. Please use the UI menus rather than hand-editing this file.
+• [blue]yamaIWR.txt:[-] Your active dictionary for Instant Word Recognition. Edit this safely via the "Edit IWR" button in the Timing menu. Note: Edit via the app are rather simple, cursor, delete, backspace, TAB to access Save button. 
+• [blue]yamaHELP.txt:[-] This file if Export To File is used.
+[::-].`
+	tv := tview.NewTextView().
+		SetDynamicColors(true).
+		SetText(helpText).
+		SetScrollable(true)
+	
+	tv.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+
+	form := tview.NewForm().
+		AddButton("Export To File", func() {
+			// Strip the tview color tags (e.g. [yellow], [-]) so the text file is clean
+			cleanText := colorTagRegex.ReplaceAllString(helpText, "")
+			
+			err := os.WriteFile("yama_help.txt", []byte(cleanText), 0644)
+			if err == nil {
+				statusLine.SetText(" [#00FF00]Help manual exported to yama_help.txt![-]")
+			} else {
+				statusLine.SetText(" [red]Failed to export help file.[-]")
+			}
+			
+			pages.RemovePage("help")
+			app.SetFocus(inputArea)
+		}).
+		AddButton("Close (ESC)", func() {
+			pages.RemovePage("help")
+			app.SetFocus(inputArea)
+		})
+	
+	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	applyFocusStyles(form)
+
+	layout := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(tv, 0, 1, true).
+		AddItem(form, 3, 1, false)
+
+	layout.SetBorder(true).SetTitle(" Help & Documentation ")
+	layout.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+
+	pages.AddPage("help", createModal(layout, 110, 26), true, true)
+	app.SetFocus(layout)
 }
 
 func showAbout() {
@@ -304,7 +429,7 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMA
 		SetBorder(true).
 		SetTitle(" About ")
 
-	pages.AddPage("about", createModal(tv, 70, 26), true, true)
+	pages.AddPage("about", createModal(tv, 90, 26), true, true)
 	app.SetFocus(tv)
 }
 
@@ -458,12 +583,12 @@ func showOptions() {
 	wordBuilderCb := tview.NewCheckbox().SetLabel("Word Builder")
 
 	startMsgCb := tview.NewCheckbox().SetLabel("Start Msg")
-	startMsgInput := tview.NewInputField().SetLabel("Start Msg Text").SetFieldWidth(20)
+	startMsgInput := tview.NewInputField().SetLabel("Start Msg Text").SetFieldWidth(30)
 	startMsgInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 	startMsgInput.SetPlaceholder(" e.g. VVV <KA>").SetPlaceholderTextColor(tcell.ColorYellow)
 
 	endMsgCb := tview.NewCheckbox().SetLabel("End Msg")
-	endMsgInput := tview.NewInputField().SetLabel("End Msg Text").SetFieldWidth(20)
+	endMsgInput := tview.NewInputField().SetLabel("End Msg Text").SetFieldWidth(30)
 	endMsgInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 	endMsgInput.SetPlaceholder(" e.g. <AR>").SetPlaceholderTextColor(tcell.ColorYellow)
 
@@ -884,6 +1009,12 @@ func showToneSpeed() {
 
 func startAudioSequence(iwrMan *morse.IWRManager) {
 
+	// 1. SAFETY LOCK: Prevent playback if the audio engine is dead
+	if morse.AudioHardwareDead {
+		statusLine.SetText(" [red::b]FATAL: Audio hardware lost. Restart app.[::-]")
+		return
+	}
+
 	morse.IsStopping = false
 	morse.IsPaused = false
 	isBlocked = false
@@ -982,7 +1113,9 @@ IWR - Instant Word Recognition, is a key feature. Options to use it are on the T
 • An asterisk (*) at the end of a word is for wildcard matching. Matching the exact word, or the word followed by: ",.?:".
 • Lines starting with '#' are ignored.
 
-You can edit the active file by clicking [yellow]"Edit IWR"[-] in the Timing menu. The editor is simple: cursor, backspace, delete, enter; TAB to access buttons.`, globalPath)
+You can edit the active file by clicking [yellow]"Edit IWR"[-] in the Timing menu. The editor is simple: cursor, backspace, delete, enter; TAB to access buttons.
+
+Note: This text will NOT be shown again.`, globalPath)
 
 	textView := tview.NewTextView().
 		SetDynamicColors(true).
@@ -1155,7 +1288,7 @@ func showSuccessModal(dir string, files []string) {
 	for _, f := range files {
 		sb.WriteString(fmt.Sprintf("[white]- %s\n", f))
 	}
-	sb.WriteString("\n[yellow](Press ESC or Enter to close)[-]")
+	sb.WriteString("\n[yellow]ESC to close[-]")
 
 	// Use a TextView instead of a List so long directory paths wrap!
 	tv := tview.NewTextView().
@@ -1198,3 +1331,103 @@ func createDefaultIWRFile(path string) error {
 	return os.WriteFile(path, defaultContent, 0644)
 }
 
+// by Ctrl-A for audio
+func showImpairments() {
+	form := tview.NewForm()
+	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	form.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	form.SetItemPadding(0)
+
+	// The 4 levels for our dropdowns
+	levels := []string{"Off", "Light", "Heavy", "Severe"}
+
+	// Create the DropDowns for the level-based impairments
+	staticDropDown := tview.NewDropDown().SetLabel("Static (QRN)").SetOptions(levels, nil)
+	fadingDropDown := tview.NewDropDown().SetLabel("Fading (QSB)").SetOptions(levels, nil)
+	toneDriftDropDown := tview.NewDropDown().SetLabel("Tone Drift").SetOptions(levels, nil)
+	speedDriftDropDown := tview.NewDropDown().SetLabel("Speed Drift").SetOptions(levels, nil)
+	
+	// Key Clicks remains a standard boolean checkbox
+	keyClickCb := tview.NewCheckbox().SetLabel("Key Clicks")
+
+	// Set their initial states based on your Config
+	resetState := func() {
+		staticDropDown.SetCurrentOption(config.User.NoiseStaticLevel)
+		fadingDropDown.SetCurrentOption(config.User.NoiseFadingLevel)
+		toneDriftDropDown.SetCurrentOption(config.User.NoiseToneDriftLevel)
+		speedDriftDropDown.SetCurrentOption(config.User.NoiseSpeedDriftLevel)
+		keyClickCb.SetChecked(config.User.NoiseKeyClick)
+	}
+
+	resetState()
+
+	// Add them to the form
+	form.AddFormItem(staticDropDown)
+	form.AddFormItem(fadingDropDown)
+	form.AddFormItem(toneDriftDropDown)
+	form.AddFormItem(speedDriftDropDown)
+	form.AddFormItem(keyClickCb)
+
+	onSave := func() {
+		// Save the dropdown levels to the global config
+		config.User.NoiseStaticLevel, _ = staticDropDown.GetCurrentOption()
+		config.User.NoiseFadingLevel, _ = fadingDropDown.GetCurrentOption()
+		config.User.NoiseToneDriftLevel, _ = toneDriftDropDown.GetCurrentOption()
+		config.User.NoiseSpeedDriftLevel, _ = speedDriftDropDown.GetCurrentOption()
+		
+		config.User.NoiseKeyClick = keyClickCb.IsChecked()
+
+		config.SaveConfig()
+
+		pages.RemovePage("impairments")
+		app.SetFocus(inputArea)
+	}
+
+	onReset := func() {
+		resetState()
+	}
+
+	// 1. ADD THIS NEW FUNCTION:
+	// It forces all dropdowns back to Option 0 ("Off") and unchecks the box
+	onClearAll := func() {
+		// 1. Reset the UI elements so the user sees the change
+		staticDropDown.SetCurrentOption(0)
+		fadingDropDown.SetCurrentOption(0)
+		toneDriftDropDown.SetCurrentOption(0)
+		speedDriftDropDown.SetCurrentOption(0)
+		keyClickCb.SetChecked(false)
+
+		// 2. Immediately update the global config memory
+		config.User.NoiseStaticLevel = 0
+		config.User.NoiseFadingLevel = 0
+		config.User.NoiseToneDriftLevel = 0
+		config.User.NoiseSpeedDriftLevel = 0
+		config.User.NoiseKeyClick = false
+
+		// 3. Commit it to disk instantly!
+		config.SaveConfig()
+	}
+
+	// 2. ADD THE BUTTON TO THE FORM
+	form.AddButton("Save", onSave)
+	form.AddButton("Reset", onReset)
+	form.AddButton("Clear All", onClearAll) // <-- Your new panic button!
+
+	applyFocusStyles(form)
+	form.SetBorder(false)
+
+	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
+	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	footerView.SetText("\n[yellow]ESC to Close[-]\n")
+
+	container := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(form, 0, 1, true).
+		AddItem(footerView, 2, 1, false)
+
+	container.SetBorder(true).SetTitle(" Audio Impairments ")
+	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+
+	// Bumped height to 17 to accommodate the open dropdown menus
+	pages.AddPage("impairments", createModal(container, 45, 17), true, true)
+	app.SetFocus(container)
+}

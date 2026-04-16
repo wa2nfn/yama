@@ -72,19 +72,7 @@ func ApplySkip(text string) string {
 
 func expandContractions(text string) string {
 	
-	// Safely peek at the first 80 characters of the incoming text
-	/*
-	peek := text
-	if len(peek) > 80 {
-		peek = peek[:80] + "..."
-	}
-	*/
-
-	// Track if we actually do anything
-	replacementsMade := 0
-
 	for contraction, expansion := range config.Contractions {
-		original := text
 		text = strings.ReplaceAll(text, contraction, expansion)
 	}
 

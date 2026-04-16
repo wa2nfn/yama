@@ -1,7 +1,6 @@
 package morse
 
 import (
-	"log"
 	"math/rand"
 	"strings"
 	"time"
@@ -103,14 +102,31 @@ func buildWordBuffer(ctx PlayContext, p TimingProfile) {
 
 func RunIWR(text string, iwrMan *IWRManager) {
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	/* WDL
-	log.Printf("=== ENGINE SPURT | Mode: Std:%v Farns:%v Words:%v | CharSpd: %d | EffSpd: %d | Tone: %dHz | IWR:%v (%dwpm) ===",
-		config.User.UseStandard, config.User.UseFarnsworth, config.User.UseWordsworth,
-		config.User.CharacterSpeed, config.User.EffectiveSpeed, config.User.Tone,
-		config.User.IWREnabled, config.User.IWRSpeed)
-		*/
+	
 	words := strings.Fields(text)
 
+	// --- 1. BRUTE-FORCE EXTRACTION ---
+	// Unconditionally slice the Start/End messages off the array based on 
+	// their config length so WordBuilder and RandomOrder cannot touch them.
+	var startMsgWords []string
+	if config.User.StartMsg && config.User.StartMsgText != "" {
+		numStartTokens := len(strings.Fields(config.User.StartMsgText))
+		if len(words) >= numStartTokens {
+			startMsgWords = words[:numStartTokens]
+			words = words[numStartTokens:] // Remove from main processing
+		}
+	}
+
+	var endMsgWords []string
+	if config.User.EndMsg && config.User.EndMsgText != "" {
+		numEndTokens := len(strings.Fields(config.User.EndMsgText))
+		if len(words) >= numEndTokens {
+			endMsgWords = words[len(words)-numEndTokens:]
+			words = words[:len(words)-numEndTokens] // Remove from main processing
+		}
+	}
+
+	// Now shuffle ONLY the core text
 	if config.User.RandomOrder {
 		r.Shuffle(len(words), func(i, j int) {
 			words[i], words[j] = words[j], words[i]
@@ -119,14 +135,46 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 	playlist := []PlayContext{}
 
-	// 2. Queue the Main Text
+	// Helper function to safely clean and queue words bypassing WordBuilder
+	queueRawWord := func(rawWord string) {
+		var cleanBuilder strings.Builder
+		for _, t := range Tokenize(rawWord) {
+			if strings.HasPrefix(t, "<") && strings.HasSuffix(t, ">") {
+				lookup := strings.ToUpper(t[1 : len(t)-1])
+				if _, ok := ProSignTable[lookup]; ok {
+					cleanBuilder.WriteString(t)
+				}
+			} else {
+				if len(t) > 0 {
+					r := []rune(strings.ToUpper(t))[0]
+					if _, ok := MorseTable[r]; ok {
+						cleanBuilder.WriteString(t)
+					}
+				}
+			}
+		}
+		w := cleanBuilder.String()
+		if len(strings.TrimSpace(w)) > 0 {
+			playlist = append(playlist, PlayContext{
+				Word:     w,
+				IsIWR:    false, // Control messages never trigger IWR speed bursts
+				HideText: false,
+			})
+		}
+	}
+
+	// 2. Queue the Start Message natively
+	for _, w := range startMsgWords {
+		queueRawWord(w)
+	}
+
+	// 3. Queue the Main Text (With Filters)
 	for _, rawWord := range words {
 
-		// The Pause Trap!
 		for IsPaused {
-			time.Sleep(100 * time.Millisecond) // Wait gracefully
+			time.Sleep(100 * time.Millisecond)
 			if IsStopping {
-				return // Escape hatch if they hit Stop while Paused
+				return
 			}
 		}
 
@@ -134,29 +182,24 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			return
 		}
 
-		// === THE FUNNEL ===
-		// Wash the word token-by-token so we don't destroy prosigns!
 		var cleanBuilder strings.Builder
 		for _, t := range Tokenize(rawWord) {
 			if strings.HasPrefix(t, "<") && strings.HasSuffix(t, ">") {
-				// Prosign Check
 				lookup := strings.ToUpper(t[1 : len(t)-1])
 				if _, ok := ProSignTable[lookup]; ok {
 					cleanBuilder.WriteString(t)
 				}
 			} else {
-				// Character Check
 				if len(t) > 0 {
 					r := []rune(strings.ToUpper(t))[0]
 					if _, ok := MorseTable[r]; ok {
-						cleanBuilder.WriteString(t) // Keep original casing for the UI
+						cleanBuilder.WriteString(t)
 					}
 				}
 			}
 		}
 		w := cleanBuilder.String()
 
-		// If the word was entirely made of skipped characters, skip it.
 		if len(strings.TrimSpace(w)) == 0 {
 			continue
 		}
@@ -165,9 +208,8 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 		// Apply WordBuilder ONLY to actual words (ignore Prosigns)
 		if config.User.WordBuilder && len(w) > 1 && !isProsign {
-			// Now that 'w' is already clean, we just build the sequence natively.
-
-			// The buildup -> O, OO (Hidden from UI)
+			
+			// 1. The buildup -> T, TH (Hidden from UI)
 			for i := 1; i < len(w); i++ {
 				playlist = append(playlist, PlayContext{
 					Word:     w[:i],
@@ -175,24 +217,25 @@ func RunIWR(text string, iwrMan *IWRManager) {
 					HideText: true,
 				})
 			}
-			// The final standard play -> OO, (Visible on UI)
+			
+			// 2. The first full standard play -> THE (Visible on UI)
 			playlist = append(playlist, PlayContext{
 				Word:     w,
 				IsIWR:    false,
 				HideText: false,
 			})
-			// The fast IWR Blast -> OO (Hidden from UI)
-			if config.User.IWREnabled {
-				playlist = append(playlist, PlayContext{
-					Word:     w,
-					IsIWR:    true,
-					HideText: true,
-				})
-			}
+			
+			// 3. The purposeful repeat! 
+			// If IWR is on, it plays fast. If off, it plays standard.
+			playlist = append(playlist, PlayContext{
+				Word:     w,
+				IsIWR:    config.User.IWREnabled, // Automatically toggles speed!
+				HideText: true,                   // Keeps the UI from printing it twice
+			})
+			
 			continue
 		}
 
-		// Standard play for non-WordBuilder words, single chars, or Prosigns
 		var finalWord = w
 		var isIwrMatchFound bool
 
@@ -210,21 +253,22 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		})
 	}
 
+	// 4. Queue the End Message natively
+	for _, w := range endMsgWords {
+		queueRawWord(w)
+	}
+
 	// ==========================================
-	// 🚦 THE CORRECTED TRAFFIC COP GOES HERE 🚦
+	// 🚦 PHASE 2: AUDIO PLAYBACK ROUTING 🚦
 	// ==========================================
 	if config.User.UseWave {
-		log.Println("Wave flag enabled. Routing output to .wav file...")
 		if OnStatusUpdate != nil {
 			OnStatusUpdate(" [yellow]Generating .wav file...")
 		}
 
-		// Pass the raw playlist array directly!
-		// Fixed wave SampleRate to 11025 to save size
 		err := RenderWAVToFile(playlist, "yama_output.wav", 11025)
 
 		if err != nil {
-			log.Printf("WAV Generation Error: %v", err)
 			if OnStatusUpdate != nil {
 				OnStatusUpdate(" [red]Error generating .wav!")
 			}
@@ -234,7 +278,6 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			}
 		}
 
-		// FIX: Give the user 2 seconds to read the message before unlocking the UI
 		go func() {
 			time.Sleep(2 * time.Second)
 			if OnStatusUpdate != nil {
@@ -242,10 +285,9 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			}
 		}()
 
-		return // Exit before we hit the real-time Oto playback!
+		return
 	}
 
-	// --- PRE-CALCULATE TIMING PROFILES ---
 	baseProfile := GetTiming(false, config.User)
 	iwrProfile := GetTiming(true, config.User)
 
@@ -254,7 +296,6 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			break
 		}
 
-		// The Pause Trap!
 		wasPaused := false
 		for IsPaused && !IsStopping {
 			wasPaused = true
@@ -265,13 +306,11 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			break
 		}
 
-		// Rebuild profiles ONLY if we just woke up from a pause
 		if wasPaused {
 			baseProfile = GetTiming(false, config.User)
 			iwrProfile = GetTiming(true, config.User)
 		}
 
-		// Select the correct pre-calculated profile instantly
 		var p TimingProfile
 		if ctx.IsIWR {
 			p = iwrProfile
@@ -281,7 +320,6 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 		buildWordBuffer(ctx, p)
 
-		// Queue the exact WordSpace
 		wordSpaceSamples := int(p.WordSpace * float64(SampleRate))
 		QueuePCM(SilencePCM(wordSpaceSamples).Samples, " ", -1)
 
@@ -294,7 +332,6 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 	IsPaused = false
 	if OnStatusUpdate != nil {
-		OnStatusUpdate("STOP") // let UI know
+		OnStatusUpdate("STOP")
 	}
 }
-
