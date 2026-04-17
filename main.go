@@ -13,9 +13,9 @@ import (
 	"yama/config"
 	"yama/morse"
 
-	"golang.org/x/term"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"golang.org/x/term"
 )
 
 type AppState int
@@ -289,8 +289,8 @@ func main() {
 				showOptions()
 			}
 			return nil
-		case tcell.KeyCtrlA: 
-			// A stolen for Audio 
+		case tcell.KeyCtrlA:
+			// A stolen for Audio
 			showImpairments()
 			return nil
 		case tcell.KeyCtrlH:
@@ -315,7 +315,7 @@ func main() {
 				// Bypass the dir selector and use the text file's original directory
 				target := currentFileDir
 				if target == "" {
-					target, _ = os.UserHomeDir() // Fallback if they typed text manually
+					target, _ = os.Getwd() // Fallback if they typed text manually
 				}
 				showWaveModal(target) // <-- Jumps straight to your Wave form!
 			}

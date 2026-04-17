@@ -31,7 +31,7 @@ var (
 	PauseStart    time.Time
 	TotalPaused   time.Duration
 	isFirstRun    bool = true
-	IsStopping 	bool
+	IsStopping    bool
 )
 
 func SetManager(m *IWRManager) {

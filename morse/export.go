@@ -52,9 +52,9 @@ func ExportWAVBatch(fullText string, targetDir string, baseName string, maxWords
 
 		// Slice off the chunk
 		chunkWords := words[:chunkSize]
-		
+
 		// Advance the remaining words array
-		words = words[chunkSize:] 
+		words = words[chunkSize:]
 
 		// 4. Run the exact IWR engine filters on this specific chunk
 		playlist := buildPlaylistFromWords(chunkWords)
@@ -65,7 +65,7 @@ func ExportWAVBatch(fullText string, targetDir string, baseName string, maxWords
 		}
 
 		// 5. Generate the actual .wav file
-		fileName := fmt.Sprintf("%s/%s_%d.wav", targetDir, baseName, fileCount+1)
+		fileName := fmt.Sprintf("%s\\%s_%d.wav", targetDir, baseName, fileCount+1)
 
 		// Force the 11025 sample rate here to ensure consistent 8-bit sizing
 		err := RenderWAVToFile(playlist, fileName, 11025)

@@ -2,18 +2,19 @@ package morse
 
 import (
 	"encoding/binary"
-	"yama/config"
 	"os"
 	"strings"
+	"yama/config"
 )
 
-// createWavHeader builds a standard 44-byte RIFF/WAVE header for 8-bit Mono PCM.
+// createWavHeader builds a standard 44-byte RIFF/WAVE header for 16-bit Mono PCM.
 func createWavHeader(dataSize int, sampleRate int) []byte {
 	header := make([]byte, 44)
 
 	// RIFF chunk descriptor
 	copy(header[0:4], "RIFF")
 	binary.LittleEndian.PutUint32(header[4:8], uint32(36+dataSize)) // File size - 8
+
 	copy(header[8:12], "WAVE")
 
 	// fmt sub-chunk
@@ -23,8 +24,8 @@ func createWavHeader(dataSize int, sampleRate int) []byte {
 	binary.LittleEndian.PutUint16(header[22:24], 1)                  // NumChannels (1 = Mono)
 	binary.LittleEndian.PutUint32(header[24:28], uint32(sampleRate)) // SampleRate
 
-	// 8-BIT SPECIFIC MATH (This kills the bus horn)
-	bitsPerSample := 8
+	// 16-BIT SPECIFIC MATH
+	bitsPerSample := 16
 	byteRate := sampleRate * 1 * bitsPerSample / 8
 	blockAlign := 1 * bitsPerSample / 8
 
@@ -39,7 +40,7 @@ func createWavHeader(dataSize int, sampleRate int) []byte {
 	return header
 }
 
-// RenderWAVToFile translates text to Morse and saves it as an 8-bit WAV file.
+// RenderWAVToFile translates text to Morse and saves it as a 16-bit WAV file.
 func RenderWAVToFile(playlist []PlayContext, outputPath string, sampleRate int) error {
 	var audioBuffer []byte
 
@@ -77,30 +78,35 @@ func RenderWAVToFile(playlist []PlayContext, outputPath string, sampleRate int) 
 					dur = p.DashDuration
 				}
 
-				// 1. USE 8-BIT TONE (Notice we pass sampleRate down so the duration math is exact)
+				// 1. USE 16-BIT TONE
 				durationSamples := int(dur * float64(sampleRate))
-				audioBuffer = append(audioBuffer, TonePCM8Bit(float64(p.Tone), durationSamples, 0.5, sampleRate).Samples...)
+				audioBuffer = append(audioBuffer, TonePCM16Bit(float64(p.Tone), durationSamples, 0.5, sampleRate).Samples...)
 
 				// 2. Inter-Element space
 				if k < len(pattern)-1 {
 					silenceSamples := int(p.InterElement * float64(sampleRate))
-					audioBuffer = append(audioBuffer, SilencePCM8Bit(silenceSamples).Samples...)
+					audioBuffer = append(audioBuffer, SilencePCM16Bit(silenceSamples).Samples...)
 				}
 			}
 
 			// 3. Inter-Character space
 			if j < len(tokens)-1 {
 				silenceSamples := int(p.CharSpace * float64(sampleRate))
-				audioBuffer = append(audioBuffer, SilencePCM8Bit(silenceSamples).Samples...)
+				audioBuffer = append(audioBuffer, SilencePCM16Bit(silenceSamples).Samples...)
 			}
 		}
 
 		// 4. Word Space
 		if i < len(playlist)-1 {
 			silenceSamples := int(p.WordSpace * float64(sampleRate))
-			audioBuffer = append(audioBuffer, SilencePCM8Bit(silenceSamples).Samples...)
+			audioBuffer = append(audioBuffer, SilencePCM16Bit(silenceSamples).Samples...)
 		}
 	}
+
+	// 5. THE TAIL PAD: Add 0.5 seconds of flat silence to the very end of the file.
+	// This absorbs the media player's buffer drop so the final character isn't clipped.
+	tailPadding := int(0.5 * float64(sampleRate))
+	audioBuffer = append(audioBuffer, SilencePCM16Bit(tailPadding).Samples...)
 
 	header := createWavHeader(len(audioBuffer), sampleRate)
 	fileData := append(header, audioBuffer...)

@@ -1,8 +1,9 @@
 package morse
 
 import (
-	"bytes"
 	"encoding/binary"
+	"io"
+	"log"
 	"math"
 	"math/rand"
 	"sync"
@@ -41,53 +42,104 @@ func QueuePCM(samples []byte, char string, index int) {
 	})
 }
 
+// --- THE GAPLESS AUDIO STREAMER ---
+type gaplessReader struct {
+	blocks       []audioBlock
+	currentBlock int
+	offset       int
+}
+
+func (g *gaplessReader) Read(p []byte) (n int, err error) {
+	if IsStopping {
+		return 0, io.EOF
+	}
+
+	if g.currentBlock >= len(g.blocks) {
+		return 0, io.EOF
+	}
+
+	block := g.blocks[g.currentBlock]
+
+	// ---> (WE DELETED THE ONWORDCHANGE UI TRIGGER FROM HERE) <---
+
+	copied := copy(p, block.samples[g.offset:])
+	g.offset += copied
+
+	if g.offset >= len(block.samples) {
+		g.currentBlock++
+		g.offset = 0
+	}
+
+	return copied, nil
+}
+
 func Flush() {
 	if !audioReady || otoCtx == nil || len(queue) == 0 {
 		queue = nil
 		return
 	}
 
+	// 1. Calculate the exact mathematical duration of the ENTIRE word
+	totalSamples := 0
 	for i := 0; i < len(queue); i++ {
-		block := queue[i]
+		totalSamples += len(queue[i].samples) / 2
+	}
+	expectedDuration := time.Duration(totalSamples) * time.Second / time.Duration(SampleRate)
+	timeout := time.Now().Add(expectedDuration + 3*time.Second)
 
-		if IsStopping {
-			break
-		}
+	// 2. Wrap our queue in the new Gapless Streamer for perfect audio
+	reader := &gaplessReader{blocks: queue}
+	p := otoCtx.NewPlayer(reader)
+	p.Play()
 
-		if block.char != "" && OnWordChange != nil {
-			OnWordChange(block.char, block.index)
-		}
+	// 3. THE UI WATCHDOG: Decouple the screen from the hardware buffer!
+	go func(uiQueue []audioBlock) {
+		startTime := time.Now()
+		var elapsed time.Duration
 
-		p := otoCtx.NewPlayer(bytes.NewReader(block.samples))
-		p.Play()
-
-		sampleCount := len(block.samples) / 2
-		expectedDuration := time.Duration(sampleCount) * time.Second / time.Duration(SampleRate)
-
-		timeout := time.Now().Add(expectedDuration + 3*time.Second)
-
-		for p.IsPlaying() {
+		for _, block := range uiQueue {
 			if IsStopping {
 				break
 			}
 
-			if time.Now().After(timeout) {
-				go func() { _ = p.Close() }()
-				IsStopping = true
-				AudioHardwareDead = true
-				break
+			// Trigger the UI to draw the character
+			if block.char != "" && OnWordChange != nil {
+				OnWordChange(block.char, block.index)
 			}
 
-			time.Sleep(1 * time.Millisecond)
-		}
+			// Calculate the absolute time this block should mathematically finish
+			sampleCount := len(block.samples) / 2
+			elapsed += time.Duration(sampleCount) * time.Second / time.Duration(SampleRate)
+			targetTime := startTime.Add(elapsed)
 
+			// Sleep precisely until that absolute moment in time
+			sleepDur := time.Until(targetTime)
+			if sleepDur > 0 {
+				time.Sleep(sleepDur)
+			}
+		}
+	}(queue) // Pass a snapshot of the current queue
+
+	// 4. THE HARDWARE WATCHDOG
+	for p.IsPlaying() {
 		if IsStopping {
 			break
 		}
 
-		if time.Now().Before(timeout) {
-			p.Close()
+		if time.Now().After(timeout) {
+			log.Println("Watchdog: Audio hardware dead! Aborting...")
+			go func() { _ = p.Close() }()
+			IsStopping = true
+			AudioHardwareDead = true
+			break
 		}
+
+		// Since the OS handles the audio, we can relax the polling
+		time.Sleep(5 * time.Millisecond)
+	}
+
+	if time.Now().Before(timeout) {
+		p.Close()
 	}
 
 	queue = nil
@@ -117,7 +169,6 @@ func startAudioEngine() error {
 	return nil
 }
 
-/* WDL
 func ResetAudioDevice() error {
 	audioReady = false
 
@@ -127,7 +178,7 @@ func ResetAudioDevice() error {
 			otoCtx.Suspend()
 			close(done)
 		}()
-		
+
 		select {
 		case <-done:
 		case <-time.After(200 * time.Millisecond):
@@ -143,14 +194,12 @@ func ResetAudioDevice() error {
 
 	return nil
 }
-*/
 
 // ==========================================
 // WAV EXPORT AUDIO MATH (8-Bit Unsigned)
 // ==========================================
-
-func TonePCM8Bit(freq float64, duration int, vol float64, targetSampleRate int) PCMData {
-	buf := make([]byte, duration)
+func TonePCM16Bit(freq float64, duration int, vol float64, targetSampleRate int) PCMData {
+	buf := make([]byte, duration*2) // 2 bytes per sample for 16-bit
 	ramp := int(math.Round(0.005 * float64(targetSampleRate)))
 	if ramp*2 > duration {
 		ramp = duration / 2
@@ -165,17 +214,15 @@ func TonePCM8Bit(freq float64, duration int, vol float64, targetSampleRate int) 
 		}
 
 		s := float32(math.Sin(angle)) * amp
-		v := uint8((s * 127.0) + 128.0)
-		buf[i] = v
+		v := int16(s * 32767) // Scale to 16-bit signed integer
+		binary.LittleEndian.PutUint16(buf[i*2:], uint16(v))
 	}
 	return PCMData{Samples: buf}
 }
 
-func SilencePCM8Bit(duration int) PCMData {
-	buf := make([]byte, duration)
-	for i := 0; i < duration; i++ {
-		buf[i] = 128
-	}
+func SilencePCM16Bit(duration int) PCMData {
+	buf := make([]byte, duration*2)
+	// In 16-bit signed audio, 0 is perfect silence, so default empty bytes are perfect!
 	return PCMData{Samples: buf}
 }
 
@@ -187,9 +234,12 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 	// SPEED DRIFT
 	var speedMod float64 = 0.0
 	switch config.User.NoiseSpeedDriftLevel {
-	case 1: speedMod = 0.05
-	case 2: speedMod = 0.15
-	case 3: speedMod = 0.30
+	case 1:
+		speedMod = 0.05
+	case 2:
+		speedMod = 0.15
+	case 3:
+		speedMod = 0.30
 	}
 	if speedMod > 0 {
 		speedFactor := 1.0 + (speedMod * math.Sin(SimTime*2.0*math.Pi/19.0))
@@ -199,9 +249,12 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 	// TONE DRIFT
 	var toneMod float64 = 0.0
 	switch config.User.NoiseToneDriftLevel {
-	case 1: toneMod = 10.0
-	case 2: toneMod = 30.0
-	case 3: toneMod = 60.0
+	case 1:
+		toneMod = 10.0
+	case 2:
+		toneMod = 30.0
+	case 3:
+		toneMod = 60.0
 	}
 	if toneMod > 0 {
 		freq += toneMod * math.Sin(SimTime*2.0*math.Pi/25.0)
@@ -209,17 +262,23 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 
 	// FADING / QSB
 	switch config.User.NoiseFadingLevel {
-	case 1: vol *= 0.80 + (0.20 * math.Sin(SimTime*2.0*math.Pi/15.0))
-	case 2: vol *= 0.60 + (0.40 * math.Sin(SimTime*2.0*math.Pi/15.0))
-	case 3: vol *= 0.525 + (0.475 * math.Sin(SimTime*2.0*math.Pi/15.0))
+	case 1:
+		vol *= 0.80 + (0.20 * math.Sin(SimTime*2.0*math.Pi/15.0))
+	case 2:
+		vol *= 0.60 + (0.40 * math.Sin(SimTime*2.0*math.Pi/15.0))
+	case 3:
+		vol *= 0.525 + (0.475 * math.Sin(SimTime*2.0*math.Pi/15.0))
 	}
 
 	// STATIC / QRN BASE HISS
 	var staticVol float32 = 0.0
 	switch config.User.NoiseStaticLevel {
-	case 1: staticVol = 0.05
-	case 2: staticVol = 0.15
-	case 3: staticVol = 0.40
+	case 1:
+		staticVol = 0.05
+	case 2:
+		staticVol = 0.15
+	case 3:
+		staticVol = 0.40
 	}
 
 	buf := make([]byte, duration*2)
@@ -258,7 +317,7 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 		// STATIC HISS & LIGHTNING CRASHES
 		if staticVol > 0 {
 			if activeCrashSamples == 0 && rand.Float32() < 0.00001 {
-				activeCrashSamples = rand.Intn(int(SampleRate / 2)) 
+				activeCrashSamples = rand.Intn(int(SampleRate / 2))
 				activeCrashIntensity = (rand.Float32() * 0.6) + (float32(config.User.NoiseStaticLevel) * 0.1)
 			}
 
@@ -273,8 +332,12 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 			s += currentNoise
 		}
 
-		if s > 1.0 { s = 1.0 }
-		if s < -1.0 { s = -1.0 }
+		if s > 1.0 {
+			s = 1.0
+		}
+		if s < -1.0 {
+			s = -1.0
+		}
 
 		v := int16(s * 32767)
 		binary.LittleEndian.PutUint16(buf[i*2:], uint16(v))
@@ -287,9 +350,12 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 func SilencePCM(duration int) PCMData {
 	var speedMod float64 = 0.0
 	switch config.User.NoiseSpeedDriftLevel {
-	case 1: speedMod = 0.05
-	case 2: speedMod = 0.15
-	case 3: speedMod = 0.30
+	case 1:
+		speedMod = 0.05
+	case 2:
+		speedMod = 0.15
+	case 3:
+		speedMod = 0.30
 	}
 	if speedMod > 0 {
 		speedFactor := 1.0 + (speedMod * math.Sin(SimTime*2.0*math.Pi/19.0))
@@ -298,9 +364,12 @@ func SilencePCM(duration int) PCMData {
 
 	var staticVol float32 = 0.0
 	switch config.User.NoiseStaticLevel {
-	case 1: staticVol = 0.05
-	case 2: staticVol = 0.15
-	case 3: staticVol = 0.40
+	case 1:
+		staticVol = 0.05
+	case 2:
+		staticVol = 0.15
+	case 3:
+		staticVol = 0.40
 	}
 
 	buf := make([]byte, duration*2)
@@ -323,8 +392,12 @@ func SilencePCM(duration int) PCMData {
 			}
 
 			s := currentNoise
-			if s > 1.0 { s = 1.0 }
-			if s < -1.0 { s = -1.0 }
+			if s > 1.0 {
+				s = 1.0
+			}
+			if s < -1.0 {
+				s = -1.0
+			}
 
 			v = int16(s * 32767)
 		}

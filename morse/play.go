@@ -1,6 +1,7 @@
 package morse
 
 import (
+	_ "log"
 	"math/rand"
 	"strings"
 	"time"
@@ -100,13 +101,47 @@ func buildWordBuffer(ctx PlayContext, p TimingProfile) {
 	}
 }
 
+/*
+func VerifyParisTiming(wpm int) {
+	// 1. Force a Standard Timing Profile
+	testConfig := config.UserSettings{
+		UseStandard:    true,
+		CharacterSpeed: wpm,
+		EffectiveSpeed: wpm,
+	}
+	p := GetTiming(false, testConfig)
+
+	// 2. Tally up the exact units for "P A R I S "
+	// P = 14 units, A = 8 units, R = 10 units, I = 6 units, S = 5 units
+	// (Values include the 3-unit char spaces between them)
+	totalUnits := 14 + 8 + 10 + 6 + 5
+
+	// 3. Add the 7-unit Word Space at the end
+	totalUnits += 7
+
+	// 4. Calculate total expected time
+	expectedDuration := p.DotDuration * float64(totalUnits)
+
+	// 5. Calculate expected WPM based on the 50-unit standard
+	calculatedWPM := (60.0 / expectedDuration)
+
+	log.Printf("=== CALIBRATION DIAGNOSTIC ===")
+	log.Printf("Target WPM: %d", wpm)
+	log.Printf("Dot Duration: %.4f sec", p.DotDuration)
+	log.Printf("PARIS Duration: %.4f sec (Should be exactly %.2f sec)", expectedDuration, 60.0/float64(wpm))
+	log.Printf("Actual Engine WPM: %.2f", calculatedWPM)
+	log.Printf("==============================")
+}
+*/
+
 func RunIWR(text string, iwrMan *IWRManager) {
+	//WDL VerifyParisTiming(config.User.CharacterSpeed)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	
+
 	words := strings.Fields(text)
 
 	// --- 1. BRUTE-FORCE EXTRACTION ---
-	// Unconditionally slice the Start/End messages off the array based on 
+	// Unconditionally slice the Start/End messages off the array based on
 	// their config length so WordBuilder and RandomOrder cannot touch them.
 	var startMsgWords []string
 	if config.User.StartMsg && config.User.StartMsgText != "" {
@@ -208,7 +243,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 		// Apply WordBuilder ONLY to actual words (ignore Prosigns)
 		if config.User.WordBuilder && len(w) > 1 && !isProsign {
-			
+
 			// 1. The buildup -> T, TH (Hidden from UI)
 			for i := 1; i < len(w); i++ {
 				playlist = append(playlist, PlayContext{
@@ -217,22 +252,22 @@ func RunIWR(text string, iwrMan *IWRManager) {
 					HideText: true,
 				})
 			}
-			
+
 			// 2. The first full standard play -> THE (Visible on UI)
 			playlist = append(playlist, PlayContext{
 				Word:     w,
 				IsIWR:    false,
 				HideText: false,
 			})
-			
-			// 3. The purposeful repeat! 
+
+			// 3. The purposeful repeat!
 			// If IWR is on, it plays fast. If off, it plays standard.
 			playlist = append(playlist, PlayContext{
 				Word:     w,
 				IsIWR:    config.User.IWREnabled, // Automatically toggles speed!
 				HideText: true,                   // Keeps the UI from printing it twice
 			})
-			
+
 			continue
 		}
 

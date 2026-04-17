@@ -71,7 +71,7 @@ func ApplySkip(text string) string {
 }
 
 func expandContractions(text string) string {
-	
+
 	for contraction, expansion := range config.Contractions {
 		text = strings.ReplaceAll(text, contraction, expansion)
 	}

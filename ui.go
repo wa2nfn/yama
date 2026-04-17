@@ -97,14 +97,14 @@ func stopAudio() {
 	updateVisibility()
 
 	currentState = StateStopped
-	
+
 	// Ensure a manual stop doesn't overwrite a hardware death warning
 	if morse.AudioHardwareDead {
 		statusLine.SetText(" [red::b]ERROR: Audio Device Disconnected! Restart App.[::-]")
 	} else {
 		statusLine.SetText(" [#00FF00]Stopped")
 	}
-	
+
 	refreshUI(StateStopped)
 }
 
@@ -145,14 +145,14 @@ func refreshUI(state AppState) {
 		if state == StateStopped {
 			status = "Stopped"
 		}
-		
+
 		// INTERCEPT STATUS: If the watchdog aborted the run, warn the user!
 		if morse.AudioHardwareDead {
 			statusLine.SetText(" [red::b]ERROR: Audio Device Disconnected! Restart App.[::-]")
 		} else {
 			statusLine.SetText(" [#00FF00]" + status)
 		}
-		
+
 		menu = "[#00FF00]F[white]ile  [#00FF00]P[white]lay  [#00FF00]T[white]iming  [#00FF00]A[white]udio  [#00FF00]O[white]ption  [#00FF00]H[white]elp  [#00FF00]Q[white]uit a[#00FF00]B[white]out"
 
 		if hasText {
@@ -272,11 +272,11 @@ func showHelp() {
 
                          [yellow::b]Welcome to YAMA - Yet Another Morse App[::-]
 
-Whether you are looking for clean, predictable code practice or want to test your copying limits against a simulated ionospheric storm, YAMA is built to help you. 
+Whether you are looking for routine practice, some head copy or want to test your copying limits against a simulated ionospheric storm, YAMA is built to help you. 
 
 [green::b]Getting Started: Entering Text[::-]
 [white]Before YAMA can play anything, it needs some text! You have two easy ways to do this:
-1. Type or Paste: Simply click into the main Text Input box and type or paste your practice text directly. (cursor keys, backspace, delete supported)
+1. Type or Paste: Simply click into the main Text Input box and type or paste your practice text directly. (cursor keys, backspace, delete are supported for editing)
 2. Load a File: Press [yellow]Ctrl-F[-] to open the File Selector and browse for any standard '.txt' file on your computer.
 
 [green::b]Dynamic Menus & Navigation[::-]
@@ -349,6 +349,10 @@ Key Clicks            | Injects a harsh electrical spark at the start and end of
 [green::b]WAV File Export (Ctrl-W)[::-]
 [white]YAMA exports 8-bit Mono audio. To prevent disk exhaustion, exports are capped at 5,000 words and automatically chunked into sequential files of roughly 10 minutes each.
 
+[green::b]IWR Feature [::-]
+[white]This a a head copy related feature. I looks to match words (actually any space separated string of suppored characters e.g. the qsl 73 cul) for the input, and override the chosen timing mode (standard, Farnsworth, Wordsworth and the associated speed/tone) and play the matched word at a increased speed with standard timing. To do this you must create an [blue]yamaIWR.txt[::-] file in the current directory (or by default in your OS's standard configuration directory (for windows it will be $HOME\AppData\Roaming\YAMA). The file lists one word per line (any case, any order); a [yellow]'#'[::-] at the start of line tells YAMA to ignore that line. If you choose to also match the word if its immediately follow by [yellow], . ? : [::-] as well as the bare word, this is indicated by a trailing asterisk (e.g. qsl* matches: qsl qsl? qsl. qsl: qsl, ). The IWR feature as described is ignored if you have choosen either WordBuilder or RandomWord in the Options menu.
+You can create or edit this file with any text editor of your choice, or the simple edit functions from the Timing (Ctrl-T) screen with the other IWR options.
+
 [green::b]System Files (Misc)[::-]
 • [blue]yama_config.json:[-] Automatically manages your saved settings. Please use the UI menus rather than hand-editing this file.
 • [blue]yamaIWR.txt:[-] Your active dictionary for Instant Word Recognition. Edit this safely via the "Edit IWR" button in the Timing menu. Note: Edit via the app are rather simple, cursor, delete, backspace, TAB to access Save button. 
@@ -358,40 +362,63 @@ Key Clicks            | Injects a harsh electrical spark at the start and end of
 		SetDynamicColors(true).
 		SetText(helpText).
 		SetScrollable(true)
-	
+
 	tv.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
+	// 1. BUILD THE FORM FIRST
 	form := tview.NewForm().
-		AddButton("Export To File", func() {
-			// Strip the tview color tags (e.g. [yellow], [-]) so the text file is clean
+		AddButton("Export to yama_help.txt", func() {
 			cleanText := colorTagRegex.ReplaceAllString(helpText, "")
-			
 			err := os.WriteFile("yama_help.txt", []byte(cleanText), 0644)
 			if err == nil {
 				statusLine.SetText(" [#00FF00]Help manual exported to yama_help.txt![-]")
 			} else {
 				statusLine.SetText(" [red]Failed to export help file.[-]")
 			}
-			
 			pages.RemovePage("help")
 			app.SetFocus(inputArea)
 		}).
-		AddButton("Close (ESC)", func() {
+		AddButton("ESC to Close", func() {
 			pages.RemovePage("help")
 			app.SetFocus(inputArea)
 		})
-	
+
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	applyFocusStyles(form)
 
+	// The new static hint text
+	hint := tview.NewTextView().
+		SetText(" (Cursor Up/Dn as needed) ").
+		SetTextColor(tcell.ColorYellow).
+		SetTextAlign(tview.AlignCenter)
+
+	hint.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+
+	// 2. NOW WE CAN INTERCEPT TAB (Because 'form' actually exists!)
+	tv.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			app.SetFocus(form) // Jump down to the buttons!
+			return nil
+		}
+		if event.Key() == tcell.KeyEscape {
+			pages.RemovePage("help")
+			app.SetFocus(inputArea)
+			return nil
+		}
+		return event
+	})
+
+	// 3. BUILD THE LAYOUT
 	layout := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(tv, 0, 1, true).
-		AddItem(form, 3, 1, false)
+		AddItem(form, 3, 1, false).
+		AddItem(hint, 1, 1, false) // <-- Inserted the hint here! (1 row tall)
 
-	layout.SetBorder(true).SetTitle(" Help & Documentation ")
+	layout.SetBorder(true).SetTitle(" Help Information ")
 	layout.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	// 3. BUILD THE LAYOUT
 
-	pages.AddPage("help", createModal(layout, 110, 26), true, true)
+	pages.AddPage("help", createModal(layout, 85, 26), true, true)
 	app.SetFocus(layout)
 }
 
@@ -537,19 +564,20 @@ func showFile() {
 					app.SetFocus(inputArea)
 					inputArea.SetText(actualText, false)
 
+					// 1. The new typing listener (Fixed to match the flawless one in main.go)
 					inputArea.SetChangedFunc(func() {
-						if currentState == StateStopped {
+						if currentState == StateStopped || currentState == StatePaused {
 							currentState = StateIdle
-							refreshUI(currentState)
 						}
+						refreshUI(currentState) // <-- OUTSIDE the if block!
 					})
 
-					if currentState == StateStopped {
+					// 2. The immediate update for loading the file
+					if currentState == StateStopped || currentState == StatePaused {
 						currentState = StateIdle
-						refreshUI(currentState)
 					}
+					refreshUI(currentState) // <-- OUTSIDE the if block!
 				})
-
 			}(full)
 		}
 
@@ -937,7 +965,7 @@ func showToneSpeed() {
 			}
 		}
 
-		if iwrCheckbox.IsChecked(){
+		if iwrCheckbox.IsChecked() {
 			if iwrSpd < config.MinIWRSpeed || iwrSpd > config.MaxIWRSpeed {
 				errors = append(errors, fmt.Sprintf("IWR Speed clamped to %d-%d", config.MinIWRSpeed, config.MaxIWRSpeed))
 				if iwrSpd < config.MinIWRSpeed {
@@ -1143,6 +1171,20 @@ Note: This text will NOT be shown again.`, globalPath)
 
 func showWaveModal(targetDir string) {
 	rawText := inputArea.GetText()
+
+	// 1. Force everything to uppercase so MorseTable doesn't reject it
+	rawText = strings.ToUpper(rawText)
+
+	// 2. Apply the Skip List and expand contractions (DON'T -> DO NOT)
+	if config.User.UseSkip {
+		parser.SetSkipList(config.User.SkipList, morse.ProSignTable)
+		rawText = parser.ApplySkip(rawText)
+	}
+
+	// 3. Strip out invalid characters
+	rawText = parser.CleanText(rawText, morse.MorseTable)
+	// -----------------------------
+
 	words := strings.Fields(rawText)
 	wordCount := len(words)
 
@@ -1286,7 +1328,7 @@ func showSuccessModal(dir string, files []string) {
 	sb.WriteString(strings.Repeat("-", 46) + "\n")
 
 	for _, f := range files {
-		sb.WriteString(fmt.Sprintf("[white]- %s\n", f))
+		sb.WriteString(fmt.Sprintf("[white]- %s\n", filepath.Base(f)))
 	}
 	sb.WriteString("\n[yellow]ESC to close[-]")
 
@@ -1346,7 +1388,7 @@ func showImpairments() {
 	fadingDropDown := tview.NewDropDown().SetLabel("Fading (QSB)").SetOptions(levels, nil)
 	toneDriftDropDown := tview.NewDropDown().SetLabel("Tone Drift").SetOptions(levels, nil)
 	speedDriftDropDown := tview.NewDropDown().SetLabel("Speed Drift").SetOptions(levels, nil)
-	
+
 	// Key Clicks remains a standard boolean checkbox
 	keyClickCb := tview.NewCheckbox().SetLabel("Key Clicks")
 
@@ -1374,7 +1416,7 @@ func showImpairments() {
 		config.User.NoiseFadingLevel, _ = fadingDropDown.GetCurrentOption()
 		config.User.NoiseToneDriftLevel, _ = toneDriftDropDown.GetCurrentOption()
 		config.User.NoiseSpeedDriftLevel, _ = speedDriftDropDown.GetCurrentOption()
-		
+
 		config.User.NoiseKeyClick = keyClickCb.IsChecked()
 
 		config.SaveConfig()

@@ -36,11 +36,11 @@ type UserSettings struct {
 
 	// Audio Impairments
 
-	NoiseStaticLevel  int `json:"noise_static_level"`
-	NoiseFadingLevel  int `json:"noise_fading_level"`
-	NoiseToneDriftLevel  int `json:"noise_tone_drift_level"`
-	NoiseSpeedDriftLevel int `json:"noise_speed_drift_level"`
-	NoiseKeyClick   bool `json:"noise_key_click"`
+	NoiseStaticLevel     int  `json:"noise_static_level"`
+	NoiseFadingLevel     int  `json:"noise_fading_level"`
+	NoiseToneDriftLevel  int  `json:"noise_tone_drift_level"`
+	NoiseSpeedDriftLevel int  `json:"noise_speed_drift_level"`
+	NoiseKeyClick        bool `json:"noise_key_click"`
 
 	// Output Options
 	UseWave bool `json:"UseWave"` // Note: Matches the exact capitalization from your JSON
@@ -65,13 +65,13 @@ type UserSettings struct {
 
 const (
 	MinEffSpeed  int = 5
-	MaxEffSpeed  int = 100
+	MaxEffSpeed  int = 99
 	MinCharSpeed int = 10
-	MaxCharSpeed int = 101
-	MinTone      int = 100
-	MaxTone      int = 2000
-	MinIWRTone   int = 100
-	MaxIWRTone   int = 2000
+	MaxCharSpeed int = 100
+	MinTone      int = 300
+	MaxTone      int = 1400
+	MinIWRTone   int = 300
+	MaxIWRTone   int = 1400
 	MinIWRSpeed  int = 11
 	MaxIWRSpeed  int = 110
 )
