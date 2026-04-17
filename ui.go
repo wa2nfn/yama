@@ -269,7 +269,6 @@ func showStats() {
 
 func showHelp() {
 	helpText := `
-
                          [yellow::b]Welcome to YAMA - Yet Another Morse App[::-]
 
 Whether you are looking for routine practice, some head copy or want to test your copying limits against a simulated ionospheric storm, YAMA is built to help you. 
@@ -280,9 +279,9 @@ Whether you are looking for routine practice, some head copy or want to test you
 2. Load a File: Press [yellow]Ctrl-F[-] to open the File Selector and browse for any standard '.txt' file on your computer.
 
 [green::b]Dynamic Menus & Navigation[::-]
-[white]YAMA is operated entirely via keyboard shortcuts. Keep an eye on the top menu bar — it is dynamic. YAMA will only show you the shortcuts that make sense for what you are currently doing. For example, you cannot open the Options menu while audio is actively playing, and therefore there will not be an Open label and Ctrl-O will be ignored, Wave export shortcut will only appear when you actually have text loaded to export. 
+[white]YAMA is operated entirely via keyboard shortcuts. Keep an eye on the top menu bar — it is dynamic. YAMA will only show you the shortcuts that make sense for what you are currently doing. For example, you cannot open the Options menu while audio is actively playing, and therefore there will not be an Open label and [yellow]Ctrl-O[-] will be ignored, Wave export shortcut will only appear when you actually have text loaded to export. 
 
-If you ever get stuck in a menu, just press [yellow]ESC[-] to safely close it without saving. (Note: insert or removal of headphones can trigger a Windows hand of the app requiring an app restart.)
+If you ever get stuck in a menu, just press [yellow]ESC[-] to safely close it without saving. [red](Note: insert or removal of headphones can trigger a Windows hang of the app requiring an app restart.)[::-]
 
 [white]Ctrl Key | Menu Name  | Purpose[-]
 ---------|------------|--------------------------------------------------------
@@ -309,13 +308,13 @@ Spacebar | Hide/Unhide| Toggle text visibility during playback
 
 [green::b]ProSigns & Equivalents[::-]
 [white]Supported ProSigns: <AR> <AS> <BT> <KA> <SK> <VA> <VE> <SN> <BK> <HH> <DU> <SOS> <CH>.
-If "Use Prosigns" is disabled in Options, bracketed ProSigns will be ignored. However, the standard keyboard equivalents [yellow]+[-] (<AR>), [yellow]=[-] (<BT>), and [yellow]-[-] (<DU>) will still play, unless added to the Skip List in the Options screen. (Note, any other use of '<' or '>' is ignored.
+If "Use Prosigns" is disabled in Options, bracketed ProSigns will be ignored. However, the standard keyboard equivalents [yellow]+[-] (<AR>), [yellow]=[-] (<BT>), and [yellow]-[-] (<DU>) will still play, unless added to the Skip List in the Options screen. (Note, any other use of '<' or '>' is ignored.)
 
 [green::b]Option Screen (Ctrl-O) - Settings[::-]
 [white]Setting               | Description
 ----------------------|---------------------------------------------------------
 Use Prosigns          | Toggles support for bracketed ProSigns (e.g., <AR>).
-                      | Does NOT effect [yelloe]-+=[-]. (Note: <BK> is sounded as  "B K").
+                      | Does NOT effect [yellow]-+=[-]. (Note: <BK> is sounded as  "B K").
 All Punctuation       | Toggles support for extended punctuation marks.
 Use Skip              | Enables the Skip List filtering during playback.
 Skip List             | Define specific characters or ProSigns to silently ignore.
@@ -335,7 +334,7 @@ End Msg Text          | The specific text to play at the end (e.g., <AR>).
 
 [green::b]The Skip List & Contractions[::-]
 [white]You can define specific characters or ProSigns to silently skip during playback (Options -> Skip List). 
-[yellow]Important Apostrophe Rule:[-] If you add the apostrophe (') to your skip list, YAMA will automatically expand 17 common English contractions before removing the remaining apostrophes (e.g., "DON'T" safely becomes "DO NOT").
+[yellow]Important Apostrophe Rule:[-] If you add the apostrophe [yellow](')[-] to your skip list, YAMA will automatically expand 17 common English contractions before removing the remaining apostrophes (e.g., "DON'T" safely becomes "DO NOT").
 
 [green::b]Audio Screen (Ctrl-A) - Audio Impairements[::-]
 [white]Setting               | Description
@@ -350,8 +349,8 @@ Key Clicks            | Injects a harsh electrical spark at the start and end of
 [white]YAMA exports 8-bit Mono audio. To prevent disk exhaustion, exports are capped at 5,000 words and automatically chunked into sequential files of roughly 10 minutes each.
 
 [green::b]IWR Feature [::-]
-[white]This a a head copy related feature. I looks to match words (actually any space separated string of suppored characters e.g. the qsl 73 cul) for the input, and override the chosen timing mode (standard, Farnsworth, Wordsworth and the associated speed/tone) and play the matched word at a increased speed with standard timing. To do this you must create an [blue]yamaIWR.txt[::-] file in the current directory (or by default in your OS's standard configuration directory (for windows it will be $HOME\AppData\Roaming\YAMA). The file lists one word per line (any case, any order); a [yellow]'#'[::-] at the start of line tells YAMA to ignore that line. If you choose to also match the word if its immediately follow by [yellow], . ? : [::-] as well as the bare word, this is indicated by a trailing asterisk (e.g. qsl* matches: qsl qsl? qsl. qsl: qsl, ). The IWR feature as described is ignored if you have choosen either WordBuilder or RandomWord in the Options menu.
-You can create or edit this file with any text editor of your choice, or the simple edit functions from the Timing (Ctrl-T) screen with the other IWR options.
+[white]This a a head copy related feature. I looks to match words (actually any space separated string of suppored characters e.g. the qsl 73 cul) for the input, and override the chosen timing mode (standard, Farnsworth, Wordsworth and the associated speed/tone) and play the matched word at a increased speed with standard timing. To do this you must create an [blue]yamaIWR.txt[-] file in the current directory (or by default in your OS's standard configuration directory (for windows it will be $HOME\AppData\Roaming\YAMA). The file lists one word per line (any case, any order); a [yellow]'#'[-] at the start of line tells YAMA to ignore that line. If you choose to also match the word if its immediately follow by [yellow], . ? : [-] as well as the bare word, this is indicated by a trailing asterisk (e.g. qsl* matches: qsl qsl? qsl. qsl: qsl, ). The IWR feature as described is ignored if you have choosen either WordBuilder or RandomWord in the Options menu.
+You can create or edit this file with any text editor of your choice, or the simple edit functions from the Timing [yellow](Ctrl-T)[-] screen with the other IWR options.
 
 [green::b]System Files (Misc)[::-]
 • [blue]yama_config.json:[-] Automatically manages your saved settings. Please use the UI menus rather than hand-editing this file.
@@ -1192,21 +1191,7 @@ func showWaveModal(targetDir string) {
 		return
 	}
 
-	if wordCount > MaxExportWords {
-		errorMsg := fmt.Sprintf("Export Limit Reached!\n\nYour text is %d words.\nTo prevent disk space exhaustion, the WAV exporter is limited to %d words at a time.\n\nPlease chunk your text into smaller files.", wordCount, MaxExportWords)
-
-		errorModal := tview.NewModal().
-			SetText(errorMsg).
-			AddButtons([]string{"OK"}).
-			SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-				pages.RemovePage("wavError")
-				app.SetFocus(inputArea)
-			})
-
-		pages.AddPage("wavError", errorModal, true, true)
-		app.SetFocus(errorModal)
-		return
-	}
+	// (MaxExportWords limit intentionally removed to give users full control)
 
 	baseInputFile := filepath.Base(currentInputFile)
 	if baseInputFile == "." || baseInputFile == "" {
@@ -1228,7 +1213,8 @@ func showWaveModal(targetDir string) {
 
 	maxPossibleFiles := (wordCount / wordsPer10Mins) + 1
 
-	mbPerFile := float64(600*11025) / (1024.0 * 1024.0)
+	// UPDATED: Multiplied by 2 for accurate 16-bit PCM file size estimation
+	mbPerFile := float64(600*11025*2) / (1024.0 * 1024.0)
 
 	infoTextView := tview.NewTextView().
 		SetDynamicColors(true).
@@ -1250,6 +1236,13 @@ func showWaveModal(targetDir string) {
 
 	form := tview.NewForm()
 
+	// --- THE NEW DIRECTORY INPUT FIELD ---
+	dirInput := tview.NewInputField().
+		SetLabel("Save Directory:").
+		SetText(targetDir).
+		SetFieldWidth(40)
+	dirInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+
 	prefixInput := tview.NewInputField().SetLabel("File Prefix:").SetText(filePrefix).SetFieldWidth(40)
 	prefixInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 
@@ -1261,22 +1254,32 @@ func showWaveModal(targetDir string) {
 		SetChangedFunc(updateSizeLabel)
 	numFilesInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 
+	// Add them to the form top-to-bottom
+	form.AddFormItem(dirInput)
 	form.AddFormItem(prefixInput)
 	form.AddFormItem(numFilesInput)
 
 	saveFunc := func() {
-		prefix := prefixInput.GetText()
+		exportDir := strings.TrimSpace(dirInput.GetText())
+		prefix := strings.TrimSpace(prefixInput.GetText())
 		numFilesStr := numFilesInput.GetText()
 		numFiles, _ := strconv.Atoi(numFilesStr)
 		if numFiles < 1 {
 			numFiles = 1
 		}
 
+		// --- DIRECTORY VALIDATION CHECK ---
+		if _, err := os.Stat(exportDir); os.IsNotExist(err) {
+			statusLine.SetText(" [red]Error: Save directory does not exist![-]")
+			return
+		}
+
 		pages.RemovePage("waveConfig")
 		statusLine.SetText(" [yellow]Generating WAV files, please wait...")
 
 		go func() {
-			generatedNames, err := morse.ExportWAVBatch(rawText, targetDir, prefix, wordsPer10Mins, numFiles)
+			// Using the user-confirmed exportDir instead of targetDir
+			generatedNames, err := morse.ExportWAVBatch(rawText, exportDir, prefix, wordsPer10Mins, numFiles)
 
 			app.QueueUpdateDraw(func() {
 				if err != nil {
@@ -1285,7 +1288,7 @@ func showWaveModal(targetDir string) {
 					return
 				}
 				statusLine.SetText(" [#00FF00]WAV files generated successfully!")
-				showSuccessModal(targetDir, generatedNames)
+				showSuccessModal(exportDir, generatedNames) // Pass exportDir to the success screen
 			})
 		}()
 	}
@@ -1312,7 +1315,8 @@ func showWaveModal(targetDir string) {
 		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(container, 14, 1, true).
+			// Bumped height from 14 to 16 to fit the new directory input field
+			AddItem(container, 16, 1, true).
 			AddItem(nil, 0, 4, false),
 			65, 1, true).
 		AddItem(nil, 0, 1, false)
