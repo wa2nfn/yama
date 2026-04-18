@@ -1,3 +1,6 @@
+
+
+
 package main
 
 import (
@@ -271,7 +274,7 @@ func showHelp() {
 	helpText := `
                          [yellow::b]Welcome to YAMA - Yet Another Morse App[::-]
 
-Whether you are looking for routine practice, some head copy or want to test your copying limits against a simulated ionospheric storm, YAMA is built to help you. 
+Whether you are looking for routine practice, some head copy or want to test your copying limits against a simulated ionospheric storm, YAMA is built to help you.
 
 [green::b]Getting Started: Entering Text[::-]
 [white]Before YAMA can play anything, it needs some text! You have two easy ways to do this:
@@ -279,7 +282,7 @@ Whether you are looking for routine practice, some head copy or want to test you
 2. Load a File: Press [yellow]Ctrl-F[-] to open the File Selector and browse for any standard '.txt' file on your computer.
 
 [green::b]Dynamic Menus & Navigation[::-]
-[white]YAMA is operated entirely via keyboard shortcuts. Keep an eye on the top menu bar — it is dynamic. YAMA will only show you the shortcuts that make sense for what you are currently doing. For example, you cannot open the Options menu while audio is actively playing, and therefore there will not be an Open label and [yellow]Ctrl-O[-] will be ignored, Wave export shortcut will only appear when you actually have text loaded to export. 
+[white]YAMA is operated entirely via keyboard shortcuts. Keep an eye on the top menu bar — it is dynamic. YAMA will only show you the shortcuts that make sense for what you are currently doing. For example, you cannot open the Options menu while audio is actively playing, and therefore there will not be an Open label and [yellow]Ctrl-O[-] will be ignored, Wave export shortcut will only appear when you actually have text loaded to export.
 
 If you ever get stuck in a menu, just press [yellow]ESC[-] to safely close it without saving. [red](Note: insert or removal of headphones can trigger a Windows hang of the app requiring an app restart.)[::-]
 
@@ -293,7 +296,7 @@ Ctrl-E   | Erase      | Clear the current text input aka screen clear
 Ctrl-T   | Timing     | Speed, Tone, and IWR settings
 Ctrl-O   | Option     | Parser, messaging, and text processing options
 Ctrl-A   | Audio      | Audio impacting impairements (QRN, QSB, Drift, etc.)
-Ctrl-D   | Data-Stats | View session statistics and IWR counts 
+Ctrl-D   | Data-Stats | View session statistics and IWR counts
 Ctrl-B   | aBout      | App info and License
 Ctrl-H   | Help       | This screen
 Ctrl-Q   | Quit       | Exit YAMA
@@ -301,7 +304,7 @@ ESC      | Close      | Cancel/Close menus without saving
 Spacebar | Hide/Unhide| Toggle text visibility during playback
 
 [green::b]Supported Characters & Punctuation[::-]
-[white]YAMA naturally supports standard letters [yellow]A-Z[-] and numbers [yellow]0-9[-]. 
+[white]YAMA naturally supports standard letters [yellow]A-Z[-] and numbers [yellow]0-9[-].
 
 [white]Basic punctuation: [yellow]. , ? /[-]
 [white]Full punctuation (Enable in Options): [yellow]: ; " @ '[-]
@@ -324,7 +327,7 @@ Repeat Limit          | Caps consecutive repeating characters to prevent runaway
                       | sometimes used in books under titles. Default 3 or many words effected.
 Random Order          | Shuffles the playback order of the entire document's words.
 Random Words          | Scrambles the letters within individual words. e.g. a code group
-                      | Mutually exclusive with the IWR function.  
+                      | Mutually exclusive with the IWR function.
 Word Builder          | Plays words progressively (e.g., T, TH, THE) for comprehension.
                       | Mutually exclusive with IWR. IWR speed is used to sound the last word.
 Start Msg             | Toggles injecting a custom message at the beginning of the text.
@@ -333,7 +336,7 @@ End Msg               | Toggles injecting a custom message at the end of the tex
 End Msg Text          | The specific text to play at the end (e.g., <AR>).
 
 [green::b]The Skip List & Contractions[::-]
-[white]You can define specific characters or ProSigns to silently skip during playback (Options -> Skip List). 
+[white]You can define specific characters or ProSigns to silently skip during playback (Options -> Skip List).
 [yellow]Important Apostrophe Rule:[-] If you add the apostrophe [yellow](')[-] to your skip list, YAMA will automatically expand 17 common English contractions before removing the remaining apostrophes (e.g., "DON'T" safely becomes "DO NOT").
 
 [green::b]Audio Screen (Ctrl-A) - Audio Impairements[::-]
@@ -354,7 +357,7 @@ You can create or edit this file with any text editor of your choice, or the sim
 
 [green::b]System Files (Misc)[::-]
 • [blue]yama_config.json:[-] Automatically manages your saved settings. Please use the UI menus rather than hand-editing this file.
-• [blue]yamaIWR.txt:[-] Your active dictionary for Instant Word Recognition. Edit this safely via the "Edit IWR" button in the Timing menu. Note: Edit via the app are rather simple, cursor, delete, backspace, TAB to access Save button. 
+• [blue]yamaIWR.txt:[-] Your active dictionary for Instant Word Recognition. Edit this safely via the "Edit IWR" button in the Timing menu. Note: Edit via the app are rather simple, cursor, delete, backspace, TAB to access Save button.
 • [blue]yamaHELP.txt:[-] This file if Export To File is used.
 [::-].`
 	tv := tview.NewTextView().
@@ -368,9 +371,13 @@ You can create or edit this file with any text editor of your choice, or the sim
 	form := tview.NewForm().
 		AddButton("Export to yama_help.txt", func() {
 			cleanText := colorTagRegex.ReplaceAllString(helpText, "")
-			err := os.WriteFile("yama_help.txt", []byte(cleanText), 0644)
+
+			// APPLY RESOLVER
+			exportPath := ResolvePath("yama_help.txt")
+
+			err := os.WriteFile(exportPath, []byte(cleanText), 0644)
 			if err == nil {
-				statusLine.SetText(" [#00FF00]Help manual exported to yama_help.txt![-]")
+				statusLine.SetText(" [#00FF00]Help manual exported to " + exportPath + "![-]")
 			} else {
 				statusLine.SetText(" [red]Failed to export help file.[-]")
 			}
@@ -754,12 +761,18 @@ func showOptions() {
 
 func showIWREditModal(parentContainer tview.Primitive) {
 	var filePath string
-	localPath := "yamaIWR.txt"
+
+	// APPLY RESOLVER
+	localPath := ResolvePath("yamaIWR.txt")
+
 	if _, err := os.Stat(localPath); err == nil {
 		filePath = localPath
 	} else {
 		if docDir, errDir := os.UserConfigDir(); errDir == nil {
-			filePath = filepath.Join(docDir, "YAMA", "yamaIWR.txt")
+			// APPLY RESOLVER
+			filePath = ResolvePath(filepath.Join(docDir, "YAMA", "yamaIWR.txt"))
+		} else {
+			filePath = localPath // Fallback
 		}
 	}
 
@@ -1120,10 +1133,12 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 
 func showIWRWelcomeModal() {
 	var globalPath string
+
+	// APPLY RESOLVER
 	if docDir, err := os.UserConfigDir(); err == nil {
-		globalPath = filepath.Join(docDir, "YAMA", "yamaIWR.txt")
+		globalPath = ResolvePath(filepath.Join(docDir, "YAMA", "yamaIWR.txt"))
 	} else {
-		globalPath = fmt.Sprintf("%s/yamaIWR.txt", os.UserConfigDir)
+		globalPath = ResolvePath("./yamaIWR.txt")
 	}
 
 	welcomeText := fmt.Sprintf(`[yellow]Welcome to YAMA[-]
@@ -1166,163 +1181,6 @@ Note: This text will NOT be shown again.`, globalPath)
 
 	pages.AddPage("iwrwelcome", createModal(layout, 85, 26), true, true)
 	app.SetFocus(layout)
-}
-
-func showWaveModal(targetDir string) {
-	rawText := inputArea.GetText()
-
-	// 1. Force everything to uppercase so MorseTable doesn't reject it
-	rawText = strings.ToUpper(rawText)
-
-	// 2. Apply the Skip List and expand contractions (DON'T -> DO NOT)
-	if config.User.UseSkip {
-		parser.SetSkipList(config.User.SkipList, morse.ProSignTable)
-		rawText = parser.ApplySkip(rawText)
-	}
-
-	// 3. Strip out invalid characters
-	rawText = parser.CleanText(rawText, morse.MorseTable)
-	// -----------------------------
-
-	words := strings.Fields(rawText)
-	wordCount := len(words)
-
-	if wordCount == 0 {
-		return
-	}
-
-	// (MaxExportWords limit intentionally removed to give users full control)
-
-	baseInputFile := filepath.Base(currentInputFile)
-	if baseInputFile == "." || baseInputFile == "" {
-		baseInputFile = "export"
-	}
-	cleanName := strings.TrimSuffix(baseInputFile, filepath.Ext(baseInputFile))
-	filePrefix := "yama_" + cleanName
-
-	estimatedTotalSeconds := len(rawText) / 2
-	var wordsPer10Mins int
-	if estimatedTotalSeconds > 0 {
-		wordsPer10Mins = int((float64(wordCount) / float64(estimatedTotalSeconds)) * 600.0)
-	} else {
-		wordsPer10Mins = wordCount
-	}
-	if wordsPer10Mins < 1 {
-		wordsPer10Mins = 1
-	}
-
-	maxPossibleFiles := (wordCount / wordsPer10Mins) + 1
-
-	// UPDATED: Multiplied by 2 for accurate 16-bit PCM file size estimation
-	mbPerFile := float64(600*11025*2) / (1024.0 * 1024.0)
-
-	infoTextView := tview.NewTextView().
-		SetDynamicColors(true).
-		SetTextAlign(tview.AlignCenter)
-	infoTextView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-
-	updateSizeLabel := func(numFilesStr string) {
-		numFiles, err := strconv.Atoi(numFilesStr)
-		if err != nil || numFiles < 1 {
-			numFiles = 1
-		}
-
-		totalMB := mbPerFile * float64(numFiles)
-		msg := fmt.Sprintf("\n [yellow]Generating up to %d files (Max 10 mins each)\nMaximum Output: ~%.1f MB | (~%.1f MB max per file)[-]\n[gray]*Note: Actual size will be smaller if your text doesn't fill the block.[-]", numFiles, totalMB, mbPerFile)
-		infoTextView.SetText(msg)
-	}
-
-	updateSizeLabel(fmt.Sprintf("%d", maxPossibleFiles))
-
-	form := tview.NewForm()
-
-	// --- THE NEW DIRECTORY INPUT FIELD ---
-	dirInput := tview.NewInputField().
-		SetLabel("Save Directory:").
-		SetText(targetDir).
-		SetFieldWidth(40)
-	dirInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
-
-	prefixInput := tview.NewInputField().SetLabel("File Prefix:").SetText(filePrefix).SetFieldWidth(40)
-	prefixInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
-
-	numFilesInput := tview.NewInputField().
-		SetLabel("Num Files:").
-		SetText(fmt.Sprintf("%d", maxPossibleFiles)).
-		SetFieldWidth(10).
-		SetAcceptanceFunc(tview.InputFieldInteger).
-		SetChangedFunc(updateSizeLabel)
-	numFilesInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
-
-	// Add them to the form top-to-bottom
-	form.AddFormItem(dirInput)
-	form.AddFormItem(prefixInput)
-	form.AddFormItem(numFilesInput)
-
-	saveFunc := func() {
-		exportDir := strings.TrimSpace(dirInput.GetText())
-		prefix := strings.TrimSpace(prefixInput.GetText())
-		numFilesStr := numFilesInput.GetText()
-		numFiles, _ := strconv.Atoi(numFilesStr)
-		if numFiles < 1 {
-			numFiles = 1
-		}
-
-		// --- DIRECTORY VALIDATION CHECK ---
-		if _, err := os.Stat(exportDir); os.IsNotExist(err) {
-			statusLine.SetText(" [red]Error: Save directory does not exist![-]")
-			return
-		}
-
-		pages.RemovePage("waveConfig")
-		statusLine.SetText(" [yellow]Generating WAV files, please wait...")
-
-		go func() {
-			// Using the user-confirmed exportDir instead of targetDir
-			generatedNames, err := morse.ExportWAVBatch(rawText, exportDir, prefix, wordsPer10Mins, numFiles)
-
-			app.QueueUpdateDraw(func() {
-				if err != nil {
-					statusLine.SetText(" [red]Export failed: " + err.Error())
-					app.SetFocus(inputArea)
-					return
-				}
-				statusLine.SetText(" [#00FF00]WAV files generated successfully!")
-				showSuccessModal(exportDir, generatedNames) // Pass exportDir to the success screen
-			})
-		}()
-	}
-
-	cancelFunc := func() {
-		pages.RemovePage("waveConfig")
-		app.SetFocus(inputArea)
-	}
-
-	form.AddButton("Save", saveFunc).AddButton("Cancel", cancelFunc)
-
-	applyFocusStyles(form)
-	form.SetBorder(false)
-	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-
-	container := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(infoTextView, 5, 1, false).
-		AddItem(form, 0, 1, true)
-
-	container.SetBorder(true).SetTitle(" Generate Wave Files (ESC: Cancel) ")
-	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-
-	layout := tview.NewFlex().
-		AddItem(nil, 0, 1, false).
-		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-			AddItem(nil, 0, 1, false).
-			// Bumped height from 14 to 16 to fit the new directory input field
-			AddItem(container, 16, 1, true).
-			AddItem(nil, 0, 4, false),
-			65, 1, true).
-		AddItem(nil, 0, 1, false)
-
-	pages.AddPage("waveConfig", layout, true, true)
-	app.SetFocus(container)
 }
 
 func showSuccessModal(dir string, files []string) {
@@ -1433,7 +1291,6 @@ func showImpairments() {
 		resetState()
 	}
 
-	// 1. ADD THIS NEW FUNCTION:
 	// It forces all dropdowns back to Option 0 ("Off") and unchecks the box
 	onClearAll := func() {
 		// 1. Reset the UI elements so the user sees the change
@@ -1473,7 +1330,220 @@ func showImpairments() {
 	container.SetBorder(true).SetTitle(" Audio Impairments ")
 	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	// Bumped height to 17 to accommodate the open dropdown menus
 	pages.AddPage("impairments", createModal(container, 45, 17), true, true)
+	app.SetFocus(container)
+}
+
+func showWaveModal(targetDir string) {
+	rawText := inputArea.GetText()
+
+	rawText = strings.ToUpper(rawText)
+
+	if config.User.UseSkip {
+		parser.SetSkipList(config.User.SkipList, morse.ProSignTable)
+		rawText = parser.ApplySkip(rawText)
+	}
+
+	rawText = parser.CleanText(rawText, morse.MorseTable)
+
+	words := strings.Fields(rawText)
+	wordCount := len(words)
+
+	if wordCount == 0 {
+		return
+	}
+
+	baseInputFile := filepath.Base(currentInputFile)
+	if baseInputFile == "." || baseInputFile == "" {
+		baseInputFile = "export"
+	}
+	cleanName := strings.TrimSuffix(baseInputFile, filepath.Ext(baseInputFile))
+	filePrefix := "yama_" + cleanName
+
+	infoTextView := tview.NewTextView().
+		SetDynamicColors(true).
+		SetTextAlign(tview.AlignCenter)
+	infoTextView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+
+	form := tview.NewForm()
+
+	dirInput := tview.NewInputField().
+		SetLabel("Save Directory:").
+		SetText(targetDir).
+		SetFieldWidth(40)
+	dirInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+
+	prefixInput := tview.NewInputField().SetLabel("File Prefix:").SetText(filePrefix).SetFieldWidth(40)
+	prefixInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+
+	// --- THIS IS THE NEW FIELD THAT WAS MISSING! ---
+	minsInput := tview.NewInputField().
+		SetLabel("Minutes/File:").
+		SetText("10").
+		SetFieldWidth(10).
+		SetAcceptanceFunc(func(textToCheck string, lastChar rune) bool {
+			if textToCheck == "" {
+				return true
+			}
+			val, err := strconv.Atoi(textToCheck)
+			return err == nil && val >= 1 && val <= 60
+		})
+	minsInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+
+	numFilesInput := tview.NewInputField().
+		SetLabel("Number Of Files:").
+		SetFieldWidth(10).
+		SetAcceptanceFunc(tview.InputFieldInteger)
+	numFilesInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+
+	updateCalculations := func() {
+		minsStr := minsInput.GetText()
+		mins, err := strconv.Atoi(minsStr)
+		if err != nil || mins < 1 {
+			mins = 10
+		}
+
+		estimatedTotalSeconds := len(rawText) / 2
+		targetSeconds := mins * 60
+
+		var wordsPerBlock int
+		if estimatedTotalSeconds > 0 {
+			wordsPerBlock = int((float64(wordCount) / float64(estimatedTotalSeconds)) * float64(targetSeconds))
+		} else {
+			wordsPerBlock = wordCount
+		}
+		if wordsPerBlock < 1 {
+			wordsPerBlock = 1
+		}
+
+		maxPossibleFiles := (wordCount / wordsPerBlock) + 1
+
+		numFilesStr := numFilesInput.GetText()
+		numFiles, err := strconv.Atoi(numFilesStr)
+		if err != nil || numFiles < 1 {
+			numFiles = maxPossibleFiles
+		}
+
+		mbPerFile := float64(targetSeconds*11025*2) / (1024.0 * 1024.0)
+		totalMB := mbPerFile * float64(numFiles)
+
+		msg := fmt.Sprintf("\n [yellow]Generating up to %d files (Max %d mins each)\n" +
+			"Maximum Output: ~%.1f MB | (~%.1f MB max per file)[-]\n" +
+			"[gray]*Note: Actual size will be smaller if your text doesn't fill the block.[-]",
+			numFiles, mins, totalMB, mbPerFile)
+
+		infoTextView.SetText(msg)
+	}
+
+	minsInput.SetChangedFunc(func(text string) {
+		mins, err := strconv.Atoi(text)
+		if err == nil && mins >= 1 {
+			estimatedTotalSeconds := len(rawText) / 2
+			targetSeconds := mins * 60
+			var wordsPerBlock int
+			if estimatedTotalSeconds > 0 {
+				wordsPerBlock = int((float64(wordCount) / float64(estimatedTotalSeconds)) * float64(targetSeconds))
+			} else {
+				wordsPerBlock = wordCount
+			}
+			if wordsPerBlock < 1 {
+				wordsPerBlock = 1
+			}
+
+			maxPossibleFiles := (wordCount / wordsPerBlock) + 1
+			numFilesInput.SetText(fmt.Sprintf("%d", maxPossibleFiles))
+		}
+		updateCalculations()
+	})
+
+	numFilesInput.SetChangedFunc(func(text string) {
+		updateCalculations()
+	})
+
+	form.AddFormItem(dirInput)
+	form.AddFormItem(prefixInput)
+	form.AddFormItem(minsInput)
+	form.AddFormItem(numFilesInput)
+
+	updateCalculations()
+	saveFunc := func() {
+		exportDir := ResolvePath(strings.TrimSpace(dirInput.GetText()))
+		prefix := strings.TrimSpace(prefixInput.GetText())
+
+		numFilesStr := numFilesInput.GetText()
+		numFiles, _ := strconv.Atoi(numFilesStr)
+		if numFiles < 1 {
+			numFiles = 1
+		}
+
+		minsStr := minsInput.GetText()
+		mins, err := strconv.Atoi(minsStr)
+		if err != nil || mins < 1 {
+			mins = 10
+		}
+
+		estimatedTotalSeconds := len(rawText) / 2
+		targetSeconds := mins * 60
+		var finalWordsPerBlock int
+		if estimatedTotalSeconds > 0 {
+			finalWordsPerBlock = int((float64(wordCount) / float64(estimatedTotalSeconds)) * float64(targetSeconds))
+		} else {
+			finalWordsPerBlock = wordCount
+		}
+		if finalWordsPerBlock < 1 {
+			finalWordsPerBlock = 1
+		}
+
+		if err := os.MkdirAll(exportDir, 0755); err != nil {
+			statusLine.SetText(" [red]Error: Cannot create save directory![-]")
+			return
+		}
+
+		pages.RemovePage("waveConfig")
+		statusLine.SetText(" [yellow]Generating WAV files, please wait...")
+
+		go func() {
+			generatedNames, err := morse.ExportWAVBatch(rawText, exportDir, prefix, finalWordsPerBlock, numFiles)
+
+			app.QueueUpdateDraw(func() {
+				if err != nil {
+					statusLine.SetText(" [red]Export failed: " + err.Error())
+					app.SetFocus(inputArea)
+					return
+				}
+				statusLine.SetText(" [#00FF00]WAV files generated successfully!")
+				showSuccessModal(exportDir, generatedNames)
+			})
+		}()
+	}
+
+	cancelFunc := func() {
+		pages.RemovePage("waveConfig")
+		app.SetFocus(inputArea)
+	}
+
+	form.AddButton("Save", saveFunc).AddButton("Cancel", cancelFunc)
+
+	applyFocusStyles(form)
+	form.SetBorder(false)
+	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+
+	container := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(infoTextView, 5, 1, false).
+		AddItem(form, 0, 1, true)
+
+	container.SetBorder(true).SetTitle(" Generate Wave Files (ESC To Cancel) ")
+	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+
+	layout := tview.NewFlex().
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(container, 22, 1, true).
+			AddItem(nil, 0, 4, false),
+			65, 1, true).
+		AddItem(nil, 0, 1, false)
+
+	pages.AddPage("waveConfig", layout, true, true)
 	app.SetFocus(container)
 }
