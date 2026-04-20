@@ -169,32 +169,6 @@ func startAudioEngine() error {
 	return nil
 }
 
-func ResetAudioDevice() error {
-	audioReady = false
-
-	if otoCtx != nil {
-		done := make(chan struct{})
-		go func() {
-			otoCtx.Suspend()
-			close(done)
-		}()
-
-		select {
-		case <-done:
-		case <-time.After(200 * time.Millisecond):
-		}
-	}
-
-	time.Sleep(100 * time.Millisecond)
-
-	if err := startAudioEngine(); err != nil {
-		log.Printf("Failed to re-initialize audio engine: %v", err)
-		return err
-	}
-
-	return nil
-}
-
 // ==========================================
 // WAV EXPORT AUDIO MATH (8-Bit Unsigned)
 // ==========================================

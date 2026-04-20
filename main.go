@@ -35,7 +35,6 @@ var (
 	pages      *tview.Pages
 	header     *tview.TextView
 	statusLine *tview.TextView
-	stats      *tview.TextView
 	inputArea  *tview.TextArea
 	blueLine   *tview.TextView
 	mainFlex   *tview.Flex
@@ -49,17 +48,19 @@ var (
 	statsIWRList    []string
 	statsIWRMap     = make(map[string]int)
 	isBlocked       bool
-	hasStats        bool
 	finalPlayTime   time.Duration
 	isFirstRun      = true
 
 	colorTagRegex = regexp.MustCompile(`\[.*?\]`)
+
+	// Flag to prevent the text box from resetting the menu when the engine updates it
+	isProgrammaticUpdate bool
 )
 
 func ResolvePath(inputPath string) string {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		homeDir = "." 
+		homeDir = "."
 	}
 
 	upperPath := strings.ToUpper(inputPath)
@@ -149,7 +150,6 @@ func main() {
 	header = tview.NewTextView()
 	header.SetDynamicColors(true).SetTextAlign(tview.AlignCenter)
 
-	stats = tview.NewTextView()
 	statusLine = tview.NewTextView()
 	statusLine.SetDynamicColors(true)
 
@@ -157,12 +157,17 @@ func main() {
 	blueLine.SetDynamicColors(true)
 	blueLine.SetBackgroundColor(tcell.ColorSteelBlue)
 
+	// --- THIS INITIALIZATION WAS MISSING ---
 	inputArea = tview.NewTextArea()
 	inputArea.SetBackgroundColor(bgColor)
 	inputArea.SetBorder(true).SetTitle(" [white]Text Input ")
 	inputArea.SetPlaceholder("Enter text, Ctrl-P to Play or Ctrl-H for Help, ESC closes screens without SAVE.")
 
 	inputArea.SetChangedFunc(func() {
+		// If the engine typed this, ignore it so the menu doesn't reset!
+		if isProgrammaticUpdate {
+			return
+		}
 		if currentState == StateStopped || currentState == StatePaused {
 			currentState = StateIdle
 		}
@@ -284,15 +289,22 @@ func main() {
 			}
 			return nil
 		case tcell.KeyCtrlT:
-			showToneSpeed()
+			// Unlocked during Paused state!
+			if currentState != StatePlaying {
+				showToneSpeed()
+			}
 			return nil
 		case tcell.KeyCtrlO:
+			// Locked during Paused state (requires full stop)
 			if currentState != StatePlaying && currentState != StatePaused {
 				showOptions()
 			}
 			return nil
 		case tcell.KeyCtrlA:
-			showImpairments()
+			// Unlocked during Paused state!
+			if currentState != StatePlaying {
+				showImpairments()
+			}
 			return nil
 		case tcell.KeyCtrlH:
 			showHelp()
@@ -316,7 +328,7 @@ func main() {
 				if target == "" {
 					target, _ = os.Getwd()
 				}
-				showWaveModal(target) 
+				showWaveModal(target)
 			}
 			return nil
 		case tcell.KeyCtrlQ:
@@ -380,3 +392,5 @@ func ensureTerminal() {
 	}
 	os.Exit(0)
 }
+
+

@@ -43,7 +43,7 @@ type UserSettings struct {
 	NoiseKeyClick        bool `json:"noise_key_click"`
 
 	// Output Options
-	UseWave bool `json:"UseWave"` // Note: Matches the exact capitalization from your JSON
+	UseWave 		bool `json:"UseWave"` // Note: Matches the exact capitalization from your JSON
 
 	// Character & Content Options
 	UseProsigns            bool   `json:"use_prosigns"`
@@ -60,7 +60,7 @@ type UserSettings struct {
 	EndMsg       bool   `json:"end_msg"`
 	EndMsgText   string `json:"end_msg_text"`
 	RepeatLimit  int    `json:"repeat_limit"`
-	StartDelay   int    `json:"start_delay"` // Assumed in seconds or milliseconds depending on your implementation
+	StartDelay   int    `json:"start_delay"`
 }
 
 const (
@@ -116,7 +116,7 @@ func LoadConfig() {
 	data, err := os.ReadFile(path)
 
 	if err != nil {
-		log.Printf("No config found. Generating defaults at %s", path)
+		//log.Printf("No config found. Generating defaults at %s", path)
 
 		// 1. SET MANDATORY DEFAULTS SO THE ENGINE DOESN'T PANIC
 		User.CharacterSpeed = 20
@@ -124,8 +124,8 @@ func LoadConfig() {
 		User.Tone = 600
 
 		// Exactly ONE of these must be true!
-		User.UseFarnsworth = true
-		User.UseStandard = false
+		User.UseFarnsworth = false
+		User.UseStandard = true
 		User.UseWordsworth = false
 
 		// Other safe defaults
@@ -138,6 +138,8 @@ func LoadConfig() {
 		User.WordBuilder = false
 		User.RandomWords = false
 		User.RandomOrder = false
+		User.RepeatLimit  = 3
+		User.StartDelay  = 0
 
 		// 2. Save immediately. This creates the directory AND a valid JSON file.
 		SaveConfig()

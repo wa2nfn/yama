@@ -283,12 +283,12 @@ Whether you are looking for routine practice, some head copy or want to test you
 [green::b]Getting Started: Entering Text[::-]
 [white]Before YAMA can play anything, it needs some text! You have two easy ways to do this:
 1. Type or Paste: Simply click into the main Text Input box and type or paste your practice text directly. (cursor keys, backspace, delete are supported for editing)
-2. Load a File: Press [yellow]Ctrl-F[-] (note: the Ctrl-F, for example means hold the Control Key and simultaneously the 'f' key) to open the File Selector and browse for any standard '.txt' file on your computer.
+2. Load a File: Press [yellow]Ctrl-F[-] (note: the Ctrl-F, for example menas hold the Control Key and simultaneously the 'f' key) to open the File Selector and browse for any standard '.txt' file on your computer.
 
 [green::b]Dynamic Menus & Navigation[::-]
-[white]YAMA is operated entirely via keyboard shortcuts. Keep an eye on the top menu bar — it is dynamic. YAMA will only show you the shortcuts that make sense for what you are currently doing. For example, you cannot open the Options menu while audio is actively playing, therefore there will not be an Open label and [yellow]Ctrl-O[-] will be ignored, Wave export shortcut will only appear when you actually have text loaded to export.
+[white]YAMA is operated entirely via keyboard shortcuts. Keep an eye on the top menu bar — it is dynamic. YAMA will only show you the shortcuts that make sense for what you are currently doing. For example, you cannot open the Options menu while audio is actively playing, and therefore there will not be an Open label and [yellow]Ctrl-O[-] will be ignored, Wave export shortcut will only appear when you actually have text loaded to export.
 
-The method to enter or change an option on the Ctrl-O or Ctrl-T screen will depend on the type of option it is. First navigate to the option of interest using the TAB or BACKTAB, then if the option is a single charater field like Use ... or Random Order simply hit enter or space to toggle the option (then TAB forward); if the option shows a single digit or the name of a timing mode (i.e. Farnsworth) the choices are provided by a drop down, use the cursor and hit enter; multi digit options like tones or speeds, use backspace type new value and hit enter or TAB; input text boxes, use backspace enter a value and enter or TAB. 
+To enter or change an option on the Ctrl-O or Ctrl-T screensdepends on the type of option. First navigate to the option of interest uisng the TAB or BACKTAB, then if the option is a single charater field like Use ... or Random Order simply hit enter or space to toggle the option (then TAB forward); if the option shows a single digit or the name of a timing mode (i.e. Farnsworth) the choices are provided by a drop down, use the cursor and hit enter; multi digit options like tones or speeds, use backspace type new value and hit enter or TAB; input text boxes backspace enter a vlaue and enmter ot TAB. 
 
 If you ever get stuck in a menu, just press [yellow]ESC[-] to safely close it without saving. [red](Note: insert or removal of headphones can trigger a Windows hang of the app requiring an app restart.)[::-]
 
@@ -302,13 +302,12 @@ Ctrl-E   | Erase      | Clear the current text input aka screen clear
 Ctrl-T   | Timing     | Speed, Tone, and IWR settings
 Ctrl-O   | Option     | Parser, messaging, and text processing options
 Ctrl-A   | Audio      | Audio impacting impairements (QRN, QSB, Drift, etc.)
-Ctrl-D   | Data-Stats | View session statistics and IWR counts. Available 
-                      | when play stops, but any new input clears the old data.
-CtrlB    | aBout      | App info and License
-Ctrl-H   | Help       | This screen text.
-Ctrl-Q   | Quit       | Exit YAMA. 
+Ctrl-D   | Data-Stats | View session statistics and IWR counts
+Ctrl-B   | aBout      | App info and License
+Ctrl-H   | Help       | This screen
+Ctrl-Q   | Quit       | Exit YAMA
 ESC      | Close      | Cancel/Close menus without saving
-Spacebar | Hide/Unhide| Toggle text visibility during audio playback.
+Spacebar | Hide/Unhide| Toggle text visibility during playback
 
 [green::b]Supported Characters & Punctuation[::-]
 [white]YAMA naturally supports standard letters [yellow]A-Z[-] and numbers [yellow]0-9[-].
@@ -331,16 +330,16 @@ Use Skip              | Enables the Skip List filtering during playback.
 Skip List             | Define specific characters or ProSigns to silently ignore.
                       | Entered without any separators. e.g. XY7<BT>=
 Start Delay           | Adds a countdown timer (in seconds) before playback begins.
-Repeat Limit          | Caps consecutive repeating characters to prevent runaway sequences.
+Repeat Limit          | Caps consecutive repeating characters to prevent runaway sequences .
                       | sometimes used in books under titles. Default 3 or many words effected.
 Random Order          | Shuffles the playback order of the entire document's words.
 Random Words          | Scrambles the letters within individual words. e.g. a code group
                       | Mutually exclusive with the IWR function.
 Word Builder          | Plays words progressively (e.g., T, TH, THE) for comprehension.
                       | Mutually exclusive with IWR. IWR speed is used to sound the last word.
-Use Start Msg         | Toggles injecting a custom message at the beginning of the text.
+Use Start Msg             | Toggles injecting a custom message at the beginning of the text.
 Start Msg Text        | The specific text to play at the start (e.g., VVV <KA>).
-Use End Msg           | Toggles injecting a custom message at the end of the text.
+Use End Msg               | Toggles injecting a custom message at the end of the text.
 End Msg Text          | The specific text to play at the end (e.g., <AR>).
 
 [green::b]The Skip List & Contractions[::-]
@@ -356,15 +355,12 @@ Tone Drift            | Simulates an unstable oscillator, bending the pitch up a
 Speed Drift           | Simulates a tired operator by slowly expanding/contracting timing.
 Key Clicks            | Injects a harsh electrical spark at the start and end of elements.
 
-[yellow]Note that you can make changes to the currently playing audio with the Timing or Audio screens.[-]
-
 [green::b]WAV File Export (Ctrl-W)[::-]
-[white]YAMA exports 16-bit Mono audio. The wave screen lets you select a targe directory for the created wave files, if the path does not exist, it will create it. The approximate play time for the chossen speed and the corresponding size is shown. You can also specifiy (actually limit) the number of files. If your input is a large novel you can certainly limit output to a handle full of practice files. If you are emailing the completed files to yourself so that you can play them on cell phone, then capping the file size near 10Mb should be reasonable.
+[white]YAMA exports 8-bit Mono audio. To prevent disk exhaustion, exports are capped at 5,000 words and automatically chunked into sequential files of roughly 10 minutes each.
 
 [green::b]IWR Feature [::-]
-[white]This a a head copy related feature. I looks to match words (actually any space separated string of suppored characters (e.g. the qsl 73 cul) in the input, and override the chosen timing mode (standard, Farnsworth, Wordsworth and the associated speed/tone) and play the matched word at a increased speed with standard timing. To do this you must create an [blue]yamaIWR.txt[-] file. A simplw file has been created in the in your OS's standard configuration directory (for windows it will be $HOME\AppData\Roaming\YAMA). That file will be editable from the Timing screen ([yellow]Ctrl-T[-], or you may breate a nother one in the same directory that Yama is launched from, this one will take priority but you will have to edit it with notepad, vi, emacs or what ever you favorite text editor is (Note note a wordprocessor, unless it has a save as txt option). The file should list one word per line (any case, any order); a [yellow]'#'[-] at the start of line tells YAMA to ignore that line. If you choose to also match the word if its immediately follow by [yellow], . ? : [-] as well as the bare word, this is indicated by a trailing asterisk (e.g. qsl* matches: qsl qsl? qsl. qsl: qsl, ). The IWR feature as described is ignored if you have choosen either WordBuilder or RandomWord in the Options menu, since you would never get a match. A small purposeful interaction with IWR speed is as follows: if you chiise WordBuilder and have IWR enabled, then when word builder has completed constructing a word (as in: t te tes test) you will have one more sounding of the final word, but this time at IWR speed.
-
-Experiment and I'm sure you will quickly understand the capabilities. Remeber an ESC or two will always get you back to main Tect Input screen.
+[white]This a a head copy related feature. I looks to match words (actually any space separated string of suppored characters e.g. the qsl 73 cul) for the input, and override the chosen timing mode (standard, Farnsworth, Wordsworth and the associated speed/tone) and play the matched word at a increased speed with standard timing. To do this you must create an [blue]yamaIWR.txt[-] file in the current directory (or by default in your OS's standard configuration directory (for windows it will be $HOME\AppData\Roaming\YAMA). The file lists one word per line (any case, any order); a [yellow]'#'[-] at the start of line tells YAMA to ignore that line. If you choose to also match the word if its immediately follow by [yellow], . ? : [-] as well as the bare word, this is indicated by a trailing asterisk (e.g. qsl* matches: qsl qsl? qsl. qsl: qsl, ). The IWR feature as described is ignored if you have choosen either WordBuilder or RandomWord in the Options menu.
+You can create or edit this file with any text editor of your choice, or the simple edit functions from the Timing [yellow](Ctrl-T)[-] screen with the other IWR options.
 
 [green::b]System Files (Misc)[::-]
 • [blue]yama_config.json:[-] Automatically manages your saved settings. Please use the UI menus rather than hand-editing this file.
@@ -373,7 +369,7 @@ Experiment and I'm sure you will quickly understand the capabilities. Remeber an
 
 Note: Yama does not require or make any changes to non-YAMA values on your PC. All files related to YAMA have, yama in the name for you to remove as you see fit.
 
-In the Wave creation screen, if you enter a non-existent directory, it will be created - this is recommended to make the eventual removal of WAV files simpler.
+In the Wave creation screen, if you enter a non-existent directory, it will be created - this is recommend to make the eventual removal of WAV files simpler.
 
 73 and best of luck on your CW journey.
 WA2NFN
@@ -696,13 +692,13 @@ func showOptions() {
 	form.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 	form.SetItemPadding(0)
 
-	useProsignsCb := tview.NewCheckbox().SetLabel("Use ProSigns")
-	extendedPuncCb := tview.NewCheckbox().SetLabel("Extended Punctuation")
+	useProsignsCb := tview.NewCheckbox().SetLabel("Use Prosigns")
+	extendedPuncCb := tview.NewCheckbox().SetLabel("All Punctuation")
 	useSkipCb := tview.NewCheckbox().SetLabel("Use Skip")
 
 	skipListInput := tview.NewInputField().SetLabel("Skip List").SetFieldWidth(35)
 	skipListInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
-	skipListInput.SetPlaceholder(" e.g. XYZ789<SK>").SetPlaceholderTextColor(tcell.ColorYellow)
+	skipListInput.SetPlaceholder(" e.g. <AR> <SK>").SetPlaceholderTextColor(tcell.ColorYellow)
 
 	delayOptions := []string{"0", "1", "2", "3", "4", "5"}
 	delayDropDown := tview.NewDropDown().SetLabel("Start Delay (sec)").SetOptions(delayOptions, nil)
@@ -717,31 +713,14 @@ func showOptions() {
 	startMsgCb := tview.NewCheckbox().SetLabel("Use Start Msg")
 	startMsgInput := tview.NewInputField().SetLabel("Start Msg Text").SetFieldWidth(30)
 	startMsgInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
-	startMsgInput.SetPlaceholder("VVV <KA>").SetPlaceholderTextColor(tcell.ColorYellow)
+	startMsgInput.SetPlaceholder(" e.g. VVV <KA>").SetPlaceholderTextColor(tcell.ColorYellow)
 
 	endMsgCb := tview.NewCheckbox().SetLabel("Use End Msg")
 	endMsgInput := tview.NewInputField().SetLabel("End Msg Text").SetFieldWidth(30)
 	endMsgInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
-	endMsgInput.SetPlaceholder("<AR>").SetPlaceholderTextColor(tcell.ColorYellow)
+	endMsgInput.SetPlaceholder(" e.g. <AR>").SetPlaceholderTextColor(tcell.ColorYellow)
 
 	resetState := func() {
-		startMsgCb.SetChecked(config.User.StartMsg)
-
-		// Intercept an empty config and provide real, editable default text
-		if config.User.StartMsgText == "" {
-			startMsgInput.SetText("VVV <KA>")
-		} else {
-			startMsgInput.SetText(config.User.StartMsgText)
-		}
-
-		endMsgCb.SetChecked(config.User.EndMsg)
-
-		if config.User.EndMsgText == "" {
-			endMsgInput.SetText("<AR>")
-		} else {
-			endMsgInput.SetText(config.User.EndMsgText)
-		}
-
 		useProsignsCb.SetChecked(config.User.UseProsigns)
 		extendedPuncCb.SetChecked(config.User.UseExtendedPunctuation)
 		useSkipCb.SetChecked(config.User.UseSkip)
@@ -749,6 +728,12 @@ func showOptions() {
 		randomOrderCb.SetChecked(config.User.RandomOrder)
 		randomWordsCb.SetChecked(config.User.RandomWords)
 		wordBuilderCb.SetChecked(config.User.WordBuilder)
+
+		startMsgCb.SetChecked(config.User.StartMsg)
+		startMsgInput.SetText(config.User.StartMsgText) // Applies empty string if no config, revealing placeholder
+
+		endMsgCb.SetChecked(config.User.EndMsg)
+		endMsgInput.SetText(config.User.EndMsgText) // Applies empty string if no config, revealing placeholder
 
 		dIdx := 0
 		for i, opt := range delayOptions {
@@ -1172,6 +1157,7 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 	rawInput := inputArea.GetText()
 	rawInput = strings.ToUpper(rawInput)
 
+	// before any lookups are done
 	if config.User.UseSkip {
 		parser.SetSkipList(config.User.SkipList, morse.ProSignTable)
 		rawInput = parser.ApplySkip(rawInput)
@@ -1183,16 +1169,8 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 	inputArea.SetText("", false)
 
 	parsedText := parser.CleanText(fullTextToPlay, morse.MorseTable)
-	parsedText = parser.CompressSpace(parsedText)
 
-	// --- SMART DEFAULTS ---
-	if config.User.StartMsg && strings.TrimSpace(config.User.StartMsgText) == "" {
-		config.User.StartMsgText = "VVV <KA>"
-	}
-	if config.User.EndMsg && strings.TrimSpace(config.User.EndMsgText) == "" {
-		config.User.EndMsgText = "<AR>"
-	}
-	// ----------------------
+	parsedText = parser.CompressSpace(parsedText)
 
 	var finalBuilder strings.Builder
 
@@ -1248,13 +1226,33 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 }
 
 func showIWRWelcomeModal() {
+	var globalPath string
 
-	welcomeText := `[yellow]Welcome to YAMA[-]
+	// APPLY RESOLVER
+	if docDir, err := os.UserConfigDir(); err == nil {
+		globalPath = ResolvePath(filepath.Join(docDir, "YAMA", "yamaIWR.txt"))
+	} else {
+		globalPath = ResolvePath("./yamaIWR.txt")
+	}
 
-I recommend that you visit the Help screen [yellow]Ctrl-H[-] to understand the features and navigation within the app. A button will also be available to save the help text as an html file for browsing or printing.
+	welcomeText := fmt.Sprintf(`[yellow]Welcome to YAMA[-]
 
-Hit ESC to close this screen and begin your use of YAMA.
-`
+Best advice when you exit this screen is to visit the Help screen [yellow]Ctrl-H[-], this will fully cover the apps features an navigation.
+
+IWR - Instant Word Recognition, is a key feature. Options to use it are on the Timing screen [yellow]Ctrl-T[-]. We will setup an initial file to match a few IWR words. You can edit as you like.
+
+[green]FILE PRIORITY & LOCATIONS:[-]
+[white]1. Local (Highest Priority):[-] Yama checks the folder it was launched from for a [blue]yamaIWR.txt[-]. This is a local, easy access file for IWR use.
+[white]2. Global Default:[-] If no local file is found, YAMA uses the default located at:
+   [blue]%s[-]
+
+[green]FORMATTING TIPS:[-]
+• Add words or ProSigns (like <BT>) one per line.
+• An asterisk (*) at the end of a word is for wildcard matching. Matching the exact word, or the word followed by: ",.?:".
+• Lines starting with '#' are ignored.
+
+You can edit the active file by clicking [yellow]"Edit IWR"[-] in the Timing menu. The editor is simple: cursor, backspace, delete, enter; TAB to access buttons.`, globalPath)
+
 	textView := tview.NewTextView().
 		SetDynamicColors(true).
 		SetWordWrap(true).
@@ -1262,7 +1260,7 @@ Hit ESC to close this screen and begin your use of YAMA.
 	textView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
 	form := tview.NewForm().
-		AddButton("Close", func() {
+		AddButton("Close (ESC)", func() {
 			pages.RemovePage("iwrwelcome")
 			app.SetFocus(inputArea)
 		})
@@ -1272,10 +1270,10 @@ Hit ESC to close this screen and begin your use of YAMA.
 		AddItem(textView, 0, 1, false).
 		AddItem(form, 3, 1, true)
 
-	layout.SetBorder(true).SetTitle(" Welcome ")
+	layout.SetBorder(true).SetTitle(" IWR Initialization ")
 	layout.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	pages.AddPage("iwrwelcome", createModal(layout, 40, 16), true, true)
+	pages.AddPage("iwrwelcome", createModal(layout, 85, 26), true, true)
 	app.SetFocus(layout)
 }
 

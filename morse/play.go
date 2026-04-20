@@ -323,9 +323,56 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		return
 	}
 
-	baseProfile := GetTiming(false, config.User)
-	iwrProfile := GetTiming(true, config.User)
+	// ==========================================
+	// 🚦 PHASE 2: AUDIO PLAYBACK ROUTING 🚦
+	// ==========================================
+	// ... (WAV file generation block remains the same up here) ...
 
+	// Start the standard audio loop
+	for _, ctx := range playlist {
+
+		// 1. SLEEP LOCK: If paused, just hang out here.
+		for IsPaused && !IsStopping {
+			time.Sleep(100 * time.Millisecond)
+		}
+
+		// 2. STOP LOCK: If they hit stop (or closed the app), bail out immediately.
+		if IsStopping {
+			break
+		}
+
+		// 3. FRESH MATH: Unconditionally grab the exact timing right now.
+		// If they just woke up from a pause, this perfectly captures the new speed!
+		baseProfile := GetTiming(false, config.User)
+		iwrProfile := GetTiming(true, config.User)
+
+		var p TimingProfile
+		if ctx.IsIWR {
+			p = iwrProfile
+		} else {
+			p = baseProfile
+		}
+
+		// 4. PLAY THE WORD
+		buildWordBuffer(ctx, p)
+
+		wordSpaceSamples := int(p.WordSpace * float64(SampleRate))
+		QueuePCM(SilencePCM(wordSpaceSamples).Samples, " ", -1)
+
+		Flush()
+
+		if OnWordPlayed != nil {
+			isIWRMatch := iwrMan.Match(ctx.Word)
+			OnWordPlayed(ctx.Word, isIWRMatch)
+		}
+	}
+
+	IsPaused = false
+	if OnStatusUpdate != nil {
+		OnStatusUpdate("STOP")
+	}
+}
+/*
 	for _, ctx := range playlist {
 		if IsStopping {
 			break
@@ -370,3 +417,4 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		OnStatusUpdate("STOP")
 	}
 }
+	*/

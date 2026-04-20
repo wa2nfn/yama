@@ -4,4 +4,6 @@ hold
 .vscode
 *.txt
 *.wav
+*.html
+RELEASE/*
 
