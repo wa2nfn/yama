@@ -131,7 +131,7 @@ func main() {
 	if isFirstRun {
 		err := os.MkdirAll(filepath.Dir(targetPath), 0755)
 		if err == nil {
-			os.WriteFile(targetPath, []byte("# Add your PureCW IWR words here, one per line.\n"), 0644)
+			os.WriteFile(targetPath, []byte("# Add your IWR words here, one per line.\n"), 0644)
 		} else {
 			log.Printf("Failed to create IWR directory: %v", err)
 		}
@@ -374,7 +374,7 @@ func ensureTerminal() {
 	case "windows":
 		script := fmt.Sprintf(`
 			Add-Type -AssemblyName PresentationFramework
-			$res = [System.Windows.MessageBox]::Show("App requires a terminal. Restart in PowerShell (Yes), Command Prompt (No), or Exit (Cancel)?", "PureCW IWR", 'YesNoCancel', 'Question')
+			$res = [System.Windows.MessageBox]::Show("App requires a terminal. Restart in PowerShell (Yes), Command Prompt (No), or Exit (Cancel)?", "YAMA", 'YesNoCancel', 'Question')
 			if ($res -eq 'Yes') { Start-Process powershell.exe -ArgumentList "-NoExit -Command & '%s'" }
 			if ($res -eq 'No') { Start-Process cmd.exe -ArgumentList '/k "%s"' }
 		`, exe, exe)

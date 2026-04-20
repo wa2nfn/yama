@@ -138,42 +138,46 @@ func (m *IWRManager) LoadIWRFile() (bool, error) {
 	return isFirstRun, nil
 }
 
-/* WDL
-func (m *IWRManager) ResetSessionStats() {
-	NonIWRCount = 0
-	StartTime = time.Now()
-	TotalPaused = 0
-	for _, word := range m.WordMap {
-		word.StrokeCount = 0
-	}
-}
-*/
-
 func (m *IWRManager) Match(word string) bool {
-	// Everything is already clean and uppercase, so just check the map instantly!
-	_, exists := m.WordMap[word]
-	return exists
-}
-
-/* WDL
-// You can drop this helper function near your IWR loading logic
-func getIWRFilePath() string {
-	localPath := "yamaIWR.txt"
-
-	// 1. Check the local working directory first
-	if _, err := os.Stat(localPath); err == nil {
-		//log.Printf("Found local IWR file: %s", localPath)
-		return localPath
+	if !m.IWREnabled {
+		return false
 	}
 
-	// 2. Fallback to the AppData location if local doesn't exist
-	appDataDir, _ := os.UserConfigDir()
-	appDataPath := filepath.Join(appDataDir, "Yama", "yamaIWR.txt")
+	// Make sure we are always comparing uppercase
+	word = strings.ToUpper(word)
 
-	//log.Printf("Local file not found, defaulting to AppData: %s", appDataPath)
-	return appDataPath
+	// 1. Direct Exact Match 
+	// Matches normal words like "THE", prosigns like "<BT>", 
+	// or exact punctuation matches if explicitly in the file.
+	if m.WordMap[word] != nil {
+		return true
+	}
+
+	// 2. The Wildcard (*) Match
+	// If the word is at least 2 characters long, check its last character.
+	if len(word) > 1 {
+		lastChar := word[len(word)-1]
+		
+		// If it ends in any of our supported wildcard punctuation...
+		if lastChar == '.' || lastChar == ',' || lastChar == '?' || lastChar == ':' {
+			
+			baseWord := word[:len(word)-1]
+			wildcardWord := baseWord + "*"
+			
+			// Strategy A: Check if the key with the asterisk exists (e.g., "QSL*")
+			if m.WordMap[wildcardWord] != nil {
+				return true
+			}
+
+			// Strategy B: Check if the base word exists (e.g., "QSL") AND has MatchAny set to true
+			if entry, exists := m.WordMap[baseWord]; exists && entry.MatchAny {
+				return true
+			}
+		}
+	}
+
+	return false
 }
-*/
 
 func createDefaultIWRFile(filePath string) error {
 	// Ensure the directory actually exists before we try to write to it

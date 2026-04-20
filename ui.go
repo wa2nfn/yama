@@ -891,7 +891,7 @@ func showIWREditModal(parentContainer tview.Primitive) {
 	}
 
 	textArea := tview.NewTextArea()
-	textArea.SetText(string(content), true)
+	textArea.SetText(string(content), false)
 	textArea.SetBorder(true).SetTitle(fmt.Sprintf(" Editing: %s ", filePath))
 
 	// FIX 1: Set to Black so the border is clean and the cursor pops
