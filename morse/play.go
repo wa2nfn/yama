@@ -101,39 +101,6 @@ func buildWordBuffer(ctx PlayContext, p TimingProfile) {
 	}
 }
 
-/*
-func VerifyParisTiming(wpm int) {
-	// 1. Force a Standard Timing Profile
-	testConfig := config.UserSettings{
-		UseStandard:    true,
-		CharacterSpeed: wpm,
-		EffectiveSpeed: wpm,
-	}
-	p := GetTiming(false, testConfig)
-
-	// 2. Tally up the exact units for "P A R I S "
-	// P = 14 units, A = 8 units, R = 10 units, I = 6 units, S = 5 units
-	// (Values include the 3-unit char spaces between them)
-	totalUnits := 14 + 8 + 10 + 6 + 5
-
-	// 3. Add the 7-unit Word Space at the end
-	totalUnits += 7
-
-	// 4. Calculate total expected time
-	expectedDuration := p.DotDuration * float64(totalUnits)
-
-	// 5. Calculate expected WPM based on the 50-unit standard
-	calculatedWPM := (60.0 / expectedDuration)
-
-	log.Printf("=== CALIBRATION DIAGNOSTIC ===")
-	log.Printf("Target WPM: %d", wpm)
-	log.Printf("Dot Duration: %.4f sec", p.DotDuration)
-	log.Printf("PARIS Duration: %.4f sec (Should be exactly %.2f sec)", expectedDuration, 60.0/float64(wpm))
-	log.Printf("Actual Engine WPM: %.2f", calculatedWPM)
-	log.Printf("==============================")
-}
-*/
-
 func RunIWR(text string, iwrMan *IWRManager) {
 	//WDL VerifyParisTiming(config.User.CharacterSpeed)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -372,49 +339,4 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		OnStatusUpdate("STOP")
 	}
 }
-/*
-	for _, ctx := range playlist {
-		if IsStopping {
-			break
-		}
 
-		wasPaused := false
-		for IsPaused && !IsStopping {
-			wasPaused = true
-			time.Sleep(100 * time.Millisecond)
-		}
-
-		if IsStopping {
-			break
-		}
-
-		if wasPaused {
-			baseProfile = GetTiming(false, config.User)
-			iwrProfile = GetTiming(true, config.User)
-		}
-
-		var p TimingProfile
-		if ctx.IsIWR {
-			p = iwrProfile
-		} else {
-			p = baseProfile
-		}
-
-		buildWordBuffer(ctx, p)
-
-		wordSpaceSamples := int(p.WordSpace * float64(SampleRate))
-		QueuePCM(SilencePCM(wordSpaceSamples).Samples, " ", -1)
-
-		Flush()
-		if OnWordPlayed != nil {
-			isIWRMatch := iwrMan.Match(ctx.Word)
-			OnWordPlayed(ctx.Word, isIWRMatch)
-		}
-	}
-
-	IsPaused = false
-	if OnStatusUpdate != nil {
-		OnStatusUpdate("STOP")
-	}
-}
-	*/

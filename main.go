@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"time"
 	"yama/config"
@@ -15,7 +13,6 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"golang.org/x/term"
 )
 
 type AppState int
@@ -49,7 +46,6 @@ var (
 	statsIWRMap     = make(map[string]int)
 	isBlocked       bool
 	finalPlayTime   time.Duration
-	isFirstRun      = true
 
 	colorTagRegex = regexp.MustCompile(`\[.*?\]`)
 
@@ -57,57 +53,34 @@ var (
 	isProgrammaticUpdate bool
 )
 
-func ResolvePath(inputPath string) string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "."
-	}
-
-	upperPath := strings.ToUpper(inputPath)
-	if strings.HasPrefix(inputPath, "~") {
-		inputPath = homeDir + inputPath[1:]
-	} else if strings.HasPrefix(upperPath, "$HOME") {
-		inputPath = homeDir + inputPath[5:]
-	} else if strings.HasPrefix(upperPath, "%HOME%") {
-		inputPath = homeDir + inputPath[6:]
-	} else if strings.HasPrefix(upperPath, "%USERPROFILE%") {
-		inputPath = homeDir + inputPath[13:]
-	}
-
-	parsedPath := os.ExpandEnv(inputPath)
-	return filepath.Clean(parsedPath)
-}
-
-func checkIWRFiles() (targetPath string, isFirstRun bool) {
-	localPath := ResolvePath("./yamaIWR.txt")
+func checkIWRFiles() (targetPath string) {
+	localPath := morse.ResolvePath("./yamaIWR.txt")
 
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		configDir = "."
 	}
-	fallbackPath := ResolvePath(filepath.Join(configDir, "YAMA", "yamaIWR.txt"))
+	fallbackPath := morse.ResolvePath(filepath.Join(configDir, "YAMA", "yamaIWR.txt"))
 
 	if _, err := os.Stat(localPath); err == nil {
-		return localPath, false
+		return localPath
 	}
 
 	if _, err := os.Stat(fallbackPath); err == nil {
-		return fallbackPath, false
+		return fallbackPath
 	}
 
-	if createErr := createDefaultIWRFile(fallbackPath); createErr == nil {
-		return fallbackPath, true
+	if createErr := morse.CreateDefaultIWRFile(fallbackPath); createErr == nil {
+		return fallbackPath
 	}
 
-	return fallbackPath, true
+	return fallbackPath
 }
 
 func main() {
-	ensureTerminal()
-
 	config.LoadConfig()
 
-	logPath := ResolvePath("yama.log")
+	logPath := morse.ResolvePath("yama.log")
 	logFile, _ := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	log.SetOutput(logFile)
 
@@ -125,21 +98,12 @@ func main() {
 	}
 	morse.SetManager(iwrMan)
 
-	targetPath, firstRunCheck := checkIWRFiles()
-	isFirstRun = firstRunCheck
+	// 1. Ensure directory and files exist
+	checkIWRFiles()
 
-	if isFirstRun {
-		err := os.MkdirAll(filepath.Dir(targetPath), 0755)
-		if err == nil {
-			os.WriteFile(targetPath, []byte("# Add your IWR words here, one per line.\n"), 0644)
-		} else {
-			log.Printf("Failed to create IWR directory: %v", err)
-		}
-	} else {
-		_, err := iwrMan.LoadIWRFile()
-		if err != nil {
-			log.Printf("IWR Load Error: %v", err)
-		}
+	// 2. Load the IWR file directly (it is guaranteed to exist now)
+	if _, err := iwrMan.LoadIWRFile(); err != nil {
+		log.Printf("IWR Load Error: %v", err)
 	}
 
 	bgColor := tcell.GetColor(AppBackgroundColor)
@@ -161,7 +125,7 @@ func main() {
 	inputArea = tview.NewTextArea()
 	inputArea.SetBackgroundColor(bgColor)
 	inputArea.SetBorder(true).SetTitle(" [white]Text Input ")
-	inputArea.SetPlaceholder("Enter text, Ctrl-P to Play or Ctrl-H for Help, ESC closes screens without SAVE.")
+	inputArea.SetPlaceholder("Enter text, then Ctrl-P to Play or Ctrl-H (of F1) for Help; ESC closes screens.")
 
 	inputArea.SetChangedFunc(func() {
 		// If the engine typed this, ignore it so the menu doesn't reset!
@@ -221,6 +185,8 @@ func main() {
 		})
 	}
 
+	morse.OnFatalError = EmergencyQuit
+
 	pages = tview.NewPages()
 	tview.Styles.PrimitiveBackgroundColor = bgColor
 	refreshUI(StateIdle)
@@ -270,8 +236,11 @@ func main() {
 		}
 
 		switch event.Key() {
-		case tcell.KeyCtrlB:
-			showAbout()
+			case tcell.KeyCtrlB:
+			// Locked during Paused state (requires full stop)
+			if currentState != StatePlaying && currentState != StatePaused {
+				showAbout()
+			}
 			return nil
 		case tcell.KeyCtrlP, tcell.KeyCtrlR:
 			handlePlayPause(iwrMan)
@@ -282,10 +251,48 @@ func main() {
 				return nil
 			}
 			return event
-		case tcell.KeyCtrlF:
+		case tcell.KeyCtrlF, tcell.KeyF3:
 			if currentState != StatePlaying {
 				showFile()
 				clearStats()
+			}
+			return nil
+
+		case tcell.KeyCtrlH, tcell.KeyBackspace, tcell.KeyBackspace2:
+			if inputArea.GetText() != "" {
+			// 1. The Ghost Message on the Status Line
+				go func() {
+					// Capture what is currently on the status line (false keeps color tags intact)
+					previousText := statusLine.GetText(false)
+
+					// Safely flash the hint
+					app.QueueUpdateDraw(func() {
+						statusLine.SetText(" [yellow]Hint: Press Fn-F1 for Help[-] ")
+					})
+					
+					// Wait for 4 seconds
+					time.Sleep(4 * time.Second)
+					
+					// Safely restore whatever was there before!
+					app.QueueUpdateDraw(func() {
+						statusLine.SetText(previousText)
+					})
+				}()
+
+				// 2. STILL return the event so the backspace actually deletes the letter!
+				return event 
+			}
+
+			// If the box is empty, just show the help menu normally
+			if currentState != StatePlaying && currentState != StatePaused {
+				showHelp()
+			}
+			return nil
+			// The Smart Key (Handles physical backspace and Linux's fake Ctrl-H)
+		// The Bulletproof Fallback
+		case tcell.KeyF1:
+			if currentState != StatePlaying && currentState != StatePaused {
+				showHelp()
 			}
 			return nil
 		case tcell.KeyCtrlT:
@@ -302,12 +309,9 @@ func main() {
 			return nil
 		case tcell.KeyCtrlA:
 			// Unlocked during Paused state!
-			if currentState != StatePlaying {
+			//jjif currentState != StatePlaying {
 				showImpairments()
-			}
-			return nil
-		case tcell.KeyCtrlH:
-			showHelp()
+			//}
 			return nil
 		case tcell.KeyCtrlD:
 			if statsTotalWords > 0 && (currentState == StateIdle || currentState == StateStopped) {
@@ -341,16 +345,7 @@ func main() {
 	updateBlueLine()
 	app.SetRoot(pages, true)
 
-	if isFirstRun {
-		go func() {
-			time.Sleep(100 * time.Millisecond)
-			app.QueueUpdateDraw(func() {
-				showIWRWelcomeModal()
-			})
-		}()
-	} else {
-		app.SetFocus(inputArea)
-	}
+	app.SetFocus(inputArea)
 
 	if err := app.Run(); err != nil {
 		log.Printf("Fatal UI Error: %v", err)
@@ -362,35 +357,47 @@ func main() {
 	}
 }
 
-func ensureTerminal() {
-	if term.IsTerminal(int(os.Stdin.Fd())) {
-		return
+// EmergencyQuit cleanly tears down the tview TUI and forces an immediate process exit.
+// Use this for unrecoverable hardware deadlocks (e.g., Audio Watchdog).
+func EmergencyQuit(errorMessage string) {
+	// 1. Log it to yama.log so you have a record of the crash
+	log.Println("FATAL ERROR:", errorMessage)
+
+	// 2. Cleanup: If the log is still empty (e.g., the write failed or buffered), remove it
+	logPath := morse.ResolvePath("yama.log")
+	if info, err := os.Stat(logPath); err == nil && info.Size() == 0 {
+		os.Remove(logPath)
 	}
-	exe, err := os.Executable()
-	if err != nil {
+
+	if app != nil {
+		// 3. Suspend strips away the TUI and restores the normal terminal state instantly
+		app.Suspend(func() {
+			fmt.Printf("\n[YAMA WATCHDOG] FATAL ERROR: %s\n", errorMessage)
+			fmt.Println("The application had to be forcefully terminated to prevent a deadlock.")
+			os.Exit(1) // 4. The nuclear option.
+		})
+	} else {
+		// Fallback just in case the app crashes before the UI even finishes initializing
+		fmt.Printf("\n[YAMA WATCHDOG] FATAL ERROR: %s\n", errorMessage)
 		os.Exit(1)
 	}
-	switch runtime.GOOS {
-	case "windows":
-		script := fmt.Sprintf(`
-			Add-Type -AssemblyName PresentationFramework
-			$res = [System.Windows.MessageBox]::Show("App requires a terminal. Restart in PowerShell (Yes), Command Prompt (No), or Exit (Cancel)?", "YAMA", 'YesNoCancel', 'Question')
-			if ($res -eq 'Yes') { Start-Process powershell.exe -ArgumentList "-NoExit -Command & '%s'" }
-			if ($res -eq 'No') { Start-Process cmd.exe -ArgumentList '/k "%s"' }
-		`, exe, exe)
-		exec.Command("powershell", "-NoProfile", "-Command", script).Run()
-	case "darwin":
-		script := fmt.Sprintf(`tell application "Terminal" to do script "%s"`, exe)
-		exec.Command("osascript", "-e", script).Run()
-	case "linux":
-		fallthrough
-	default:
-		msg := "Please start this application manually from a terminal window."
-		if err := exec.Command("zenity", "--warning", "--text="+msg).Run(); err != nil {
-			exec.Command("kdialog", "--msgbox", msg).Run()
-		}
-	}
-	os.Exit(0)
 }
 
+// getModifierWarning checks if any active options will cause the audio
+// to differ from the visual text input, returning a UI warning tag.
+func getModifierWarning() string {
+	// If any of these are true, the text being played is modified or out of order
+	isModified := config.User.RandomWords ||
+		          config.User.RandomOrder ||
+		          config.User.UseSkip ||
+		          config.User.WordBuilder ||
+		          config.User.Playprosigns
 
+	if isModified {
+		// Using tview's color tags to make it pop in yellow on the blue line
+		return " [yellow][Input Modified][-]"
+	}
+
+	// If everything is strictly WYSIWYG, return an empty string
+	return ""
+} 

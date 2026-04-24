@@ -61,7 +61,7 @@ func RebuildMorseTable(useExtended bool, useSkip bool, skipList string) {
 
 	// === THE MASTER PROSIGN SWITCH ===
 	// Only load prosigns into the working table if the user enabled them!
-	if config.User.UseProsigns { // Adjust this to match your actual boolean variable
+	if config.User.Playprosigns { // Adjust this to match your actual boolean variable
 		for k, v := range baseProSignMap {
 			ProSignTable[k] = v
 		}

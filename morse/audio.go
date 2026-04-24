@@ -3,11 +3,11 @@ package morse
 import (
 	"encoding/binary"
 	"io"
-	"log"
 	"math"
 	"math/rand"
 	"sync"
 	"time"
+	"os"
 	"yama/config"
 
 	"github.com/ebitengine/oto/v3"
@@ -22,6 +22,8 @@ var (
 	SimTime              float64
 	activeCrashSamples   int     // Tracks remaining samples in a lightning crash
 	activeCrashIntensity float32 // Tracks the volume of the current crash
+	// Inside your morse package
+	OnFatalError func(errorMessage string)
 )
 
 const SampleRate = 44100
@@ -60,8 +62,6 @@ func (g *gaplessReader) Read(p []byte) (n int, err error) {
 
 	block := g.blocks[g.currentBlock]
 
-	// ---> (WE DELETED THE ONWORDCHANGE UI TRIGGER FROM HERE) <---
-
 	copied := copy(p, block.samples[g.offset:])
 	g.offset += copied
 
@@ -85,7 +85,8 @@ func Flush() {
 		totalSamples += len(queue[i].samples) / 2
 	}
 	expectedDuration := time.Duration(totalSamples) * time.Second / time.Duration(SampleRate)
-	timeout := time.Now().Add(expectedDuration + 3*time.Second)
+	//WDL 5 was 3
+	timeout := time.Now().Add(expectedDuration + 5*time.Second)
 
 	// 2. Wrap our queue in the new Gapless Streamer for perfect audio
 	reader := &gaplessReader{blocks: queue}
@@ -127,11 +128,13 @@ func Flush() {
 		}
 
 		if time.Now().After(timeout) {
-			log.Println("Watchdog: Audio hardware dead! Aborting...")
-			go func() { _ = p.Close() }()
-			IsStopping = true
-			AudioHardwareDead = true
-			break
+			// Call the function variable instead of the hardcoded main function
+			if OnFatalError != nil {
+				OnFatalError("Audio hardware dead! The OS audio bridge stopped responding.")
+			} else {
+				// Absolute fallback if the UI hasn't hooked up the callback yet
+				os.Exit(1)
+			}
 		}
 
 		// Since the OS handles the audio, we can relax the polling
@@ -174,20 +177,33 @@ func startAudioEngine() error {
 // ==========================================
 func TonePCM16Bit(freq float64, duration int, vol float64, targetSampleRate int) PCMData {
 	buf := make([]byte, duration*2) // 2 bytes per sample for 16-bit
-	ramp := int(math.Round(0.005 * float64(targetSampleRate)))
-	if ramp*2 > duration {
-		ramp = duration / 2
+
+	// 1. Calculate our ideal maximum 5ms ramp
+	maxRamp := int(math.Round(0.005 * float64(targetSampleRate)))
+
+	// 2. THE QRQ MAGIC: Dynamically scale the ramp so it never consumes
+	// more than 25% of the total element length, preserving a 50% flat-top.
+	ramp := maxRamp
+	if duration/4 < maxRamp {
+		ramp = duration / 4
 	}
+
 	for i := 0; i < duration; i++ {
 		angle := 2.0 * math.Pi * freq * float64(i) / float64(targetSampleRate)
-		amp := float32(vol)
+		amp := float64(vol) // Use float64 for smooth math
+
+		// 3. The Raised Cosine Envelope
 		if i < ramp {
-			amp *= float32(i) / float32(ramp)
+			// Attack Phase: 0.0 to 1.0
+			progress := float64(i) / float64(ramp)
+			amp *= (1.0 - math.Cos(progress*math.Pi)) / 2.0
 		} else if i > duration-ramp {
-			amp *= float32(duration-i) / float32(ramp)
+			// Release Phase: 1.0 to 0.0
+			progress := float64(duration-i) / float64(ramp)
+			amp *= (1.0 - math.Cos(progress*math.Pi)) / 2.0
 		}
 
-		s := float32(math.Sin(angle)) * amp
+		s := math.Sin(angle) * amp
 		v := int16(s * 32767) // Scale to 16-bit signed integer
 		binary.LittleEndian.PutUint16(buf[i*2:], uint16(v))
 	}
@@ -256,30 +272,40 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 	}
 
 	buf := make([]byte, duration*2)
-	ramp := int(math.Round(0.005 * float64(SampleRate)))
 
-	// KEY CLICKS (Bypass the smooth ramp)
+	// 1. Calculate ideal max ramp (5ms)
+	maxRamp := int(math.Round(0.005 * float64(SampleRate)))
+	ramp := maxRamp
+
+	// 2. THE QRQ MAGIC: Cap ramp at 25% of duration
+	if duration/4 < maxRamp {
+		ramp = duration / 4
+	}
+
+	// KEY CLICKS (Bypass the smooth ramp completely)
 	if config.User.NoiseKeyClick {
 		ramp = 0
 	}
 
-	if ramp*2 > duration {
-		ramp = duration / 2
-	}
-
 	for i := 0; i < duration; i++ {
 		angle := 2.0 * math.Pi * freq * float64(i) / float64(SampleRate)
-		amp := float32(vol)
 
+		// Use float64 for the smooth cosine math
+		amp := float64(vol)
+
+		// 3. The Raised Cosine Envelope
 		if ramp > 0 {
 			if i < ramp {
-				amp *= float32(i) / float32(ramp)
+				progress := float64(i) / float64(ramp)
+				amp *= (1.0 - math.Cos(progress*math.Pi)) / 2.0
 			} else if i > duration-ramp {
-				amp *= float32(duration-i) / float32(ramp)
+				progress := float64(duration-i) / float64(ramp)
+				amp *= (1.0 - math.Cos(progress*math.Pi)) / 2.0
 			}
 		}
 
-		s := float32(math.Sin(angle)) * amp
+		// Cast back to float32 so the rest of your noise logic works exactly as before
+		s := float32(math.Sin(angle)) * float32(amp)
 
 		// THE DIRTY RELAY: Key Click transient (3ms spark)
 		if config.User.NoiseKeyClick {

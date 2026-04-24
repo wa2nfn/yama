@@ -43,10 +43,10 @@ type UserSettings struct {
 	NoiseKeyClick        bool `json:"noise_key_click"`
 
 	// Output Options
-	UseWave 		bool `json:"UseWave"` // Note: Matches the exact capitalization from your JSON
+	UseWave bool `json:"UseWave"` // Note: Matches the exact capitalization from your JSON
 
 	// Character & Content Options
-	UseProsigns            bool   `json:"use_prosigns"`
+	Playprosigns            bool   `json:"play_prosigns"`
 	UseExtendedPunctuation bool   `json:"use_extended_punctuation"`
 	UseSkip                bool   `json:"use_skip"`
 	SkipList               string `json:"skip_list"`
@@ -65,15 +65,15 @@ type UserSettings struct {
 
 const (
 	MinEffSpeed  int = 5
-	MaxEffSpeed  int = 99
+	MaxEffSpeed  int = 149
 	MinCharSpeed int = 10
-	MaxCharSpeed int = 100
+	MaxCharSpeed int = 150
 	MinTone      int = 300
 	MaxTone      int = 1400
 	MinIWRTone   int = 300
 	MaxIWRTone   int = 1400
 	MinIWRSpeed  int = 11
-	MaxIWRSpeed  int = 110
+	MaxIWRSpeed  int = 151
 )
 
 // Helper to reliably get the full, OS-independent path to the JSON file
@@ -85,6 +85,7 @@ func getConfigPath() string {
 		log.Printf("Could not find OS config dir, falling back to local: %v", err)
 		configDir = "."
 	}
+
 	return filepath.Join(configDir, "YAMA", "yama_config.json")
 }
 
@@ -116,12 +117,11 @@ func LoadConfig() {
 	data, err := os.ReadFile(path)
 
 	if err != nil {
-		//log.Printf("No config found. Generating defaults at %s", path)
 
 		// 1. SET MANDATORY DEFAULTS SO THE ENGINE DOESN'T PANIC
 		User.CharacterSpeed = 20
 		User.EffectiveSpeed = 15
-		User.Tone = 600
+		User.Tone = 650
 
 		// Exactly ONE of these must be true!
 		User.UseFarnsworth = false
@@ -134,12 +134,12 @@ func LoadConfig() {
 		User.SkipList = ""
 		User.IWREnabled = true
 		User.IWRSpeed = 30
-		User.IWRTone = 600
+		User.IWRTone = 650
 		User.WordBuilder = false
 		User.RandomWords = false
 		User.RandomOrder = false
-		User.RepeatLimit  = 3
-		User.StartDelay  = 0
+		User.RepeatLimit = 3
+		User.StartDelay = 0
 
 		// 2. Save immediately. This creates the directory AND a valid JSON file.
 		SaveConfig()
@@ -147,7 +147,7 @@ func LoadConfig() {
 	}
 
 	if err := json.Unmarshal(data, &User); err != nil {
-		log.Printf("Error parsing config file: %v", err)
+		log.Printf("Error parsing config file: %v\nRemove the file and start YAMA again", err)
 	}
 
 	if User.IWRTone == 0 {
