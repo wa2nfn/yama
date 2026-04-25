@@ -316,7 +316,7 @@ Spacebar      | Hide/Unhide| Toggle text visibility during audio playback.
 [white]YAMA naturally supports standard letters [yellow]A-Z[-] and numbers [yellow]0-9[-].
 
 [white]Basic punctuation: [yellow]. , ? /[-]
-[white]Extended punctuation (Enable in Options): [yellow]: ; " @ '[-]
+[white]Extended punctuation (Enable in Options): [yellow]: ; " @ ' ( ) $ ! \ [-]
 
 [green::b]ProSigns & Equivalents[::-]
 [white]Supported ProSigns:[yellow] <AR> <AS> <BT> <KA> <SK> <VA> <VE> <SN> <BK> <HH> <DU> <SOS> <CH>[-].

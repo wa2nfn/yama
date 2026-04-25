@@ -7,7 +7,7 @@ import (
 )
 
 // MorseRegex now only permits A-Z, 0-9, and supported punctuation.
-var MorseRegex = regexp.MustCompile(`[^A-Z0-9\.\,\?\/\:\;\=\+\-\"\@\<\>\s]`)
+var MorseRegex = regexp.MustCompile(`[^A-Z0-9\.\,\?\/\:\;\=\+\-\"\@\<\>\s\!\$\(\)\']`)
 
 // MorseTable is the dynamic "Source of Truth"
 var MorseTable = make(map[rune]string)
@@ -41,7 +41,15 @@ var basicMap = map[rune]string{
 }
 
 var extendedPunctuationMap = map[rune]string{
-	':': "---...", ';': "-.-.-.", '"': ".-..-.", '@': ".--.-.", '\'': ".----.",
+	':':  "---...",
+	';':  "-.-.-.",
+	'"':  ".-..-.",
+	'@':  ".--.-.",
+	'\'': ".----.",
+	'!':  "..--.",
+	'$':  "...-..-",
+	'(':  "-.--.",
+	')':  "-.--.-",
 }
 
 func RebuildMorseTable(useExtended bool, useSkip bool, skipList string) {
