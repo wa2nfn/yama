@@ -308,10 +308,7 @@ func main() {
 			}
 			return nil
 		case tcell.KeyCtrlA:
-			// Unlocked during Paused state!
-			//jjif currentState != StatePlaying {
-				showImpairments()
-			//}
+			showImpairments()
 			return nil
 		case tcell.KeyCtrlD:
 			if statsTotalWords > 0 && (currentState == StateIdle || currentState == StateStopped) {
@@ -401,3 +398,23 @@ func getModifierWarning() string {
 	// If everything is strictly WYSIWYG, return an empty string
 	return ""
 } 
+
+// lockPlayTime safely finalizes the session time and adds it to the user's lifetime total.
+func lockPlayTime() {
+	// Only calculate if we haven't already, and ensure the engine actually started
+	if finalPlayTime == 0 && !morse.StartTime.IsZero() {
+		totalElapsed := time.Since(morse.StartTime)
+		currentTotalPaused := morse.TotalPaused
+
+		// If they hit stop WHILE paused, we need to account for that active pause time!
+		if currentState == StatePaused {
+			currentTotalPaused += time.Since(morse.PauseStart)
+		}
+
+		finalPlayTime = totalElapsed - currentTotalPaused
+
+		// Gamification: Add to lifetime and save instantly!
+		config.User.LifetimePlaySeconds += int(finalPlayTime.Seconds())
+		config.SaveConfig()
+	}
+}

@@ -75,6 +75,9 @@ func runEngine(parsedText string, iwrMan *morse.IWRManager) {
 	app.QueueUpdateDraw(func() {
 		isBlocked = false
 		if !morse.IsStopping {
+			// THE FILE FINISHED NATURALLY: Lock the time before going Idle!
+			lockPlayTime() 
+			
 			currentState = StateIdle
 			fullTextToPlay = ""
 			refreshUI(StateIdle)
@@ -89,9 +92,8 @@ func stopAudio() {
 	morse.IsStopping = true
 	morse.IsPaused = false
 
-	if finalPlayTime == 0 {
-		finalPlayTime = time.Since(morse.StartTime) - morse.TotalPaused
-	}
+	// THE USER HIT STOP: Lock the time immediately!
+	lockPlayTime()
 
 	isBlocked = false
 	updateVisibility()
@@ -106,6 +108,78 @@ func stopAudio() {
 	}
 
 	refreshUI(StateStopped)
+}
+
+func showStats() {
+	statsIWRList = make([]string, 0, len(statsIWRMap))
+	for k := range statsIWRMap {
+		statsIWRList = append(statsIWRList, k)
+	}
+	sort.Strings(statsIWRList)
+
+	// Since we now strictly use lockPlayTime(), finalPlayTime is guaranteed 
+	// to be accurate here if the engine was stopped or finished.
+	var activePlayTime time.Duration
+	if finalPlayTime > 0 {
+		activePlayTime = finalPlayTime
+	} else {
+		// Fallback just in case they open stats while actively playing
+		totalElapsed := time.Since(morse.StartTime)
+		currentTotalPaused := morse.TotalPaused
+		if currentState == StatePaused {
+			currentTotalPaused += time.Since(morse.PauseStart)
+		}
+		activePlayTime = totalElapsed - currentTotalPaused
+	}
+
+	// Format Current Session Time
+	totalSecs := int(activePlayTime.Seconds())
+	m := totalSecs / 60
+	s := totalSecs % 60
+	timeStr := fmt.Sprintf("%dm %ds", m, s)
+
+	// Format Lifetime Time
+	lifeTotal := config.User.LifetimePlaySeconds
+	lifeH := lifeTotal / 3600
+	lifeM := (lifeTotal % 3600) / 60
+	lifeS := lifeTotal % 60
+	
+	var lifeStr string
+	if lifeH > 0 {
+		lifeStr = fmt.Sprintf("%dh %dm %ds", lifeH, lifeM, lifeS)
+	} else {
+		lifeStr = fmt.Sprintf("%dm %ds", lifeM, lifeS)
+	}
+
+	var sb strings.Builder
+	
+	// Print the shiny new Lifetime stat at the very top!
+	sb.WriteString(fmt.Sprintf("[yellow::b]Lifetime Practice Time: %s[::-]\n", lifeStr))
+	sb.WriteString(strings.Repeat("-", 32) + "\n\n")
+	
+	sb.WriteString("[white::b]Current Session[::-]\n")
+	sb.WriteString(fmt.Sprintf("Total Words Played: %d\n", statsTotalWords))
+	sb.WriteString(fmt.Sprintf("Total IWR Matches: %d\n", statsIWRWords))
+	sb.WriteString(fmt.Sprintf("Active Play Time: %s\n\n", timeStr))
+
+	sb.WriteString("[#00BFFF::b]IWR WORD    COUNT[::-]\n")
+	sb.WriteString(strings.Repeat("-", 20) + "\n")
+
+	for _, w := range statsIWRList {
+		sb.WriteString(fmt.Sprintf("%-11s %d\n", w, statsIWRMap[w]))
+	}
+
+	tv := tview.NewTextView().
+		SetDynamicColors(true).
+		SetScrollable(true).
+		SetText(sb.String())
+
+	tv.SetBackgroundColor(tcell.GetColor(AppBackgroundColor)).
+		SetBorder(true).
+		SetTitle(" Data Stats ")
+
+	pages.AddPage("stats", createModal(tv, 38, 22), true, true)
+	app.SetFocus(tv)
 }
 
 func updateVisibility() {
@@ -222,56 +296,6 @@ func showErrorModal(errors []string, onDismiss func()) {
 	modal.SetBackgroundColor(tcell.ColorDarkRed)
 	pages.AddPage("errorModal", modal, true, true)
 	app.SetFocus(modal)
-}
-
-func showStats() {
-	statsIWRList = make([]string, 0, len(statsIWRMap))
-	for k := range statsIWRMap {
-		statsIWRList = append(statsIWRList, k)
-	}
-	sort.Strings(statsIWRList)
-
-	var activePlayTime time.Duration
-	if finalPlayTime > 0 {
-		activePlayTime = finalPlayTime
-	} else {
-		totalElapsed := time.Since(morse.StartTime)
-		currentTotalPaused := morse.TotalPaused
-		if currentState == StatePaused {
-			currentTotalPaused += time.Since(morse.PauseStart)
-		}
-		activePlayTime = totalElapsed - currentTotalPaused
-	}
-
-	totalSecs := int(activePlayTime.Seconds())
-	m := totalSecs / 60
-	s := totalSecs % 60
-
-	timeStr := fmt.Sprintf("%dm %ds", m, s)
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Total Words Played: %d\n", statsTotalWords))
-	sb.WriteString(fmt.Sprintf("Total IWR Matches: %d\n", statsIWRWords))
-	sb.WriteString(fmt.Sprintf("Active Play Time: %s\n\n", timeStr))
-
-	sb.WriteString("[::b]IWR WORD    COUNT[::-]\n")
-	sb.WriteString(strings.Repeat("-", 20) + "\n")
-
-	for _, w := range statsIWRList {
-		sb.WriteString(fmt.Sprintf("%-11s %d\n", w, statsIWRMap[w]))
-	}
-
-	tv := tview.NewTextView().
-		SetDynamicColors(true).
-		SetScrollable(true).
-		SetText(sb.String())
-
-	tv.SetBackgroundColor(tcell.GetColor(AppBackgroundColor)).
-		SetBorder(true).
-		SetTitle(" Data Stats ")
-
-	pages.AddPage("stats", createModal(tv, 30, 20), true, true)
-	app.SetFocus(tv)
 }
 
 func showHelp() {
@@ -650,17 +674,16 @@ func showFile() {
 					return
 				}
 
-				txt := string(data)
-				txt = strings.ReplaceAll(txt, "\r", "")
-				txt = strings.ReplaceAll(txt, "\n", " ")
-				txt = strings.ToUpper(txt)
+				// --- REFACTORED PIPELINE ---
+				txt := parser.NormalizeText(string(data))
 
 				if config.User.UseSkip {
 					parser.SetSkipList(config.User.SkipList, morse.ProSignTable)
 					txt = parser.ApplySkip(txt)
 				}
 
-				actualText := parser.CleanText(txt, morse.MorseTable)
+				actualText := parser.FilterValidMorse(txt, morse.MorseTable)
+				// ---------------------------
 
 				app.QueueUpdateDraw(func() {
 					inputArea.SetChangedFunc(nil)
@@ -1174,20 +1197,26 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 	isBlocked = false
 	clearStats()
 
+	// --- REFACTORED PIPELINE (Order Fixed!) ---
 	rawInput := inputArea.GetText()
+	rawInput = colorTagRegex.ReplaceAllString(rawInput, "")
 
+	// 1. Normalize FIRST (Fixes casing for typed text like "can't" -> "CAN'T")
+	fullTextToPlay = parser.NormalizeText(rawInput)
+
+	// 2. Apply Skip (Contraction expansion now perfectly matches the uppercase text)
 	if config.User.UseSkip {
 		parser.SetSkipList(config.User.SkipList, morse.ProSignTable)
-		rawInput = parser.ApplySkip(rawInput)
+		fullTextToPlay = parser.ApplySkip(fullTextToPlay)
 	}
-
-	fullTextToPlay = colorTagRegex.ReplaceAllString(rawInput, "")
 
 	actualText = ""
 	inputArea.SetText("", false)
 
-	parsedText := parser.CleanText(fullTextToPlay, morse.MorseTable)
+	// 3. Final Gatekeeper & Spacing
+	parsedText := parser.FilterValidMorse(fullTextToPlay, morse.MorseTable)
 	parsedText = parser.CompressSpace(parsedText)
+	// ------------------------------------------
 
 	// --- SMART DEFAULTS ---
 	if config.User.StartMsg && strings.TrimSpace(config.User.StartMsgText) == "" {
@@ -1201,7 +1230,8 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 	var finalBuilder strings.Builder
 
 	if config.User.StartMsg && config.User.StartMsgText != "" {
-		cleanStart := strings.TrimSpace(parser.CleanText(config.User.StartMsgText, morse.MorseTable))
+		normStart := parser.NormalizeText(config.User.StartMsgText)
+		cleanStart := strings.TrimSpace(parser.FilterValidMorse(normStart, morse.MorseTable))
 		if cleanStart != "" && !strings.HasPrefix(parsedText, cleanStart) {
 			finalBuilder.WriteString(cleanStart)
 			finalBuilder.WriteString(" ")
@@ -1211,7 +1241,8 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 	finalBuilder.WriteString(parsedText)
 
 	if config.User.EndMsg && config.User.EndMsgText != "" {
-		cleanEnd := strings.TrimSpace(parser.CleanText(config.User.EndMsgText, morse.MorseTable))
+		normEnd := parser.NormalizeText(config.User.EndMsgText)
+		cleanEnd := strings.TrimSpace(parser.FilterValidMorse(normEnd, morse.MorseTable))
 		if cleanEnd != "" && !strings.HasSuffix(parsedText, cleanEnd) {
 			finalBuilder.WriteString(" ")
 			finalBuilder.WriteString(cleanEnd)
@@ -1394,14 +1425,16 @@ func showImpairments() {
 func showWaveModal(targetDir string) {
 	rawText := inputArea.GetText()
 
-	rawText = strings.ToUpper(rawText)
+	// --- REFACTORED PIPELINE ---
+	rawText = parser.NormalizeText(rawText)
 
 	if config.User.UseSkip {
 		parser.SetSkipList(config.User.SkipList, morse.ProSignTable)
 		rawText = parser.ApplySkip(rawText)
 	}
 
-	rawText = parser.CleanText(rawText, morse.MorseTable)
+	rawText = parser.FilterValidMorse(rawText, morse.MorseTable)
+	// ---------------------------
 
 	words := strings.Fields(rawText)
 	wordCount := len(words)
@@ -1433,7 +1466,6 @@ func showWaveModal(targetDir string) {
 	prefixInput := tview.NewInputField().SetLabel("File Prefix:").SetText(filePrefix).SetFieldWidth(40)
 	prefixInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 
-	// --- THIS IS THE NEW FIELD THAT WAS MISSING! ---
 	minsInput := tview.NewInputField().
 		SetLabel("Minutes/File:").
 		SetText("10").

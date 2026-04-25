@@ -106,6 +106,7 @@ func (m *IWRManager) LoadIWRFile() (bool, error) {
 			if len(word) > maxIwrLen {
 				continue
 			}
+			word = strings.ToUpper(word)
 
 			// 1. Isolate the wildcard
 			matchAny := strings.HasSuffix(word, "*")
@@ -139,13 +140,14 @@ func (m *IWRManager) LoadIWRFile() (bool, error) {
 	return isFirstRun, nil
 }
 
+// runtime must be efficient
 func (m *IWRManager) Match(word string) bool {
 	if !m.IWREnabled {
 		return false
 	}
 
 	// Make sure we are always comparing uppercase
-	word = strings.ToUpper(word)
+	// WDL word = strings.ToUpper(word)
 
 	// 1. Direct Exact Match
 	// Matches normal words like "THE", prosigns like "<BT>",

@@ -1,33 +1,55 @@
 package parser
 
 import (
-	"regexp"
 	"strings"
 	"yama/config"
 )
 
-// Compile once at the package level
-var re = regexp.MustCompile(`\s+`)
+// textNormalizer handles all typography and whitespace replacements in a single optimized pass.
+// Declared globally so it only compiles once.
+var textNormalizer = strings.NewReplacer(
+	"“", "\"", "”", "\"", "‘", "'", "’", "'",
+	"—", "-", "–", "-", "…", "...",
+	"\t", " ", "\r", "", "\n", " ",
+)
 
-// NormalizeLine provides consistent cleaning for headers and state titles.
-// It uses the standard logic but ensures a clean, single-line uppercase output.
-func NormalizeLine(input string) string {
-	text := strings.TrimSpace(input)
-	return re.ReplaceAllString(text, " ")
+// NormalizeText prepares raw data (fixes typography, spacing, and casing).
+func NormalizeText(input string) string {
+	return strings.ToUpper(textNormalizer.Replace(input))
 }
 
-// CompressSpace is the entry point for the IWR engine.
-// It runs the full pipeline based on the User Config.
+// FilterValidMorse scrubs any character that doesn't exist in the active table.
+func FilterValidMorse(input string, activeTable map[rune]string) string {
+	if activeTable == nil {
+		return input
+	}
+
+	var clean strings.Builder
+	clean.Grow(len(input)) // Memory optimization
+
+	for _, r := range input {
+		// Always protect spaces AND our ProSign brackets!
+		if r == ' ' || r == '<' || r == '>' {
+			clean.WriteRune(r)
+			continue
+		}
+
+		// Look up the rune directly in the active table
+		if _, exists := activeTable[r]; exists {
+			clean.WriteRune(r)
+		}
+	}
+
+	return clean.String()
+}
+
+// CompressSpace is the final polish for the engine.
+// It removes trailing/leading/double spaces, and applies the user's RepeatLimit.
 func CompressSpace(text string) string {
-	// 1. Protect Prosigns then Clean "Garbage"
-	// Note: CleanText should handle the UpperCase conversion and Prosign preservation.
-	//text = CleanText(text,activeTable)
+	// strings.Fields splits by any whitespace, strings.Join stitches with single spaces.
+	text = strings.Join(strings.Fields(text), " ")
 
-	// 2. Mandatory Compressions
-	text = NormalizeLine(text)
-	text = CompressSpaces(text)
-
-	// 3. User-defined Repeat Limit (Audible text only)
+	// User-defined Repeat Limit (Audible text only)
 	if config.User.RepeatLimit > 0 {
 		text = RepeatLimit(text, config.User.RepeatLimit)
 	}
@@ -70,45 +92,4 @@ func RepeatLimit(src string, maxLimit int) string {
 	}
 	flush()
 	return string(out)
-}
-
-// CompressSpaces ensures no trailing/leading or double spaces remain.
-func CompressSpaces(src string) string {
-	return strings.Join(strings.Fields(src), " ")
-}
-
-// CleanText handles typography normalization, regex garbage collection, casing, and table safety.
-// It now safely accepts your master map[rune]string dictionary.
-func CleanText(input string, activeTable map[rune]string) string {
-	// 1. Neutralize "smart" typography and line breaks FIRST
-	replacer := strings.NewReplacer(
-		"“", "\"", "”", "\"", "‘", "'", "’", "'",
-		"—", "-", "–", "-", "…", "...",
-		"\t", " ", "\r", "", "\n", " ",
-	)
-	input = replacer.Replace(input)
-
-	input = strings.ToUpper(input)
-
-	if activeTable == nil {
-		return input
-	}
-
-	var clean strings.Builder
-	clean.Grow(len(input)) // Memory optimization
-
-	for _, r := range input {
-		// Always protect spaces AND our ProSign brackets!
-		if r == ' ' || r == '<' || r == '>' {
-			clean.WriteRune(r)
-			continue
-		}
-
-		// Look up the rune directly! If it's valid Morse (like '?'), it stays!
-		if _, exists := activeTable[r]; exists {
-			clean.WriteRune(r)
-		}
-	}
-
-	return clean.String()
 }

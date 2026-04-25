@@ -19,6 +19,7 @@ var Contractions = map[string]string{
 
 // UserSettings holds all user-adjustable features for the YAMA morse code generator.
 type UserSettings struct {
+	LifetimePlaySeconds int `json:"Lifetime_play_seconds"`
 	// Timing Modes
 	UseStandard   bool `json:"use_standard"`
 	UseFarnsworth bool `json:"use_farnsworth"`
