@@ -76,8 +76,8 @@ func runEngine(parsedText string, iwrMan *morse.IWRManager) {
 		isBlocked = false
 		if !morse.IsStopping {
 			// THE FILE FINISHED NATURALLY: Lock the time before going Idle!
-			lockPlayTime() 
-			
+			lockPlayTime()
+
 			currentState = StateIdle
 			fullTextToPlay = ""
 			refreshUI(StateIdle)
@@ -117,7 +117,7 @@ func showStats() {
 	}
 	sort.Strings(statsIWRList)
 
-	// Since we now strictly use lockPlayTime(), finalPlayTime is guaranteed 
+	// Since we now strictly use lockPlayTime(), finalPlayTime is guaranteed
 	// to be accurate here if the engine was stopped or finished.
 	var activePlayTime time.Duration
 	if finalPlayTime > 0 {
@@ -143,7 +143,7 @@ func showStats() {
 	lifeH := lifeTotal / 3600
 	lifeM := (lifeTotal % 3600) / 60
 	lifeS := lifeTotal % 60
-	
+
 	var lifeStr string
 	if lifeH > 0 {
 		lifeStr = fmt.Sprintf("%dh %dm %ds", lifeH, lifeM, lifeS)
@@ -152,11 +152,11 @@ func showStats() {
 	}
 
 	var sb strings.Builder
-	
+
 	// Print the shiny new Lifetime stat at the very top!
 	sb.WriteString(fmt.Sprintf("[yellow::b]Lifetime Practice Time: %s[::-]\n", lifeStr))
 	sb.WriteString(strings.Repeat("-", 32) + "\n\n")
-	
+
 	sb.WriteString("[white::b]Current Session[::-]\n")
 	sb.WriteString(fmt.Sprintf("Total Words Played: %d\n", statsTotalWords))
 	sb.WriteString(fmt.Sprintf("Total IWR Matches: %d\n", statsIWRWords))
@@ -211,7 +211,7 @@ func updateBlueLine() {
 		}
 		info = fmt.Sprintf(" [black]Mode: %s | Character Speed: %d wpm | Effective Speed: %d wpm | IWR: %s (%d wpm) ", mode, config.User.CharacterSpeed, config.User.EffectiveSpeed, iwrStatus, config.User.IWRSpeed)
 	}
-	
+
 	// Stick the debug numbers right at the front
 	blueLine.SetText(info + getModifierWarning())
 }
@@ -234,7 +234,7 @@ func refreshUI(state AppState) {
 			statusLine.SetText(" [#00FF00]" + status)
 		}
 
-		menu = "[#00FF00]F[white]ile  [#00FF00]P[white]lay  [#00FF00]T[white]iming  [#00FF00]A[white]udio  [#00FF00]O[white]ption  [#00FF00]H[white]elp  [#00FF00]Q[white]uit a[#00FF00]B[white]out"
+		menu = "[#00FF00]F[white]ile  [#00FF00]P[white]lay  [#00FF00]T[white]iming  [#00FF00]A[white]udio  [#00FF00]O[white]ption  [#00FF00]F1[white]-help  a[#00FF00]B[white]out  [#00FF00]Q[white]uit "
 
 		if hasText {
 			menu = strings.Replace(menu, "[#00FF00]P[white]lay", "[#00FF00]P[white]lay  [#00FF00]W[white]ave  [#00FF00]E[white]rase", 1)
@@ -249,7 +249,7 @@ func refreshUI(state AppState) {
 		menu = "[#00FF00]P[white]ause  [#00FF00]S[white]top [#00FF00]A[white]udio"
 	case StatePaused:
 		statusLine.SetText(" [#00FF00]Paused")
-		menu = "[#00FF00]R[white]esume  [#00FF00]S[white]top  [#00FF00]T[white]iming  [#00FF00]A[white]udio"
+		menu = "[#00FF00]R[white]esume  [#00FF00]S[white]top  [#00FF00]T[white]iming  [#00FF00]A[white]udio  [#00FF00]Q[white]uit "
 	}
 	header.SetText("[#00FF00::b] YAMA - Yet Another Morse App [white::-]\n" + menu)
 }
@@ -304,7 +304,9 @@ func showHelp() {
 
 Whether you are looking for routine practice, some head copy, or want to test your copying limits against a simulated ionospheric storm, YAMA is built to help you.
 
-[red]A note about access to Help. Using the function key F1 works for Windows or Linux; Ctrl-H will work if you have not typed text in the Text Input screen, if you have the OS interprets it as a Backspace (legacy Linux issue), the status line will give you a hint.[-]
+YAMA has some standard, input processing for example: discarding non-morseable characters, space compression, input case agnostic, as well as some non-traditional ones: ProSign support, selected character filtering, expansion of contractions, and dynamic wave shaping for QRQ. Changes to speed/tone and audio impairments can be made during play.
+
+YAMA uses a Terminal User Interface (TUI), navigation and selection will be by key combinations, mostly the Control Key and one letter, a few Function keys are supporrted as alternatives. Help is an exception which uses the standard F1 key.
 
 [green::b]Getting Started: Entering Text[::-]
 [white]Before YAMA can play anything, it needs some text! You have two easy ways to do this:
@@ -316,22 +318,26 @@ Whether you are looking for routine practice, some head copy, or want to test yo
 
 The method to enter or change an option on the Ctrl-O or Ctrl-T screen will depend on the type of option it is. First navigate to the option of interest using the TAB or BACKTAB, then if the option is a single-charater field like Use ... or Random Order simply hit Enter or space to toggle the option (then TAB forward); if the option shows a single digit or the name of a timing mode (i.e. Farnsworth) the choices are provided by a drop down, use the cursor and hit Enter; multi digit options like tones or speeds, use Backspace, type new value and hit Enter or TAB; input text boxes, use Backspace, enter a value and hit Enter or TAB. 
 
-If you ever get stuck in a menu, just press [yellow]ESC[-] to safely close it without saving. [red](Note: insertion or removal of headphones can trigger a Windows hang of the Yama app requiring a restart.)[::-]
+If you ever get stuck in a menu, just press [yellow]ESC[-] to safely close it without saving.
+
+[red](Note: insertion or removal of headphones can trigger a Windows hang of the Yama app requiring a restart.)[-]
+
+A few keys offerr alternatives.
 
 [white]Key           | Menu Name  | Purpose[-]
 --------------|------------|--------------------------------------------------------
-Ctrl-F, Fn f3 | File       | Open a .txt file for playback
+Ctrl-F, F3    | File       | Open a .txt file for playback
 Ctrl-P        | Play/Pause | Start or pause the current loaded input text
 Ctrl-S        | Stop       | Halt playback immediately (cannot be resumed)
 Ctrl-W        | Wave       | Export current text to .wav file(s)
-Ctrl-E        | Erase      | Clear the current text input aka screen clear
+Ctrl-E,Ctrl-L | Erase      | Clear the current text input aka screen clear
 Ctrl-T        | Timing     | Speed, Tone, and IWR settings
 Ctrl-O        | Options    | Parser, messaging, and text processing options
 Ctrl-A        | Audio      | Audio impacting impairements (QRN, QSB, Drift, etc.)
 Ctrl-D        | Data-Stats | View statistics and IWR counts. Use when play stops,
                            | any new input clears the old data.
 CtrlB         | aBout      | App info and License
-Ctrl-H, Fn f1 | Help       | This screen text.
+F1            | Help       | This screen text.
 Ctrl-Q        | Quit       | Exit YAMA. 
 ESC           | Close      | Cancel/Close menus without saving
 Spacebar      | Hide/Unhide| Toggle text visibility during audio playback.
@@ -353,6 +359,7 @@ If "Play ProSigns" is disabled in Options ([yellow]Ctrl-O[-]), bracketed ProSign
 Play ProSigns         | Toggles support for bracketed ProSigns (e.g., <AR>).
                       | Does NOT affect [yellow]-+=[-]. (Note: <BK> is sounded as  "B K").
 Extended Punctuation  | Toggles support for extended punctuation marks.
+European Characters   | Toggles support for European Morse characters (Ä, Ö, Ü, etc.).
 Use Skip              | Enables the Skip List filtering during playback.
 Skip List             | Define specific characters or ProSigns to silently ignore.
                       | Entered without any separators. e.g. XY7<BT>=
@@ -416,25 +423,6 @@ WA2NFN
 	tv.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
 	// 1. BUILD THE FORM FIRST
-	/*
-		form := tview.NewForm().
-			AddButton("Export to yama_help.txt", func() {
-				cleanText := colorTagRegex.ReplaceAllString(helpText, "")
-
-				// APPLY RESOLVER
-				exportPath := morse.ResolvePath("yama_help.txt")
-
-				err := os.WriteFile(exportPath, []byte(cleanText), 0644)
-				if err == nil {
-					statusLine.SetText(" [#00FF00]Help manual exported to " + exportPath + "![-]")
-				} else {
-					statusLine.SetText(" [red]Failed to export help file.[-]")
-				}
-				pages.RemovePage("help")
-				app.SetFocus(inputArea)
-			}).
-
-	*/
 	form := tview.NewForm().
 		AddButton("Save to yama_help.html", func() {
 
@@ -718,6 +706,96 @@ func showFile() {
 	app.SetFocus(list)
 }
 
+// Notice we now pass a string pointer (*activeEuroSkip) instead of the input field
+func showEuropeanCharSelector(parentContainer tview.Primitive, activeEuroSkip *string, parentSaveFunc func()) {
+	form := tview.NewForm()
+	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	form.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+
+	form.SetItemPadding(0)
+	type ExtChar struct {
+		Rune rune
+		Name string
+	}
+
+	// 14 items total. The vertical layout handles this beautifully.
+	extChars := []ExtChar{
+		{'Ä', "Ä (Euro: A-umlaut)"},
+		{'Ö', "Ö (Euro: O-umlaut)"},
+		{'Ü', "Ü (Euro: U-umlaut)"},
+		{'É', "É (Euro: E-acute)"},
+		{'Á', "Á (Euro: A-acute)"},
+		{'Å', "Å (Euro: A-ring)"},
+		{'Ç', "Ç (Euro: C-cedilla)"},
+		{'Ñ', "Ñ (Euro: N-tilde)"},
+		{'À', "À (Euro: A-grave)"}, // <-- NEW
+		{'È', "È (Euro: E-grave)"}, // <-- NEW
+		{'Ĉ', "Ĉ (Esp: C-circumflex)"},
+		{'Ĝ', "Ĝ (Esp: G-circumflex)"},
+		{'Ĥ', "Ĥ (Esp: H-circumflex)"},
+		{'Ĵ', "Ĵ (Esp: J-circumflex)"},
+		{'Ŝ', "Ŝ (Esp: S-circumflex)"},
+		{'Ŭ', "Ŭ (Esp: U-breve)"},
+	}
+
+	var checkboxes []*tview.Checkbox
+
+	for _, ec := range extChars {
+		cb := tview.NewCheckbox().SetLabel(ec.Name)
+		checkboxes = append(checkboxes, cb)
+		form.AddFormItem(cb)
+	}
+
+	resetState := func() {
+		for i, ec := range extChars {
+			isChecked := strings.ContainsRune(*activeEuroSkip, ec.Rune)
+			checkboxes[i].SetChecked(isChecked)
+		}
+	}
+
+	resetState()
+
+	onSave := func() {
+		var newList string
+		for i, cb := range checkboxes {
+			if cb.IsChecked() {
+				newList += string(extChars[i].Rune)
+			}
+		}
+
+		*activeEuroSkip = newList
+
+		pages.RemovePage("extCharSelector")
+		parentSaveFunc()
+	}
+
+	form.AddButton("Save", onSave)
+	form.AddButton("Reset", resetState)
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("extCharSelector")
+		app.SetFocus(parentContainer)
+	})
+
+	applyFocusStyles(form)
+	form.SetBorder(false)
+
+	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
+	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	footerView.SetText("\n[yellow]ESC to Cancel[-]\n")
+
+	container := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(form, 0, 1, true).
+		AddItem(footerView, 2, 1, false)
+
+	// Updated Title
+	container.SetBorder(true).SetTitle(" European & Esperanto Skips ")
+	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+
+	// Height increased to 24 to comfortably fit all 14 checkboxes + buttons
+	pages.AddPage("extCharSelector", createModal(container, 45, 24), true, true)
+	app.SetFocus(container)
+}
+
 func showOptions() {
 	form := tview.NewForm()
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
@@ -726,6 +804,7 @@ func showOptions() {
 
 	useProsignsCb := tview.NewCheckbox().SetLabel("Play ProSigns")
 	extendedPuncCb := tview.NewCheckbox().SetLabel("Extended Punctuation")
+	europeanCharsCb := tview.NewCheckbox().SetLabel("European & Esparanto Characters") // New Checkbox
 	useSkipCb := tview.NewCheckbox().SetLabel("Use Skip")
 
 	skipListInput := tview.NewInputField().SetLabel("Skip List").SetFieldWidth(35)
@@ -752,6 +831,8 @@ func showOptions() {
 	endMsgInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 	endMsgInput.SetPlaceholder("<AR>").SetPlaceholderTextColor(tcell.ColorYellow)
 
+	euroSkipList := config.User.EuropeanSkipList
+
 	resetState := func() {
 		startMsgCb.SetChecked(config.User.StartMsg)
 
@@ -772,6 +853,7 @@ func showOptions() {
 
 		useProsignsCb.SetChecked(config.User.Playprosigns)
 		extendedPuncCb.SetChecked(config.User.UseExtendedPunctuation)
+		europeanCharsCb.SetChecked(config.User.UseEuropeanChars) // Populate state
 		useSkipCb.SetChecked(config.User.UseSkip)
 		skipListInput.SetText(config.User.SkipList)
 		randomOrderCb.SetChecked(config.User.RandomOrder)
@@ -795,12 +877,14 @@ func showOptions() {
 			}
 		}
 		repeatDropDown.SetCurrentOption(rIdx)
+		euroSkipList = config.User.EuropeanSkipList
 	}
 
 	resetState()
 
 	form.AddFormItem(useProsignsCb)
 	form.AddFormItem(extendedPuncCb)
+	form.AddFormItem(europeanCharsCb) // Insert into form
 	form.AddFormItem(useSkipCb)
 	form.AddFormItem(skipListInput)
 	form.AddFormItem(delayDropDown)
@@ -812,6 +896,8 @@ func showOptions() {
 	form.AddFormItem(startMsgInput)
 	form.AddFormItem(endMsgCb)
 	form.AddFormItem(endMsgInput)
+
+	var optionsContainer *tview.Flex
 
 	onSave := func() {
 		isRandWords := randomWordsCb.IsChecked()
@@ -840,8 +926,10 @@ func showOptions() {
 		apply := func() {
 			config.User.Playprosigns = useProsignsCb.IsChecked()
 			config.User.UseExtendedPunctuation = extendedPuncCb.IsChecked()
+			config.User.UseEuropeanChars = europeanCharsCb.IsChecked() // Save State
 			config.User.UseSkip = isSkip
 			config.User.SkipList = formattedSkipList
+			config.User.EuropeanSkipList = euroSkipList
 			config.User.RandomOrder = randomOrderCb.IsChecked()
 			config.User.RandomWords = isRandWords
 			config.User.WordBuilder = isWB
@@ -857,7 +945,9 @@ func showOptions() {
 			config.User.RepeatLimit, _ = strconv.Atoi(repeatOptions[rIdx])
 
 			config.SaveConfig()
-			morse.RebuildMorseTable(config.User.UseExtendedPunctuation, config.User.UseSkip, config.User.SkipList)
+
+			// Passed the European Chars boolean to the table builder
+			morse.RebuildMorseTable(config.User.UseExtendedPunctuation, config.User.UseEuropeanChars, config.User.UseSkip, config.User.SkipList, config.User.EuropeanSkipList)
 
 			updateBlueLine()
 			pages.RemovePage("options")
@@ -875,8 +965,15 @@ func showOptions() {
 		resetState()
 	}
 
+	// Add the Ext. Chars Picker button here!
+
 	form.AddButton("Save", onSave)
 	form.AddButton("Reset", onReset)
+
+	// UPDATED: Now we pass the 'onSave' function directly into the picker!
+	form.AddButton("European & Esparanto Chars Skip", func() {
+		showEuropeanCharSelector(optionsContainer, &euroSkipList, onSave)
+	})
 
 	applyFocusStyles(form)
 	form.SetBorder(false)
@@ -885,7 +982,7 @@ func showOptions() {
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	footerView.SetText("\n[yellow]ESC to Close[-]\n")
 
-	optionsContainer := tview.NewFlex().SetDirection(tview.FlexRow).
+	optionsContainer = tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(form, 0, 1, true).
 		AddItem(footerView, 2, 1, false)
 
@@ -934,6 +1031,7 @@ func showIWREditModal(parentContainer tview.Primitive) {
 
 		for _, line := range strings.Split(rawText, "\n") {
 			lineText := strings.TrimSpace(line)
+			// Keep blank lines and comments exactly as they are
 			if lineText == "" || strings.HasPrefix(lineText, "#") {
 				scrubbedLines = append(scrubbedLines, line)
 				continue
@@ -943,7 +1041,11 @@ func showIWREditModal(parentContainer tview.Primitive) {
 			for _, word := range strings.Fields(lineText) {
 				matchAny := strings.HasSuffix(word, "*")
 				cleanWord := strings.TrimSuffix(word, "*")
-				cleanWord = morse.ProcessMorseString(cleanWord)
+
+				// THE FIX: Just uppercase the word.
+				// Do NOT run it through ProcessMorseString here, or it will permanently
+				// delete characters if their respective toggles happen to be off!
+				cleanWord = strings.ToUpper(cleanWord)
 				cleanWord = strings.TrimSpace(cleanWord)
 
 				if len(cleanWord) > 0 {

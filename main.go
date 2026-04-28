@@ -88,9 +88,16 @@ func main() {
 		log.Fatal(err)
 	}
 
-	morse.RebuildMorseTable(config.User.UseExtendedPunctuation, config.User.UseSkip, config.User.SkipList)
+	morse.RebuildMorseTable(config.User.UseExtendedPunctuation, config.User.UseEuropeanChars, config.User.UseSkip, config.User.SkipList, config.User.EuropeanSkipList)
 
+	// 1. Initialize app normally so tview handles Windows terminal setup properly
 	app = tview.NewApplication()
+
+	// 2. Hook into the draw loop to access the hidden screen and set the cursor globally
+	app.SetBeforeDrawFunc(func(s tcell.Screen) bool {
+		s.SetCursorStyle(tcell.CursorStyleBlinkingBlock)
+		return false // MUST return false so tview continues to draw the screen!
+	})
 
 	iwrMan := &morse.IWRManager{
 		App:        app,
@@ -121,11 +128,10 @@ func main() {
 	blueLine.SetDynamicColors(true)
 	blueLine.SetBackgroundColor(tcell.ColorSteelBlue)
 
-	// --- THIS INITIALIZATION WAS MISSING ---
 	inputArea = tview.NewTextArea()
 	inputArea.SetBackgroundColor(bgColor)
 	inputArea.SetBorder(true).SetTitle(" [white]Text Input ")
-	inputArea.SetPlaceholder("Enter text, then Ctrl-P to Play or Ctrl-H (of F1) for Help; ESC closes screens.")
+	inputArea.SetPlaceholder("Enter text, then Ctrl-P to Play or F1 for Help; ESC closes screens.")
 
 	inputArea.SetChangedFunc(func() {
 		// If the engine typed this, ignore it so the menu doesn't reset!
@@ -236,14 +242,28 @@ func main() {
 		}
 
 		switch event.Key() {
-			case tcell.KeyCtrlB:
+		case tcell.KeyCtrlH, tcell.KeyBackspace, tcell.KeyBackspace2:
+			// Block backspace during playback/pause ONLY if the main inputArea is focused.
+			// This allows backspacing inside modal text fields.
+			if (currentState == StatePlaying || currentState == StatePaused) && app.GetFocus() == inputArea {
+				return nil
+			}
+			return event
+		case tcell.KeyCtrlB:
 			// Locked during Paused state (requires full stop)
 			if currentState != StatePlaying && currentState != StatePaused {
 				showAbout()
 			}
 			return nil
-		case tcell.KeyCtrlP, tcell.KeyCtrlR:
-			handlePlayPause(iwrMan)
+		case tcell.KeyCtrlP:
+			if currentState == StateIdle || currentState == StateStopped || currentState == StatePlaying {
+				handlePlayPause(iwrMan)
+			}
+			return nil
+		case tcell.KeyCtrlR:
+			if currentState == StatePaused {
+				handlePlayPause(iwrMan)
+			}
 			return nil
 		case tcell.KeyCtrlS:
 			if currentState == StatePlaying || currentState == StatePaused {
@@ -257,39 +277,6 @@ func main() {
 				clearStats()
 			}
 			return nil
-
-		case tcell.KeyCtrlH, tcell.KeyBackspace, tcell.KeyBackspace2:
-			if inputArea.GetText() != "" {
-			// 1. The Ghost Message on the Status Line
-				go func() {
-					// Capture what is currently on the status line (false keeps color tags intact)
-					previousText := statusLine.GetText(false)
-
-					// Safely flash the hint
-					app.QueueUpdateDraw(func() {
-						statusLine.SetText(" [yellow]Hint: Press Fn-F1 for Help[-] ")
-					})
-					
-					// Wait for 4 seconds
-					time.Sleep(4 * time.Second)
-					
-					// Safely restore whatever was there before!
-					app.QueueUpdateDraw(func() {
-						statusLine.SetText(previousText)
-					})
-				}()
-
-				// 2. STILL return the event so the backspace actually deletes the letter!
-				return event 
-			}
-
-			// If the box is empty, just show the help menu normally
-			if currentState != StatePlaying && currentState != StatePaused {
-				showHelp()
-			}
-			return nil
-			// The Smart Key (Handles physical backspace and Linux's fake Ctrl-H)
-		// The Bulletproof Fallback
 		case tcell.KeyF1:
 			if currentState != StatePlaying && currentState != StatePaused {
 				showHelp()
@@ -315,7 +302,7 @@ func main() {
 				showStats()
 			}
 			return nil
-		case tcell.KeyCtrlE:
+		case tcell.KeyCtrlE, tcell.KeyCtrlL:
 			if currentState != StatePlaying {
 				actualText = ""
 				inputArea.SetText("", false)
@@ -334,6 +321,10 @@ func main() {
 			return nil
 		case tcell.KeyCtrlQ:
 			app.Stop()
+			return nil
+		}
+
+		if (currentState == StatePlaying || currentState == StatePaused) && app.GetFocus() == inputArea {
 			return nil
 		}
 		return event
@@ -385,10 +376,10 @@ func EmergencyQuit(errorMessage string) {
 func getModifierWarning() string {
 	// If any of these are true, the text being played is modified or out of order
 	isModified := config.User.RandomWords ||
-		          config.User.RandomOrder ||
-		          config.User.UseSkip ||
-		          config.User.WordBuilder ||
-		          config.User.Playprosigns
+		config.User.RandomOrder ||
+		config.User.UseSkip ||
+		config.User.WordBuilder ||
+		config.User.Playprosigns
 
 	if isModified {
 		// Using tview's color tags to make it pop in yellow on the blue line
@@ -397,7 +388,7 @@ func getModifierWarning() string {
 
 	// If everything is strictly WYSIWYG, return an empty string
 	return ""
-} 
+}
 
 // lockPlayTime safely finalizes the session time and adds it to the user's lifetime total.
 func lockPlayTime() {

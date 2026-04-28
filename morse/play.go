@@ -173,12 +173,14 @@ func RunIWR(text string, iwrMan *IWRManager) {
 	// 3. Queue the Main Text (With Filters)
 	for _, rawWord := range words {
 
+		/* WDL
 		for IsPaused {
 			time.Sleep(100 * time.Millisecond)
 			if IsStopping {
 				return
 			}
 		}
+		*/
 
 		if IsStopping {
 			return
@@ -339,4 +341,3 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		OnStatusUpdate("STOP")
 	}
 }
-

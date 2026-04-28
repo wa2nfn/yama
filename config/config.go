@@ -47,8 +47,10 @@ type UserSettings struct {
 	UseWave bool `json:"UseWave"` // Note: Matches the exact capitalization from your JSON
 
 	// Character & Content Options
-	Playprosigns            bool   `json:"play_prosigns"`
+	Playprosigns           bool   `json:"play_prosigns"`
 	UseExtendedPunctuation bool   `json:"use_extended_punctuation"`
+	UseEuropeanChars       bool   `json:"use_european_chars"`
+	EuropeanSkipList       string `json:"european_skip_list"`
 	UseSkip                bool   `json:"use_skip"`
 	SkipList               string `json:"skip_list"`
 	RandomOrder            bool   `json:"random_order"`
@@ -66,15 +68,15 @@ type UserSettings struct {
 
 const (
 	MinEffSpeed  int = 5
-	MaxEffSpeed  int = 149
+	MaxEffSpeed  int = 249
 	MinCharSpeed int = 10
-	MaxCharSpeed int = 150
+	MaxCharSpeed int = 250
 	MinTone      int = 300
-	MaxTone      int = 1400
+	MaxTone      int = 1200
 	MinIWRTone   int = 300
-	MaxIWRTone   int = 1400
+	MaxIWRTone   int = 1200
 	MinIWRSpeed  int = 11
-	MaxIWRSpeed  int = 151
+	MaxIWRSpeed  int = 251
 )
 
 // Helper to reliably get the full, OS-independent path to the JSON file
@@ -122,7 +124,7 @@ func LoadConfig() {
 		// 1. SET MANDATORY DEFAULTS SO THE ENGINE DOESN'T PANIC
 		User.CharacterSpeed = 20
 		User.EffectiveSpeed = 15
-		User.Tone = 650
+		User.Tone = 600
 
 		// Exactly ONE of these must be true!
 		User.UseFarnsworth = false
@@ -131,11 +133,12 @@ func LoadConfig() {
 
 		// Other safe defaults
 		User.UseExtendedPunctuation = false
+		User.UseEuropeanChars = false
 		User.UseSkip = false
 		User.SkipList = ""
 		User.IWREnabled = true
 		User.IWRSpeed = 30
-		User.IWRTone = 650
+		User.IWRTone = 600
 		User.WordBuilder = false
 		User.RandomWords = false
 		User.RandomOrder = false

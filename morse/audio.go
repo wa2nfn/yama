@@ -5,9 +5,9 @@ import (
 	"io"
 	"math"
 	"math/rand"
+	"os"
 	"sync"
 	"time"
-	"os"
 	"yama/config"
 
 	"github.com/ebitengine/oto/v3"
@@ -26,7 +26,7 @@ var (
 	OnFatalError func(errorMessage string)
 )
 
-const SampleRate = 44100
+const SampleRate = 48000
 
 type audioBlock struct {
 	samples []byte

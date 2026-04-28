@@ -6,8 +6,9 @@ import (
 	"yama/config"
 )
 
-// MorseRegex now only permits A-Z, 0-9, and supported punctuation.
-var MorseRegex = regexp.MustCompile(`[^A-Z0-9\.\,\?\/\:\;\=\+\-\"\@\<\>\s\!\$\(\)\']`)
+// MorseRegex now permits A-Z, 0-9, supported punctuation, AND the supported European characters!
+// Add the Esperanto characters to the bouncer's VIP list!
+var MorseRegex = regexp.MustCompile(`[^A-Z0-9\.\,\?\/\:\;\=\+\-\"\@\<\>\s\!\$\(\)\'ÄÖÜÉÁÅÇÑĈĜĤĴŜŬÀÈ]`)
 
 // MorseTable is the dynamic "Source of Truth"
 var MorseTable = make(map[rune]string)
@@ -52,7 +53,31 @@ var extendedPunctuationMap = map[rune]string{
 	')':  "-.--.-",
 }
 
-func RebuildMorseTable(useExtended bool, useSkip bool, skipList string) {
+var europeanMap = map[rune]string{
+	'Ä': ".-.-",  // A-umlaut
+	'Ö': "---.",  // O-umlaut
+	'Ü': "..--",  // U-umlaut
+	'É': "..-..", // E-acute
+	'Á': ".--.-", // A-acute
+	'Å': ".--.-", // A-ring
+	'Ç': "-.-..", // C-cedilla
+	'Ñ': "--.--", // N-tilde
+	'À': ".--.-", // A-grave (Shares Morse with Á and Å)
+	'È': ".-..-", // E-grave (Shares Morse with the quotation mark ")
+}
+
+// Add the new Esperanto map
+var esperantoMap = map[rune]string{
+	'Ĉ': "-.-..", // C-circumflex
+	'Ĝ': "--.-.", // G-circumflex
+	'Ĥ': "----",  // H-circumflex
+	'Ĵ': ".---.", // J-circumflex
+	'Ŝ': "...-.", // S-circumflex
+	'Ŭ': "..--",  // U-breve
+}
+
+// Signature remains the same, we just bundle Esperanto into the European toggle
+func RebuildMorseTable(useExtended bool, useEuropeanChars bool, useSkip bool, skipList string, euroSkipList string) {
 	// 1. Wipe the working copies completely clean
 	MorseTable = make(map[rune]string)
 	ProSignTable = make(map[string]string)
@@ -67,25 +92,42 @@ func RebuildMorseTable(useExtended bool, useSkip bool, skipList string) {
 		}
 	}
 
+	// 3. Inject Extended Alphabets
+	if useEuropeanChars {
+		// Load European
+		for k, v := range europeanMap {
+			MorseTable[k] = v
+		}
+		// Load Esperanto
+		for k, v := range esperantoMap {
+			MorseTable[k] = v
+		}
+
+		// Independent filter: Delete any that the user checked in the Euro/Esp picker
+		if euroSkipList != "" {
+			skipUpper := strings.ToUpper(euroSkipList)
+			for _, r := range skipUpper {
+				delete(MorseTable, r)
+			}
+		}
+	}
+
 	// === THE MASTER PROSIGN SWITCH ===
-	// Only load prosigns into the working table if the user enabled them!
-	if config.User.Playprosigns { // Adjust this to match your actual boolean variable
+	if config.User.Playprosigns {
 		for k, v := range baseProSignMap {
 			ProSignTable[k] = v
 		}
 	}
 	// =================================
 
-	// 3. Apply the Skip List
+	// 4. Apply the MAIN Skip List
 	if useSkip && len(skipList) > 0 {
 		tokens := Tokenize(strings.ToUpper(skipList))
 		for _, t := range tokens {
 			if strings.HasPrefix(t, "<") && strings.HasSuffix(t, ">") {
-				// It's a prosign! Delete from the working ProSignTable
 				lookup := t[1 : len(t)-1]
 				delete(ProSignTable, lookup)
 			} else {
-				// It's a normal char! Delete from the working MorseTable
 				if len(t) > 0 {
 					r := []rune(t)[0]
 					delete(MorseTable, r)
@@ -100,7 +142,6 @@ func ProcessMorseString(input string) string {
 	work := strings.ToUpper(input)
 
 	// 2. Initial clean: Keep the original regex as a safety net for weird unicode
-	// (Assuming MorseRegex is still defined in your package)
 	work = MorseRegex.ReplaceAllString(work, "")
 
 	// 3. Break into words first to naturally preserve our spaces

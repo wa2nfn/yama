@@ -3,10 +3,10 @@ package morse
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
-	"log"
 	"time"
 
 	"github.com/rivo/tview"
@@ -108,7 +108,7 @@ func (m *IWRManager) LoadIWRFile() (bool, error) {
 			}
 			word = strings.ToUpper(word)
 
-			// 1. Isolate the wildcard
+			// 1. Check for the wildcard
 			matchAny := strings.HasSuffix(word, "*")
 			word = strings.TrimSuffix(word, "*")
 
@@ -117,69 +117,35 @@ func (m *IWRManager) LoadIWRFile() (bool, error) {
 			word = strings.TrimSpace(word)
 			isValid := len(word) > 0
 
-			// 3. Debug and Assignment
+			// 3. Populate the Map
 			if isValid {
-				tempMap[word] = &IWRWord{
-					TargetWord: word,
-					MatchAny:   matchAny,
-				}
+				// Always add the base word (e.g., "QSL")
+				tempMap[word] = &IWRWord{TargetWord: word}
 				cnt++
+
+				// If it had an asterisk, generate and store all variants immediately!
+				if matchAny {
+					punctuations := []string{".", ",", "?", ":"}
+					for _, punc := range punctuations {
+						if cnt >= maxIwrCount {
+							break // Respect the hard cap
+						}
+						variant := word + punc
+						tempMap[variant] = &IWRWord{TargetWord: variant}
+						cnt++
+					}
+				}
 			}
 
 			if cnt >= maxIwrCount {
 				break
 			}
 		}
-		if cnt >= maxIwrCount {
-			break
-		}
-	}
+	} // <--- THIS WAS THE MISSING BRACE!
 
 	m.WordMap = tempMap
 	m.StatusMessage = fmt.Sprintf("Loaded %d words from %s", cnt, foundPath)
 	return isFirstRun, nil
-}
-
-// runtime must be efficient
-func (m *IWRManager) Match(word string) bool {
-	if !m.IWREnabled {
-		return false
-	}
-
-	// Make sure we are always comparing uppercase
-	// WDL word = strings.ToUpper(word)
-
-	// 1. Direct Exact Match
-	// Matches normal words like "THE", prosigns like "<BT>",
-	// or exact punctuation matches if explicitly in the file.
-	if m.WordMap[word] != nil {
-		return true
-	}
-
-	// 2. The Wildcard (*) Match
-	// If the word is at least 2 characters long, check its last character.
-	if len(word) > 1 {
-		lastChar := word[len(word)-1]
-
-		// If it ends in any of our supported wildcard punctuation...
-		if lastChar == '.' || lastChar == ',' || lastChar == '?' || lastChar == ':' {
-
-			baseWord := word[:len(word)-1]
-			wildcardWord := baseWord + "*"
-
-			// Strategy A: Check if the key with the asterisk exists (e.g., "QSL*")
-			if m.WordMap[wildcardWord] != nil {
-				return true
-			}
-
-			// Strategy B: Check if the base word exists (e.g., "QSL") AND has MatchAny set to true
-			if entry, exists := m.WordMap[baseWord]; exists && entry.MatchAny {
-				return true
-			}
-		}
-	}
-
-	return false
 }
 
 func checkIWRFiles() string {
@@ -189,7 +155,7 @@ func checkIWRFiles() string {
 	if err != nil {
 		configDir = "."
 	}
-	
+
 	// The Foundation: The exact path to the YAMA folder
 	yamaDir := filepath.Join(configDir, "YAMA")
 	fallbackPath := ResolvePath(filepath.Join(yamaDir, "yamaIWR.txt"))
@@ -250,4 +216,16 @@ qrz?
 `
 	// Write the file to the specified path
 	return os.WriteFile(targetPath, []byte(defaultText), 0644)
+}
+
+// runtime must be efficient
+// Match executes a single, blindingly fast O(1) map lookup.
+func (m *IWRManager) Match(word string) bool {
+	if !m.IWREnabled {
+		return false
+	}
+
+	// Because we pre-computed wildcards at load time (e.g., QSL? is its own key),
+	// this one check handles absolutely everything.
+	return m.WordMap[word] != nil
 }
