@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -75,7 +76,6 @@ func runEngine(parsedText string, iwrMan *morse.IWRManager) {
 	app.QueueUpdateDraw(func() {
 		isBlocked = false
 		if !morse.IsStopping {
-			// THE FILE FINISHED NATURALLY: Lock the time before going Idle!
 			lockPlayTime()
 
 			currentState = StateIdle
@@ -195,7 +195,6 @@ func updateVisibility() {
 }
 
 func updateBlueLine() {
-
 	iwrStatus := "OFF"
 	if config.User.IWREnabled {
 		iwrStatus = "ON"
@@ -203,16 +202,17 @@ func updateBlueLine() {
 
 	var info string
 	if config.User.CharacterSpeed <= config.User.EffectiveSpeed {
-		info = fmt.Sprintf(" [black]Character Speed: %d wpm | IWR: %s (%d wpm) ", config.User.CharacterSpeed, iwrStatus, config.User.IWRSpeed)
+		// UPDATED: Changed %d to %g for speeds
+		info = fmt.Sprintf(" [black]Character Speed: %g wpm | IWR: %s (%g wpm) ", config.User.CharacterSpeed, iwrStatus, config.User.IWRSpeed)
 	} else {
 		mode := "Farnsworth"
 		if config.User.UseWordsworth {
 			mode = "Wordsworth"
 		}
-		info = fmt.Sprintf(" [black]Mode: %s | Character Speed: %d wpm | Effective Speed: %d wpm | IWR: %s (%d wpm) ", mode, config.User.CharacterSpeed, config.User.EffectiveSpeed, iwrStatus, config.User.IWRSpeed)
+		// UPDATED: Changed %d to %g for speeds
+		info = fmt.Sprintf(" [black]Mode: %s | Character Speed: %g wpm | Effective Speed: %g wpm | IWR: %s (%g wpm) ", mode, config.User.CharacterSpeed, config.User.EffectiveSpeed, iwrStatus, config.User.IWRSpeed)
 	}
 
-	// Stick the debug numbers right at the front
 	blueLine.SetText(info + getModifierWarning())
 }
 
@@ -304,9 +304,9 @@ func showHelp() {
 
 Whether you are looking for routine practice, some head copy, or want to test your copying limits against a simulated ionospheric storm, YAMA is built to help you.
 
-YAMA has some standard, input processing for example: discarding non-morseable characters, space compression, input case agnostic, as well as some non-traditional ones: ProSign support, selected character filtering, expansion of contractions, and dynamic wave shaping for QRQ. Changes to speed/tone and audio impairments can be made during play.
+YAMA has some standard, input processing for example: discarding non-morseable characters, space compression, input case agnostic, as well as some non-traditional ones: ProSign support, selected character filtering, expansion of contractions, European & Esparanto support, graduating speed, and dynamic wave shaping for QRQ. Changes to speed/tone and audio impairments can be made during play.
 
-YAMA uses a Terminal User Interface (TUI), navigation and selection will be by key combinations, mostly the Control Key and one letter, a few Function keys are supporrted as alternatives. Help is an exception which uses the standard F1 key.
+YAMA uses a Terminal User Interface (TUI), navigation and selection will be by key combinations, mostly the Control Key and one letter, a few Function keys are supporrted as alternatives. Help is an exception which uses the standard F1 key (Note: In menu screens: timing, options, and audio; back-tab is often quicker cases.)
 
 [green::b]Getting Started: Entering Text[::-]
 [white]Before YAMA can play anything, it needs some text! You have two easy ways to do this:
@@ -359,7 +359,7 @@ If "Play ProSigns" is disabled in Options ([yellow]Ctrl-O[-]), bracketed ProSign
 Play ProSigns         | Toggles support for bracketed ProSigns (e.g., <AR>).
                       | Does NOT affect [yellow]-+=[-]. (Note: <BK> is sounded as  "B K").
 Extended Punctuation  | Toggles support for extended punctuation marks.
-European Characters   | Toggles support for European Morse characters (Ä, Ö, Ü, etc.).
+European Characters   | Toggles support for European & Esparanto Morse characters ([yellow]Ä, Ö, Ĝ, Ŭ[-])
 Use Skip              | Enables the Skip List filtering during playback.
 Skip List             | Define specific characters or ProSigns to silently ignore.
                       | Entered without any separators. e.g. XY7<BT>=
@@ -405,7 +405,7 @@ Experiment and I'm sure you will quickly understand the capabilities. Remeber, a
 • [blue]yama_config.json:[-] Automatically manages your saved settings. Please use the UI menus rather than hand-editing this file.
 • [blue]yamaIWR.txt:[-] Your active dictionary for Instant Word Recognition. Edit this safely via the "Edit IWR" button in the Timing menu. Note: Edits via the app are rather simple, cursor keys, Insert/Delete, Backspace, TAB to access Save button.
 • [blue]yama_help.html:[-] This information saved in html format for browser display or printing.
-• [blue]YAMA directory:[-] On windows, $HOME/AppData/Roaming/YAMA, on Linux $HOME/.config/YAMA, will contain a file that holds your options and a stating IWR text file, neighter should be edited manually. If you ever discard the YAMA app, remoe this directory as well.
+• [blue]YAMA directory:[-] On windows, [blue]$HOME/AppData/Roaming/YAMA[-], on Linux [blue]$HOME/.config/YAMA[-], will contain a file that holds your options and a stating IWR text file, neighter should be edited manually. If you ever discard the YAMA app, remoe this directory as well.
 
 Note: Yama does not require or make any changes to non-YAMA values on your PC. All files related to YAMA have, yama in the name for you to remove as you see fit.
 
@@ -413,7 +413,7 @@ In the Wave creation screen, if you enter a non-existent directory, it will be c
 
 73 and best of luck on your CW journey.
 WA2NFN
-[::-].`
+[::-]`
 
 	tv := tview.NewTextView().
 		SetDynamicColors(true).
@@ -662,7 +662,6 @@ func showFile() {
 					return
 				}
 
-				// --- REFACTORED PIPELINE ---
 				txt := parser.NormalizeText(string(data))
 
 				if config.User.UseSkip {
@@ -671,19 +670,17 @@ func showFile() {
 				}
 
 				actualText := parser.FilterValidMorse(txt, morse.MorseTable)
-				// ---------------------------
 
 				app.QueueUpdateDraw(func() {
 					inputArea.SetChangedFunc(nil)
 					pages.RemovePage("file")
 					app.SetFocus(inputArea)
 
-					isProgrammaticUpdate = true // Lock it before injecting the file text!
+					isProgrammaticUpdate = true
 					inputArea.SetText(actualText, false)
-					isProgrammaticUpdate = false // Unlock it
+					isProgrammaticUpdate = false
 
 					inputArea.SetChangedFunc(func() {
-						// Ignore text changes made by the engine!
 						if isProgrammaticUpdate {
 							return
 						}
@@ -702,11 +699,11 @@ func showFile() {
 		}
 
 	})
-	pages.AddPage("file", createModal(list, 60, 20), true, true)
+	pages.AddPage("file", createModal(list, 40, 20), true, true)
 	app.SetFocus(list)
 }
 
-// Notice we now pass a string pointer (*activeEuroSkip) instead of the input field
+// we pass a string pointer (*activeEuroSkip) instead of the input field
 func showEuropeanCharSelector(parentContainer tview.Primitive, activeEuroSkip *string, parentSaveFunc func()) {
 	form := tview.NewForm()
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
@@ -718,7 +715,6 @@ func showEuropeanCharSelector(parentContainer tview.Primitive, activeEuroSkip *s
 		Name string
 	}
 
-	// 14 items total. The vertical layout handles this beautifully.
 	extChars := []ExtChar{
 		{'Ä', "Ä (Euro: A-umlaut)"},
 		{'Ö', "Ö (Euro: O-umlaut)"},
@@ -728,8 +724,8 @@ func showEuropeanCharSelector(parentContainer tview.Primitive, activeEuroSkip *s
 		{'Å', "Å (Euro: A-ring)"},
 		{'Ç', "Ç (Euro: C-cedilla)"},
 		{'Ñ', "Ñ (Euro: N-tilde)"},
-		{'À', "À (Euro: A-grave)"}, // <-- NEW
-		{'È', "È (Euro: E-grave)"}, // <-- NEW
+		{'À', "À (Euro: A-grave)"},
+		{'È', "È (Euro: E-grave)"},
 		{'Ĉ', "Ĉ (Esp: C-circumflex)"},
 		{'Ĝ', "Ĝ (Esp: G-circumflex)"},
 		{'Ĥ', "Ĥ (Esp: H-circumflex)"},
@@ -787,11 +783,9 @@ func showEuropeanCharSelector(parentContainer tview.Primitive, activeEuroSkip *s
 		AddItem(form, 0, 1, true).
 		AddItem(footerView, 2, 1, false)
 
-	// Updated Title
 	container.SetBorder(true).SetTitle(" European & Esperanto Skips ")
 	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	// Height increased to 24 to comfortably fit all 14 checkboxes + buttons
 	pages.AddPage("extCharSelector", createModal(container, 45, 24), true, true)
 	app.SetFocus(container)
 }
@@ -804,7 +798,7 @@ func showOptions() {
 
 	useProsignsCb := tview.NewCheckbox().SetLabel("Play ProSigns")
 	extendedPuncCb := tview.NewCheckbox().SetLabel("Extended Punctuation")
-	europeanCharsCb := tview.NewCheckbox().SetLabel("European & Esparanto Characters") // New Checkbox
+	europeanCharsCb := tview.NewCheckbox().SetLabel("European & Esparanto Chars")
 	useSkipCb := tview.NewCheckbox().SetLabel("Use Skip")
 
 	skipListInput := tview.NewInputField().SetLabel("Skip List").SetFieldWidth(35)
@@ -836,7 +830,6 @@ func showOptions() {
 	resetState := func() {
 		startMsgCb.SetChecked(config.User.StartMsg)
 
-		// Intercept an empty config and provide real, editable default text
 		if config.User.StartMsgText == "" {
 			startMsgInput.SetText("VVV <KA>")
 		} else {
@@ -853,7 +846,7 @@ func showOptions() {
 
 		useProsignsCb.SetChecked(config.User.Playprosigns)
 		extendedPuncCb.SetChecked(config.User.UseExtendedPunctuation)
-		europeanCharsCb.SetChecked(config.User.UseEuropeanChars) // Populate state
+		europeanCharsCb.SetChecked(config.User.UseEuropeanChars)
 		useSkipCb.SetChecked(config.User.UseSkip)
 		skipListInput.SetText(config.User.SkipList)
 		randomOrderCb.SetChecked(config.User.RandomOrder)
@@ -884,7 +877,7 @@ func showOptions() {
 
 	form.AddFormItem(useProsignsCb)
 	form.AddFormItem(extendedPuncCb)
-	form.AddFormItem(europeanCharsCb) // Insert into form
+	form.AddFormItem(europeanCharsCb)
 	form.AddFormItem(useSkipCb)
 	form.AddFormItem(skipListInput)
 	form.AddFormItem(delayDropDown)
@@ -926,7 +919,7 @@ func showOptions() {
 		apply := func() {
 			config.User.Playprosigns = useProsignsCb.IsChecked()
 			config.User.UseExtendedPunctuation = extendedPuncCb.IsChecked()
-			config.User.UseEuropeanChars = europeanCharsCb.IsChecked() // Save State
+			config.User.UseEuropeanChars = europeanCharsCb.IsChecked()
 			config.User.UseSkip = isSkip
 			config.User.SkipList = formattedSkipList
 			config.User.EuropeanSkipList = euroSkipList
@@ -946,7 +939,6 @@ func showOptions() {
 
 			config.SaveConfig()
 
-			// Passed the European Chars boolean to the table builder
 			morse.RebuildMorseTable(config.User.UseExtendedPunctuation, config.User.UseEuropeanChars, config.User.UseSkip, config.User.SkipList, config.User.EuropeanSkipList)
 
 			updateBlueLine()
@@ -965,12 +957,8 @@ func showOptions() {
 		resetState()
 	}
 
-	// Add the Ext. Chars Picker button here!
-
 	form.AddButton("Save", onSave)
 	form.AddButton("Reset", onReset)
-
-	// UPDATED: Now we pass the 'onSave' function directly into the picker!
 	form.AddButton("European & Esparanto Chars Skip", func() {
 		showEuropeanCharSelector(optionsContainer, &euroSkipList, onSave)
 	})
@@ -989,24 +977,22 @@ func showOptions() {
 	optionsContainer.SetBorder(true).SetTitle(" Options ")
 	optionsContainer.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	pages.AddPage("options", createModal(optionsContainer, 65, 23), true, true)
+	pages.AddPage("options", createModal(optionsContainer, 70, 19), true, true)
 	app.SetFocus(optionsContainer)
 }
 
 func showIWREditModal(parentContainer tview.Primitive) {
 	var filePath string
 
-	// APPLY RESOLVER
 	localPath := morse.ResolvePath("yamaIWR.txt")
 
 	if _, err := os.Stat(localPath); err == nil {
 		filePath = localPath
 	} else {
 		if docDir, errDir := os.UserConfigDir(); errDir == nil {
-			// APPLY RESOLVER
 			filePath = morse.ResolvePath(filepath.Join(docDir, "YAMA", "yamaIWR.txt"))
 		} else {
-			filePath = localPath // Fallback
+			filePath = localPath
 		}
 	}
 
@@ -1019,7 +1005,6 @@ func showIWREditModal(parentContainer tview.Primitive) {
 	textArea.SetText(string(content), false)
 	textArea.SetBorder(true).SetTitle(fmt.Sprintf(" Editing: %s ", filePath))
 
-	// FIX 1: Set to Black so the border is clean and the cursor pops
 	textArea.SetBackgroundColor(tcell.ColorBlack)
 
 	form := tview.NewForm()
@@ -1031,7 +1016,6 @@ func showIWREditModal(parentContainer tview.Primitive) {
 
 		for _, line := range strings.Split(rawText, "\n") {
 			lineText := strings.TrimSpace(line)
-			// Keep blank lines and comments exactly as they are
 			if lineText == "" || strings.HasPrefix(lineText, "#") {
 				scrubbedLines = append(scrubbedLines, line)
 				continue
@@ -1041,10 +1025,6 @@ func showIWREditModal(parentContainer tview.Primitive) {
 			for _, word := range strings.Fields(lineText) {
 				matchAny := strings.HasSuffix(word, "*")
 				cleanWord := strings.TrimSuffix(word, "*")
-
-				// THE FIX: Just uppercase the word.
-				// Do NOT run it through ProcessMorseString here, or it will permanently
-				// delete characters if their respective toggles happen to be off!
 				cleanWord = strings.ToUpper(cleanWord)
 				cleanWord = strings.TrimSpace(cleanWord)
 
@@ -1078,7 +1058,7 @@ func showIWREditModal(parentContainer tview.Primitive) {
 	})
 
 	textArea.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		// FIX 2: Intercept Tab to jump to the buttons instead of typing a tab space!
+		// Intercept Tab to jump to the buttons
 		if event.Key() == tcell.KeyTab {
 			app.SetFocus(form)
 			return nil
@@ -1099,7 +1079,7 @@ func showIWREditModal(parentContainer tview.Primitive) {
 		AddItem(textArea, 0, 1, true).
 		AddItem(form, 3, 1, false)
 
-	pages.AddPage("iwredit", createModal(layout, 65, 24), true, true)
+	pages.AddPage("iwredit", createModal(layout, 75, 24), true, true)
 	app.SetFocus(textArea)
 }
 
@@ -1116,12 +1096,23 @@ func showToneSpeed() {
 		return err == nil
 	}
 
+	acceptFloat := func(textToCheck string, lastChar rune) bool {
+		if textToCheck == "" || textToCheck == "." {
+			return true
+		}
+		_, err := strconv.ParseFloat(textToCheck, 64)
+		return err == nil
+	}
+
 	modeDropDown := tview.NewDropDown().SetLabel("Mode").SetOptions([]string{"Standard", "Farnsworth", "Wordsworth"}, nil)
 
-	charInput := tview.NewInputField().SetLabel("Character Speed (wpm)").SetFieldWidth(5).SetAcceptanceFunc(acceptDigits)
+	charInput := tview.NewInputField().SetLabel("Character Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
 	charInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 
-	effInput := tview.NewInputField().SetLabel("Effective Speed (wpm)").SetFieldWidth(5).SetAcceptanceFunc(acceptDigits)
+	endSpeedInput := tview.NewInputField().SetLabel("      End Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
+	endSpeedInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+
+	effInput := tview.NewInputField().SetLabel("Effective Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
 	effInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 
 	toneInput := tview.NewInputField().SetLabel("Tone (Hz)").SetFieldWidth(5).SetAcceptanceFunc(acceptDigits)
@@ -1129,11 +1120,32 @@ func showToneSpeed() {
 
 	iwrCheckbox := tview.NewCheckbox().SetLabel("Use IWR")
 
-	iwrSpdInput := tview.NewInputField().SetLabel("IWR Speed (wpm)").SetFieldWidth(5).SetAcceptanceFunc(acceptDigits)
+	iwrSpdInput := tview.NewInputField().SetLabel("IWR Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
 	iwrSpdInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 
 	iwrToneInput := tview.NewInputField().SetLabel("IWR Tone (Hz)").SetFieldWidth(5).SetAcceptanceFunc(acceptDigits)
 	iwrToneInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+
+	formatFloatOnExit := func(input *tview.InputField) {
+		input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			k := event.Key()
+			if k == tcell.KeyTab || k == tcell.KeyEnter || k == tcell.KeyBacktab || k == tcell.KeyDown || k == tcell.KeyUp {
+				valStr := input.GetText()
+				if valStr != "" && valStr != "." {
+					if val, err := strconv.ParseFloat(valStr, 64); err == nil {
+						rounded := math.Round(val*10) / 10
+						input.SetText(fmt.Sprintf("%g", rounded))
+					}
+				}
+			}
+			return event // Pass the keypress back to the form so it still navigates!
+		})
+	}
+
+	formatFloatOnExit(charInput)
+	formatFloatOnExit(endSpeedInput)
+	formatFloatOnExit(effInput)
+	formatFloatOnExit(iwrSpdInput)
 
 	resetState := func() {
 		modeIdx := 0
@@ -1145,11 +1157,11 @@ func showToneSpeed() {
 		}
 		modeDropDown.SetCurrentOption(modeIdx)
 
-		charInput.SetText(fmt.Sprintf("%d", config.User.CharacterSpeed))
-		effInput.SetText(fmt.Sprintf("%d", config.User.EffectiveSpeed))
+		charInput.SetText(fmt.Sprintf("%g", config.User.CharacterSpeed))
+		effInput.SetText(fmt.Sprintf("%g", config.User.EffectiveSpeed))
 		toneInput.SetText(fmt.Sprintf("%d", config.User.Tone))
 		iwrCheckbox.SetChecked(config.User.IWREnabled)
-		iwrSpdInput.SetText(fmt.Sprintf("%d", config.User.IWRSpeed))
+		iwrSpdInput.SetText(fmt.Sprintf("%g", config.User.IWRSpeed))
 		iwrToneInput.SetText(fmt.Sprintf("%d", config.User.IWRTone))
 	}
 
@@ -1157,6 +1169,7 @@ func showToneSpeed() {
 
 	form.AddFormItem(modeDropDown)
 	form.AddFormItem(charInput)
+	form.AddFormItem(endSpeedInput)
 	form.AddFormItem(effInput)
 	form.AddFormItem(toneInput)
 	form.AddFormItem(iwrCheckbox)
@@ -1167,29 +1180,56 @@ func showToneSpeed() {
 
 	onSave := func() {
 		optIdx, _ := modeDropDown.GetCurrentOption()
-		effSpd, _ := strconv.Atoi(effInput.GetText())
-		charSpd, _ := strconv.Atoi(charInput.GetText())
+		endSpd, _ := strconv.ParseFloat(endSpeedInput.GetText(), 64)
+		effSpd, _ := strconv.ParseFloat(effInput.GetText(), 64)
+		charSpd, _ := strconv.ParseFloat(charInput.GetText(), 64)
 		tone, _ := strconv.Atoi(toneInput.GetText())
-		iwrSpd, _ := strconv.Atoi(iwrSpdInput.GetText())
+		iwrSpd, _ := strconv.ParseFloat(iwrSpdInput.GetText(), 64)
 		iwrTone, _ := strconv.Atoi(iwrToneInput.GetText())
+
+		effSpd = math.Round(effSpd*10) / 10
+		endSpd = math.Round(endSpd*10) / 10
+		charSpd = math.Round(charSpd*10) / 10
+		iwrSpd = math.Round(iwrSpd*10) / 10
 
 		var errors []string
 
-		if effSpd < config.MinEffSpeed || effSpd > config.MaxEffSpeed {
+		if effSpd < float64(config.MinEffSpeed) || effSpd > float64(config.MaxEffSpeed) {
 			errors = append(errors, fmt.Sprintf("Effective Speed clamped to %d-%d", config.MinEffSpeed, config.MaxEffSpeed))
-			if effSpd < config.MinEffSpeed {
-				effSpd = config.MinEffSpeed
+			if effSpd < float64(config.MinEffSpeed) {
+				effSpd = float64(config.MinEffSpeed)
 			} else {
-				effSpd = config.MaxEffSpeed
+				effSpd = float64(config.MaxEffSpeed)
 			}
 		}
 
-		if charSpd < config.MinCharSpeed || charSpd > config.MaxCharSpeed {
+		if charSpd < float64(config.MinCharSpeed) || charSpd > float64(config.MaxCharSpeed) {
 			errors = append(errors, fmt.Sprintf("Character Speed clamped to %d-%d", config.MinCharSpeed, config.MaxCharSpeed))
-			if charSpd < config.MinCharSpeed {
-				charSpd = config.MinCharSpeed
+			if charSpd < float64(config.MinCharSpeed) {
+				charSpd = float64(config.MinCharSpeed)
 			} else {
-				charSpd = config.MaxCharSpeed
+				charSpd = float64(config.MaxCharSpeed)
+			}
+		}
+
+		if charSpd <= effSpd && optIdx != 0 {
+			errors = append(errors, "Character Speed must be > Effective Speed")
+			charSpd = effSpd + 0.1
+		}
+
+		if iwrCheckbox.IsChecked() {
+			if iwrSpd < float64(config.MinIWRSpeed) || iwrSpd > float64(config.MaxIWRSpeed) {
+				errors = append(errors, fmt.Sprintf("IWR Speed clamped to %d-%d", config.MinIWRSpeed, config.MaxIWRSpeed))
+				if iwrSpd < float64(config.MinIWRSpeed) {
+					iwrSpd = float64(config.MinIWRSpeed)
+				} else {
+					iwrSpd = float64(config.MaxIWRSpeed)
+				}
+			}
+
+			if iwrSpd <= charSpd {
+				errors = append(errors, "IWR Speed must be > Character Speed")
+				iwrSpd = charSpd + 0.1
 			}
 		}
 
@@ -1216,20 +1256,12 @@ func showToneSpeed() {
 			}
 		}
 
-		if iwrCheckbox.IsChecked() {
-			if iwrSpd < config.MinIWRSpeed || iwrSpd > config.MaxIWRSpeed {
-				errors = append(errors, fmt.Sprintf("IWR Speed clamped to %d-%d", config.MinIWRSpeed, config.MaxIWRSpeed))
-				if iwrSpd < config.MinIWRSpeed {
-					iwrSpd = config.MinIWRSpeed
-				} else {
-					iwrSpd = config.MaxIWRSpeed
-				}
-			}
-
-			if iwrSpd <= charSpd {
-				errors = append(errors, "IWR Speed must be > Character Speed")
-				iwrSpd = charSpd + 1
-			}
+		if endSpd < charSpd {
+			endSpd = charSpd
+		}
+		if endSpd > float64(config.MaxCharSpeed) {
+			errors = append(errors, fmt.Sprintf("End Speed clamped to Max %d", config.MaxCharSpeed))
+			endSpd = float64(config.MaxCharSpeed)
 		}
 
 		apply := func() {
@@ -1238,6 +1270,7 @@ func showToneSpeed() {
 			config.User.UseWordsworth = (optIdx == 2)
 			config.User.EffectiveSpeed = effSpd
 			config.User.CharacterSpeed = charSpd
+			config.User.EndSpeed = endSpd
 			config.User.Tone = tone
 			config.User.IWREnabled = iwrCheckbox.IsChecked()
 			config.User.IWRSpeed = iwrSpd
@@ -1282,7 +1315,7 @@ func showToneSpeed() {
 	timingContainer.SetBorder(true).SetTitle(" Timing ")
 	timingContainer.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	pages.AddPage("tonespeed", createModal(timingContainer, 55, 22), true, true)
+	pages.AddPage("tonespeed", createModal(timingContainer, 35, 23), true, true)
 	app.SetFocus(timingContainer)
 }
 
@@ -1299,14 +1332,11 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 	isBlocked = false
 	clearStats()
 
-	// --- REFACTORED PIPELINE (Order Fixed!) ---
 	rawInput := inputArea.GetText()
 	rawInput = colorTagRegex.ReplaceAllString(rawInput, "")
 
-	// 1. Normalize FIRST (Fixes casing for typed text like "can't" -> "CAN'T")
 	fullTextToPlay = parser.NormalizeText(rawInput)
 
-	// 2. Apply Skip (Contraction expansion now perfectly matches the uppercase text)
 	if config.User.UseSkip {
 		parser.SetSkipList(config.User.SkipList, morse.ProSignTable)
 		fullTextToPlay = parser.ApplySkip(fullTextToPlay)
@@ -1315,19 +1345,15 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 	actualText = ""
 	inputArea.SetText("", false)
 
-	// 3. Final Gatekeeper & Spacing
 	parsedText := parser.FilterValidMorse(fullTextToPlay, morse.MorseTable)
 	parsedText = parser.CompressSpace(parsedText)
-	// ------------------------------------------
 
-	// --- SMART DEFAULTS ---
 	if config.User.StartMsg && strings.TrimSpace(config.User.StartMsgText) == "" {
 		config.User.StartMsgText = "VVV <KA>"
 	}
 	if config.User.EndMsg && strings.TrimSpace(config.User.EndMsgText) == "" {
 		config.User.EndMsgText = "<AR>"
 	}
-	// ----------------------
 
 	var finalBuilder strings.Builder
 
@@ -1385,13 +1411,21 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 }
 
 func showSuccessModal(dir string, files []string) {
-	// Using strings.Builder for clean formatting
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("[white]Saved to:\n[#00BFFF]%s[-]\n", dir))
+
+	// --- 1. CLEAN THE DIRECTORY PATH ---
+	cleanDir := morse.ResolvePath(dir)
+	if absDir, err := filepath.Abs(cleanDir); err == nil {
+		cleanDir = absDir // Expands "." or relative paths into the FULL path!
+	}
+	// -----------------------------------
+
+	sb.WriteString(fmt.Sprintf("[white]Saved to:\n[#00BFFF]%s[-]\n", cleanDir))
 	sb.WriteString(strings.Repeat("-", 46) + "\n")
 
 	for _, f := range files {
-		sb.WriteString(fmt.Sprintf("[white]- %s\n", filepath.Base(f)))
+		// Just show the filename for the individual files
+		sb.WriteString(fmt.Sprintf("[white]%s\n", filepath.Base(morse.ResolvePath(f))))
 	}
 	sb.WriteString("\n[yellow]ESC to close[-]")
 
@@ -1415,7 +1449,6 @@ func showSuccessModal(dir string, files []string) {
 		return event
 	})
 
-	// Dynamically size the box based on how many files were created
 	boxHeight := len(files) + 10
 	if boxHeight > 22 {
 		boxHeight = 22 // Cap the height so it doesn't blow past the screen
@@ -1425,26 +1458,21 @@ func showSuccessModal(dir string, files []string) {
 	app.SetFocus(tv)
 }
 
-// by Ctrl-A for audio
 func showImpairments() {
 	form := tview.NewForm()
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	form.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 	form.SetItemPadding(0)
 
-	// The 4 levels for our dropdowns
 	levels := []string{"Off", "Light", "Heavy", "Severe"}
 
-	// Create the DropDowns for the level-based impairments
 	staticDropDown := tview.NewDropDown().SetLabel("Static (QRN)").SetOptions(levels, nil)
 	fadingDropDown := tview.NewDropDown().SetLabel("Fading (QSB)").SetOptions(levels, nil)
 	toneDriftDropDown := tview.NewDropDown().SetLabel("Tone Drift").SetOptions(levels, nil)
 	speedDriftDropDown := tview.NewDropDown().SetLabel("Speed Drift").SetOptions(levels, nil)
 
-	// Key Clicks remains a standard boolean checkbox
 	keyClickCb := tview.NewCheckbox().SetLabel("Key Clicks")
 
-	// Set their initial states based on your Config
 	resetState := func() {
 		staticDropDown.SetCurrentOption(config.User.NoiseStaticLevel)
 		fadingDropDown.SetCurrentOption(config.User.NoiseFadingLevel)
@@ -1455,7 +1483,6 @@ func showImpairments() {
 
 	resetState()
 
-	// Add them to the form
 	form.AddFormItem(staticDropDown)
 	form.AddFormItem(fadingDropDown)
 	form.AddFormItem(toneDriftDropDown)
@@ -1463,7 +1490,6 @@ func showImpairments() {
 	form.AddFormItem(keyClickCb)
 
 	onSave := func() {
-		// Save the dropdown levels to the global config
 		config.User.NoiseStaticLevel, _ = staticDropDown.GetCurrentOption()
 		config.User.NoiseFadingLevel, _ = fadingDropDown.GetCurrentOption()
 		config.User.NoiseToneDriftLevel, _ = toneDriftDropDown.GetCurrentOption()
@@ -1481,7 +1507,6 @@ func showImpairments() {
 		resetState()
 	}
 
-	// It forces all dropdowns back to Option 0 ("Off") and unchecks the box
 	onClearAll := func() {
 		// 1. Reset the UI elements so the user sees the change
 		staticDropDown.SetCurrentOption(0)
@@ -1501,10 +1526,9 @@ func showImpairments() {
 		config.SaveConfig()
 	}
 
-	// 2. ADD THE BUTTON TO THE FORM
 	form.AddButton("Save", onSave)
 	form.AddButton("Reset", onReset)
-	form.AddButton("Clear All", onClearAll) // <-- Your new panic button!
+	form.AddButton("Clear All", onClearAll)
 
 	applyFocusStyles(form)
 	form.SetBorder(false)
@@ -1520,14 +1544,13 @@ func showImpairments() {
 	container.SetBorder(true).SetTitle(" Audio Impairments ")
 	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	pages.AddPage("impairments", createModal(container, 45, 17), true, true)
+	pages.AddPage("impairments", createModal(container, 35, 12), true, true)
 	app.SetFocus(container)
 }
 
 func showWaveModal(targetDir string) {
 	rawText := inputArea.GetText()
 
-	// --- REFACTORED PIPELINE ---
 	rawText = parser.NormalizeText(rawText)
 
 	if config.User.UseSkip {
@@ -1536,7 +1559,6 @@ func showWaveModal(targetDir string) {
 	}
 
 	rawText = parser.FilterValidMorse(rawText, morse.MorseTable)
-	// ---------------------------
 
 	words := strings.Fields(rawText)
 	wordCount := len(words)

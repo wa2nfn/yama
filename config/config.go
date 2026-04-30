@@ -26,14 +26,15 @@ type UserSettings struct {
 	UseWordsworth bool `json:"use_wordsworth"`
 
 	// Core Speed and Tone
-	CharacterSpeed int `json:"character_speed"`
-	EffectiveSpeed int `json:"effective_speed"`
-	Tone           int `json:"tone"`
+	CharacterSpeed float64 `json:"character_speed"`
+	EndSpeed       float64 `json:"end_speed"`
+	EffectiveSpeed float64 `json:"effective_speed"`
+	Tone           int     `json:"tone"`
 
 	// Initial Word Recognition (IWR) Settings
-	IWREnabled bool `json:"iwr_enabled"`
-	IWRSpeed   int  `json:"iwr_speed"`
-	IWRTone    int  `json:"iwr_tone"`
+	IWREnabled bool    `json:"iwr_enabled"`
+	IWRSpeed   float64 `json:"iwr_speed"`
+	IWRTone    int     `json:"iwr_tone"`
 
 	// Audio Impairments
 

@@ -2,23 +2,43 @@ package morse
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
+	"path/filepath"
 	"strings"
 	"time"
 	"yama/config"
 )
 
+// Helper to generate the S20 or f20.5_15 string for filenames
+func getSpeedBlock(charSpd, effSpd float64) string {
+	modeChar := "S"
+	if config.User.UseWordsworth {
+		modeChar = "W"
+	} else if config.User.UseFarnsworth {
+		modeChar = "F"
+	}
+
+	// Round to 1 decimal place to prevent floating point garbage in filenames
+	charSpd = math.Round(charSpd*10) / 10
+	effSpd = math.Round(effSpd*10) / 10
+
+	if strings.ToUpper(modeChar) == "S" {
+		return fmt.Sprintf("%s%g", modeChar, charSpd)
+	}
+	return fmt.Sprintf("%s%g_%g", modeChar, charSpd, effSpd)
+}
+
 // ExportWAVBatch processes global text, chunks it, and generates sequential .wav files.
 func ExportWAVBatch(fullText string, targetDir string, baseName string, maxWords int, maxFiles int) ([]string, error) {
 	var generatedFiles []string
 
-	// 1. Break the entire raw text into an array of words
 	words := strings.Fields(fullText)
-	if len(words) == 0 {
+	totalDocumentWords := len(words) // Track global size for speed ramping
+	if totalDocumentWords == 0 {
 		return nil, fmt.Errorf("no text to export")
 	}
 
-	// 2. Global Feature: Shuffle the ENTIRE document first (if enabled)
 	if config.User.RandomOrder {
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		r.Shuffle(len(words), func(i, j int) {
@@ -26,48 +46,73 @@ func ExportWAVBatch(fullText string, targetDir string, baseName string, maxWords
 		})
 	}
 
-	// 0 means dump it all into one giant file
 	if maxWords <= 0 {
 		maxWords = len(words)
 	}
 
-	fileCount := 0
+	// --- SNAPSHOT ORIGINAL CONFIG ---
+	origCharSpd := config.User.CharacterSpeed
+	origEffSpd := config.User.EffectiveSpeed
+	origIwrSpd := config.User.IWRSpeed
+	origEndSpd := config.User.EndSpeed
 
-	// 3. Slice the words array into chunks using the 10% peek-ahead rule
+	// Guarantee config goes back to normal if the loop crashes or completes
+	defer func() {
+		config.User.CharacterSpeed = origCharSpd
+		config.User.EffectiveSpeed = origEffSpd
+		config.User.IWRSpeed = origIwrSpd
+		config.User.EndSpeed = origEndSpd
+	}()
+	// --------------------------------
+
+	fileCount := 0
+	wordsProcessed := 0
+
 	for len(words) > 0 {
 		if fileCount >= maxFiles {
 			break
 		}
 
 		chunkSize := maxWords
-
-		// THE PEEK-AHEAD:
-		// If the remaining words are less than or equal to 110% of a normal chunk,
-		// just take all of them to prevent a tiny final file.
 		if len(words) <= int(float64(maxWords)*1.10) {
 			chunkSize = len(words)
 		} else if chunkSize > len(words) {
 			chunkSize = len(words)
 		}
 
-		// Slice off the chunk
 		chunkWords := words[:chunkSize]
-
-		// Advance the remaining words array
 		words = words[chunkSize:]
 
-		// 4. Run the exact IWR engine filters on this specific chunk
-		playlist := buildPlaylistFromWords(chunkWords)
+		// --- GLOBAL CHUNK SPEED MATH ---
+		chunkStartProgress := float64(wordsProcessed) / float64(totalDocumentWords-1)
+		chunkEndProgress := float64(wordsProcessed+len(chunkWords)-1) / float64(totalDocumentWords-1)
+		if totalDocumentWords <= 1 {
+			chunkStartProgress, chunkEndProgress = 0, 0
+		}
 
-		// Skip empty files if the filter threw away all the characters
+		chunkStartCharSpd := origCharSpd + (origEndSpd-origCharSpd)*chunkStartProgress
+		chunkEndCharSpd := origCharSpd + (origEndSpd-origCharSpd)*chunkEndProgress
+		chunkStartMultiplier := chunkStartCharSpd / origCharSpd
+
+		// Temporarily apply the chunk's boundaries to the config for RenderWAVToFile
+		config.User.CharacterSpeed = chunkStartCharSpd
+		config.User.EffectiveSpeed = origEffSpd * chunkStartMultiplier
+		config.User.IWRSpeed = origIwrSpd * chunkStartMultiplier
+		config.User.EndSpeed = chunkEndCharSpd
+		// -------------------------------
+
+		playlist := buildPlaylistFromWords(chunkWords)
 		if len(playlist) == 0 {
+			wordsProcessed += len(chunkWords)
 			continue
 		}
 
-		// 5. Generate the actual .wav file
-		fileName := fmt.Sprintf("%s\\%s_%d.wav", targetDir, baseName, fileCount+1)
+		// Calculate speed block using the starting speed of THIS specific chunk
+		speedBlock := getSpeedBlock(chunkStartCharSpd, config.User.EffectiveSpeed)
 
-		// Force the 11025 sample rate here to ensure consistent 8-bit sizing
+		cleanFileName := fmt.Sprintf("%s_%s_%d.wav", baseName, speedBlock, fileCount+1)
+		fileName := ResolvePath(filepath.Join(targetDir, cleanFileName))
+
 		err := RenderWAVToFile(playlist, fileName, 11025)
 		if err != nil {
 			return generatedFiles, err
@@ -75,6 +120,7 @@ func ExportWAVBatch(fullText string, targetDir string, baseName string, maxWords
 
 		generatedFiles = append(generatedFiles, fileName)
 		fileCount++
+		wordsProcessed += len(chunkWords)
 	}
 
 	return generatedFiles, nil

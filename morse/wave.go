@@ -43,11 +43,29 @@ func createWavHeader(dataSize int, sampleRate int) []byte {
 // RenderWAVToFile translates text to Morse and saves it as a 16-bit WAV file.
 func RenderWAVToFile(playlist []PlayContext, outputPath string, sampleRate int) error {
 	var audioBuffer []byte
-
-	baseProfile := GetTiming(false, config.User)
-	iwrProfile := GetTiming(true, config.User)
+	totalWords := len(playlist)
 
 	for i, ctx := range playlist {
+
+		// 1. FRESH MATH: Grab the user config for the WAV file
+		tempConf := config.User
+
+		// --- SPEED RAMPING LOGIC (Now applied to WAV files!) ---
+		if tempConf.EndSpeed > tempConf.CharacterSpeed && totalWords > 1 {
+			progress := float64(i) / float64(totalWords-1)
+			charSpd := tempConf.CharacterSpeed + (tempConf.EndSpeed-tempConf.CharacterSpeed)*progress
+			multiplier := charSpd / tempConf.CharacterSpeed
+
+			tempConf.CharacterSpeed = charSpd
+			tempConf.EffectiveSpeed = tempConf.EffectiveSpeed * multiplier
+			tempConf.IWRSpeed = tempConf.IWRSpeed * multiplier
+		}
+		// -------------------------------------------------------
+
+		// Build profiles dynamically per word
+		baseProfile := GetTiming(false, tempConf)
+		iwrProfile := GetTiming(true, tempConf)
+
 		var p TimingProfile
 		if ctx.IsIWR {
 			p = iwrProfile
@@ -104,7 +122,6 @@ func RenderWAVToFile(playlist []PlayContext, outputPath string, sampleRate int) 
 	}
 
 	// 5. THE TAIL PAD: Add 0.5 seconds of flat silence to the very end of the file.
-	// This absorbs the media player's buffer drop so the final character isn't clipped.
 	tailPadding := int(0.5 * float64(sampleRate))
 	audioBuffer = append(audioBuffer, SilencePCM16Bit(tailPadding).Samples...)
 

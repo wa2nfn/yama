@@ -1,7 +1,7 @@
 package morse
 
 import (
-	_ "log"
+	"fmt"
 	"math/rand"
 	"strings"
 	"time"
@@ -173,15 +173,6 @@ func RunIWR(text string, iwrMan *IWRManager) {
 	// 3. Queue the Main Text (With Filters)
 	for _, rawWord := range words {
 
-		/* WDL
-		for IsPaused {
-			time.Sleep(100 * time.Millisecond)
-			if IsStopping {
-				return
-			}
-		}
-		*/
-
 		if IsStopping {
 			return
 		}
@@ -270,7 +261,11 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			OnStatusUpdate(" [yellow]Generating .wav file...")
 		}
 
-		err := RenderWAVToFile(playlist, "yama_output.wav", 11025)
+		// Pass the speeds and ramping boolean directly to our helper
+		speedBlock := getSpeedBlock(config.User.CharacterSpeed, config.User.EffectiveSpeed)
+		fileName := fmt.Sprintf("yama_output_%s.wav", speedBlock)
+
+		err := RenderWAVToFile(playlist, fileName, 11025)
 
 		if err != nil {
 			if OnStatusUpdate != nil {
@@ -278,7 +273,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			}
 		} else {
 			if OnStatusUpdate != nil {
-				OnStatusUpdate(" [#00FF00]WAV file saved successfully!")
+				OnStatusUpdate(fmt.Sprintf(" [#00FF00]Saved as %s", fileName))
 			}
 		}
 
@@ -292,13 +287,8 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		return
 	}
 
-	// ==========================================
-	// 🚦 PHASE 2: AUDIO PLAYBACK ROUTING 🚦
-	// ==========================================
-	// ... (WAV file generation block remains the same up here) ...
-
 	// Start the standard audio loop
-	for _, ctx := range playlist {
+	for i, ctx := range playlist {
 
 		// 1. SLEEP LOCK: If paused, just hang out here.
 		for IsPaused && !IsStopping {
@@ -310,10 +300,31 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			break
 		}
 
-		// 3. FRESH MATH: Unconditionally grab the exact timing right now.
-		// If they just woke up from a pause, this perfectly captures the new speed!
-		baseProfile := GetTiming(false, config.User)
-		iwrProfile := GetTiming(true, config.User)
+		// 3. FRESH MATH: Grab the user config
+		tempConf := config.User
+
+		// --- SPEED RAMPING LOGIC ---
+		totalWords := len(playlist)
+		if tempConf.EndSpeed > tempConf.CharacterSpeed && totalWords > 1 {
+			// Calculate progress from 0.0 (first word) to 1.0 (last word)
+			progress := float64(i) / float64(totalWords-1)
+
+			// Calculate the new instantaneous Character Speed
+			charSpd := tempConf.CharacterSpeed + (tempConf.EndSpeed-tempConf.CharacterSpeed)*progress
+
+			// Calculate the exact multiplier to keep the other speeds proportional
+			multiplier := charSpd / tempConf.CharacterSpeed
+
+			// Apply the multiplier to Effective and IWR speeds
+			tempConf.CharacterSpeed = charSpd
+			tempConf.EffectiveSpeed = tempConf.EffectiveSpeed * multiplier
+			tempConf.IWRSpeed = tempConf.IWRSpeed * multiplier
+		}
+		// ---------------------------
+
+		// Build the profiles using our freshly calculated speeds!
+		baseProfile := GetTiming(false, tempConf)
+		iwrProfile := GetTiming(true, tempConf)
 
 		var p TimingProfile
 		if ctx.IsIWR {
