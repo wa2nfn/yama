@@ -1315,7 +1315,7 @@ func showToneSpeed() {
 	timingContainer.SetBorder(true).SetTitle(" Timing ")
 	timingContainer.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	pages.AddPage("tonespeed", createModal(timingContainer, 35, 23), true, true)
+	pages.AddPage("tonespeed", createModal(timingContainer, 38, 23), true, true)
 	app.SetFocus(timingContainer)
 }
 
