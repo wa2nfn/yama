@@ -27,6 +27,12 @@ var currentInputFile string
 var currentFileDir string
 
 func handlePlayPause(iwrMan *morse.IWRManager) {
+	// 0. DEBOUNCE: Ignore presses that happen within 250 milliseconds of each other
+	if time.Since(lastPlayPause) < 250*time.Millisecond {
+		return
+	}
+	lastPlayPause = time.Now()
+
 	// 1. SAFETY LOCK: Prevent playback/interaction if the audio engine is dead
 	if morse.AudioHardwareDead {
 		statusLine.SetText(" [red::b]FATAL: Audio hardware lost. Restart app.[::-]")

@@ -22,7 +22,7 @@ const (
 	StatePlaying
 	StatePaused
 	StateStopped
-	Version = "Version 1.0"
+	Version = "Version 1.0.1"
 )
 
 const AppBackgroundColor = "#1B2B44"
@@ -36,7 +36,8 @@ var (
 	blueLine   *tview.TextView
 	mainFlex   *tview.Flex
 
-	currentState   AppState = StateIdle
+	currentState   AppState  = StateIdle
+	lastPlayPause  time.Time // prevent PayPause mashing
 	actualText     string
 	fullTextToPlay string
 
@@ -92,6 +93,12 @@ func main() {
 
 	// 1. Initialize app normally so tview handles Windows terminal setup properly
 	app = tview.NewApplication()
+	defer func() {
+		if r := recover(); r != nil {
+			app.Stop()                          // Restore the terminal
+			fmt.Printf("YAMA Crashed: %v\n", r) // Print the actual error safely
+		}
+	}()
 
 	// 2. Hook into the draw loop to access the hidden screen and set the cursor globally
 	app.SetBeforeDrawFunc(func(s tcell.Screen) bool {
@@ -243,9 +250,12 @@ func main() {
 
 		switch event.Key() {
 		case tcell.KeyCtrlH, tcell.KeyBackspace, tcell.KeyBackspace2:
-			// Block backspace during playback/pause ONLY if the main inputArea is focused.
-			// This allows backspacing inside modal text fields.
-			if (currentState == StatePlaying || currentState == StatePaused) && app.GetFocus() == inputArea {
+			// 1. Strict lock during Play. No backspacing allowed anywhere.
+			if currentState == StatePlaying {
+				return nil
+			}
+			// 2. Relaxed lock during Pause. Allow backspace inside modal menus.
+			if currentState == StatePaused && app.GetFocus() == inputArea {
 				return nil
 			}
 			return event
@@ -295,7 +305,9 @@ func main() {
 			}
 			return nil
 		case tcell.KeyCtrlA:
-			showImpairments()
+			if currentState != StatePlaying {
+				showImpairments()
+			}
 			return nil
 		case tcell.KeyCtrlD:
 			if statsTotalWords > 0 && (currentState == StateIdle || currentState == StateStopped) {
@@ -324,9 +336,17 @@ func main() {
 			return nil
 		}
 
-		if (currentState == StatePlaying || currentState == StatePaused) && app.GetFocus() == inputArea {
+		// 1. Strict catch-all: If PLAYING, swallow absolutely all unhandled keys. No exceptions.
+		if currentState == StatePlaying {
 			return nil
 		}
+
+		// 2. Relaxed catch-all: If PAUSED, swallow keys ONLY if main text box is focused,
+		// allowing users to type inside modals (like Tone Speed or File screens).
+		if currentState == StatePaused && app.GetFocus() == inputArea {
+			return nil
+		}
+
 		return event
 	})
 

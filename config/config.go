@@ -72,7 +72,7 @@ const (
 	MaxEffSpeed  int = 249
 	MinCharSpeed int = 10
 	MaxCharSpeed int = 250
-	MinTone      int = 300
+	MinTone      int = 200
 	MaxTone      int = 1200
 	MinIWRTone   int = 300
 	MaxIWRTone   int = 1200
