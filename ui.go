@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"yama/config"
 	"yama/morse"
@@ -25,27 +26,47 @@ const MaxExportWords = 5000
 
 var currentInputFile string
 var currentFileDir string
+var playPauseMu sync.Mutex
+var isCountingDown bool
 
 func handlePlayPause(iwrMan *morse.IWRManager) {
-	// 0. DEBOUNCE: Ignore presses that happen within 250 milliseconds of each other
+	playPauseMu.Lock()
+	defer playPauseMu.Unlock()
+
+	// 0. THE SHIELD: Completely ignore Ctrl-P if the clock is ticking
+	if isCountingDown {
+		return
+	}
+
+	// 1. DEBOUNCE
 	if time.Since(lastPlayPause) < 250*time.Millisecond {
 		return
 	}
 	lastPlayPause = time.Now()
 
-	// 1. SAFETY LOCK: Prevent playback/interaction if the audio engine is dead
+	// 2. SAFETY LOCK
 	if morse.AudioHardwareDead {
 		statusLine.SetText(" [red::b]FATAL: Audio hardware lost. Restart app.[::-]")
 		return
 	}
 
 	if currentState == StateIdle || currentState == StateStopped {
+		// Activate the shield if we have a delay.
+		// Notice we NO LONGER set currentState = StatePlaying here!
+		if config.User.StartDelay > 0 {
+			isCountingDown = true
+		} else {
+			currentState = StatePlaying
+		}
+
 		startAudioSequence(iwrMan)
+
 	} else if currentState == StatePlaying {
 		currentState = StatePaused
 		morse.IsPaused = true
 		morse.PauseStart = time.Now()
 		refreshUI(currentState)
+
 	} else if currentState == StatePaused {
 		currentState = StatePlaying
 		morse.IsPaused = false
@@ -326,9 +347,9 @@ The method to enter or change an option on the Ctrl-O or Ctrl-T screen will depe
 
 If you ever get stuck in a menu, just press [yellow]ESC[-] to safely close it without saving.
 
-[red](Note: insertion or removal of headphones can trigger a Windows hang of the Yama app requiring a restart.)[-]
+[red](Note: insertion or removal of headphones can trigger a Windows hang of the Yama app requiring an app restart.)[-]
 
-A few keys offerr alternatives.
+A few keys offer alternatives.
 
 [white]Key           | Menu Name  | Purpose[-]
 --------------|------------|--------------------------------------------------------
@@ -983,7 +1004,7 @@ func showOptions() {
 	optionsContainer.SetBorder(true).SetTitle(" Options ")
 	optionsContainer.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	pages.AddPage("options", createModal(optionsContainer, 70, 19), true, true)
+	pages.AddPage("options", createModal(optionsContainer, 70, 23), true, true)
 	app.SetFocus(optionsContainer)
 }
 
@@ -1383,12 +1404,49 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 		}
 	}
 
+	if config.User.StartMsg && config.User.StartMsgText != "" {
+		normStart := parser.NormalizeText(config.User.StartMsgText)
+		cleanStart := strings.TrimSpace(parser.FilterValidMorse(normStart, morse.MorseTable))
+		if cleanStart != "" && !strings.HasPrefix(parsedText, cleanStart) {
+			finalBuilder.WriteString(cleanStart)
+			finalBuilder.WriteString(" ")
+		}
+	}
+
+	finalBuilder.WriteString(parsedText)
+
+	if config.User.EndMsg && config.User.EndMsgText != "" {
+		normEnd := parser.NormalizeText(config.User.EndMsgText)
+		cleanEnd := strings.TrimSpace(parser.FilterValidMorse(normEnd, morse.MorseTable))
+		if cleanEnd != "" && !strings.HasSuffix(parsedText, cleanEnd) {
+			finalBuilder.WriteString(" ")
+			finalBuilder.WriteString(cleanEnd)
+		}
+	}
+
 	parsedText = parser.CompressSpace(finalBuilder.String())
 
 	if config.User.StartDelay > 0 {
 		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// Drop the shield if we crash, just in case
+					playPauseMu.Lock()
+					isCountingDown = false
+					playPauseMu.Unlock()
+
+					app.Stop()
+					fmt.Printf("\n[FATAL] YAMA Crashed in delayed engine start: %v\n", r)
+				}
+			}()
+
+			// The Countdown Loop
 			for i := config.User.StartDelay; i > 0; i-- {
+				// Ctrl-Q sets IsStopping. If pressed, drop the shield and abort.
 				if morse.IsStopping {
+					playPauseMu.Lock()
+					isCountingDown = false
+					playPauseMu.Unlock()
 					return
 				}
 				app.QueueUpdateDraw(func() {
@@ -1398,16 +1456,33 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 				})
 				time.Sleep(1 * time.Second)
 			}
+
+			// Timer is done! Lock the mutex to safely transition states.
+			playPauseMu.Lock()
+
+			if morse.IsStopping {
+				isCountingDown = false
+				playPauseMu.Unlock()
+				return
+			}
+
+			// Drop the shield and officially enter the Playing state
+			isCountingDown = false
+			currentState = StatePlaying
+
 			app.QueueUpdateDraw(func() {
 				inputArea.SetText("", false)
-				currentState = StatePlaying
 				refreshUI(StatePlaying)
 			})
 
 			morse.StartTime = time.Now()
+			playPauseMu.Unlock()
+
+			// Safely launch the audio
 			runEngine(parsedText, iwrMan)
 		}()
 	} else {
+		// Synchronous branch (Already protected by the mutex in handlePlayPause)
 		currentState = StatePlaying
 		refreshUI(StatePlaying)
 
