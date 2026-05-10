@@ -22,7 +22,7 @@ const (
 	StatePlaying
 	StatePaused
 	StateStopped
-	Version = "Version 1.0.2"
+	Ver = "1.0.4"
 )
 
 const AppBackgroundColor = "#1B2B44"
@@ -320,6 +320,7 @@ func main() {
 				inputArea.SetText("", false)
 				clearStats()
 				refreshUI(currentState)
+				currentInputFile = ""
 			}
 			return nil
 		case tcell.KeyCtrlW:

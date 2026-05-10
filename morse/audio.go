@@ -85,7 +85,6 @@ func Flush() {
 		totalSamples += len(queue[i].samples) / 2
 	}
 	expectedDuration := time.Duration(totalSamples) * time.Second / time.Duration(SampleRate)
-	//WDL 5 was 3
 	timeout := time.Now().Add(expectedDuration + 5*time.Second)
 
 	// 2. Wrap our queue in the new Gapless Streamer for perfect audio

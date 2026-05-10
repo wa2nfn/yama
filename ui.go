@@ -278,7 +278,7 @@ func refreshUI(state AppState) {
 		statusLine.SetText(" [#00FF00]Paused")
 		menu = "[#00FF00]R[white]esume  [#00FF00]S[white]top  [#00FF00]T[white]iming  [#00FF00]A[white]udio  [#00FF00]Q[white]uit "
 	}
-	header.SetText("[#00FF00::b] YAMA - Yet Another Morse App [white::-]\n" + menu)
+	header.SetText("[#00FF00::b] YAMA - Yet Another Morse App[white::-]\n" + menu)
 }
 
 // --- UI Components & Modals ---
@@ -386,21 +386,30 @@ If "Play ProSigns" is disabled in Options ([yellow]Ctrl-O[-]), bracketed ProSign
 Play ProSigns         | Toggles support for bracketed ProSigns (e.g., <AR>).
                       | Does NOT affect [yellow]-+=[-]. (Note: <BK> is sounded as  "B K").
 Extended Punctuation  | Toggles support for extended punctuation marks.
-European Characters   | Toggles support for European & Esparanto Morse characters ([yellow]Ä, Ö, Ĝ, Ŭ[-])
+European Characters   | Toggles support for European & Esparanto Morse 
+                      | characters ([yellow]Ä, Ö, Ĝ, Ŭ[-])
 Use Skip              | Enables the Skip List filtering during playback.
-Skip List             | Define specific characters or ProSigns to silently ignore.
+Skip List             | Define specific characters or ProSigns to silently 
+                      | ignore.
                       | Entered without any separators. e.g. XY7<BT>=
-Start Delay           | Adds a countdown timer (in seconds) before playback begins.
-Repeat Limit          | Caps consecutive repeating characters to prevent runaway sequences.
+Start Delay           | Adds a countdown timer (in seconds) before playback 
+                      | begins.
+Repeat Limit          | Caps consecutive repeating characters to prevent 
+                      | runaway use of a character.
                       | sometimes used in books to underline titles. Default 3.
-Random Order          | Shuffles the playback order of the entire document's words.
-Random Words          | Scrambles the letters within individual words (e.g. a code group).
+Random Order          | Shuffles the playback order of the entire document's 
+                      | words.
+Random Words          | Scrambles the letters within individual words (e.g. a 
+                      | code group).
                       | Mutually exclusive with the IWR function.
-Word Builder          | Plays words progressively (e.g., T, TH, THE) for comprehension.
-                      | Mutually exclusive with IWR. IWR speed is used to sound the last word.
-Use Start Msg         | Toggles injecting a custom message at the beginning of the text.
-Start Msg Text        | The specific text to play at the start (e.g., VVV <KA>).
-Use End Msg           | Toggles injecting a custom message at the end of the text.
+Word Builder          | Plays words progressively (e.g., T, TH, THE) for 
+                      | comprehension.
+                      | Mutually exclusive with IWR. IWR speed is used to 
+		      | sound the last word.
+Use Start Msg         | Toggles injecting a custom message at the beginning 
+                      | of the text.
+Start Msg Text        | Specific text to play at the start (e.g., VVV <KA>).
+Use End Msg           | Toggles injecting a custom message at the end of text.
 End Msg Text          | The specific text to play at the end (e.g., <AR>).
 
 [green::b]The Skip List & Contractions[::-]
@@ -412,11 +421,16 @@ Note that the bottom of the screen has a [green]green[-] status line and below t
 [green::b]Audio Screen (Ctrl-A) - Audio-impacting impairments[::-]
 [white]Setting               | Description
 ----------------------|---------------------------------------------------------
-Static (QRN)          | Injects constant background hiss and random lightning crashes.
-Fading (QSB)          | Simulates a slow ionospheric roll, dipping and recovering volume.
-Tone Drift            | Simulates an unstable oscillator, bending the pitch up and down.
-Speed Drift           | Simulates a tired operator by slowly expanding/contracting the timing.
-Key Clicks            | Injects a harsh electrical spark at the start and end of elements.
+Static (QRN)          | Injects constant background hiss and random lightning 
+                      | crashes.
+Fading (QSB)          | Simulates a slow ionospheric roll, dipping and 
+                      | recovering volume.
+Tone Drift            | Simulates an unstable oscillator, bending the pitch up
+                      | and down.
+Speed Drift           | Simulates a tired operator by slowly 
+                      | expanding/contracting the timing.
+Key Clicks            | Injects a harsh electrical spark at the start and end 
+                      | of elements.
 
 [yellow]Note that you can make changes to the currently playing audio with the Timing or Audio screens.[-]
 
@@ -426,7 +440,9 @@ Key Clicks            | Injects a harsh electrical spark at the start and end of
 [green::b]IWR - Instant Word Recognition Feature[::-]
 [white]This a a head-copy- related feature. I looks to match words (actually any space separated string of supported characters (e.g. the qsl 73 cul) in the input, and override the chosen timing mode (standard, Farnsworth, Wordsworth and the associated speed/tone) and play the matched word at a increased speed with standard timing. To do this you must create an [blue]yamaIWR.txt[-] file. A sample file has been created in the in your OS's standard configuration file directory ($HOME\AppData\Roaming\YAMA for Windows). That file will be editable from the Timing screen ([yellow]Ctrl-T[-], or you may create another one in the same directory that Yama is launched from, this one will take priority but you will have to edit it with notepad, vi, emacs or what ever your favorite text editor is (not a word processor, unless it has a save as txt option). The file should list one word per line (any case, any order); a [yellow]'#'[-] at the start of line tells YAMA to ignore that line. If you choose to also match the word if its immediately follow by [yellow], . ? : [-] as well as the bare word, this is indicated by a trailing asterisk (e.g. qsl* matches: qsl qsl? qsl. qsl: qsl, ). The IWR feature as described is ignored if you have choosen either WordBuilder or Random Word in the Options menu, since you would never get a match. A small purposeful interaction with IWR speed is as follows: if you chose Word Builder and have IWR enabled, then when word builder has completed constructing a word (as in: t te tes test) you will have one more sounding of the final word, but this time at IWR speed.
 
-Experiment and I'm sure you will quickly understand the capabilities. Remeber, an ESC or two will always get you back to main Text Input screen.
+[red]Note: Using the high end of the 2K Tone limit may impact the audio profile for QRQ speeds, let your ears guide your choice, rather than the app limit you.[-]
+
+Experiment and I'm sure you will quickly understand the capabilities. Remember, an ESC will always get you back to the previous screen, whether there is a Cancel button or not.
 
 [green::b]System Files (Misc)[::-]
 • [blue]yama_config.json:[-] Automatically manages your saved settings. Please use the UI menus rather than hand-editing this file.
@@ -567,7 +583,7 @@ WA2NFN
 
 func showAbout() {
 	aboutText := `About [yellow]YAMA - Yet Another Morse App[-]
-` + Version +
+` + "Version " + Ver +
 		`
 Created by: Bill Lanahan, WA2NFN
 
@@ -597,7 +613,7 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMA
 
 	tv.SetBackgroundColor(tcell.GetColor(AppBackgroundColor)).
 		SetBorder(true).
-		SetTitle(" About ")
+		SetTitle(" About (cursor) ")
 
 	pages.AddPage("about", createModal(tv, 90, 26), true, true)
 	app.SetFocus(tv)
@@ -1346,151 +1362,6 @@ func showToneSpeed() {
 	app.SetFocus(timingContainer)
 }
 
-func startAudioSequence(iwrMan *morse.IWRManager) {
-
-	// 1. SAFETY LOCK: Prevent playback if the audio engine is dead
-	if morse.AudioHardwareDead {
-		statusLine.SetText(" [red::b]FATAL: Audio hardware lost. Restart app.[::-]")
-		return
-	}
-
-	morse.IsStopping = false
-	morse.IsPaused = false
-	isBlocked = false
-	clearStats()
-
-	rawInput := inputArea.GetText()
-	rawInput = colorTagRegex.ReplaceAllString(rawInput, "")
-
-	fullTextToPlay = parser.NormalizeText(rawInput)
-
-	if config.User.UseSkip {
-		parser.SetSkipList(config.User.SkipList, morse.ProSignTable)
-		fullTextToPlay = parser.ApplySkip(fullTextToPlay)
-	}
-
-	actualText = ""
-	inputArea.SetText("", false)
-
-	parsedText := parser.FilterValidMorse(fullTextToPlay, morse.MorseTable)
-	parsedText = parser.CompressSpace(parsedText)
-
-	if config.User.StartMsg && strings.TrimSpace(config.User.StartMsgText) == "" {
-		config.User.StartMsgText = "VVV <KA>"
-	}
-	if config.User.EndMsg && strings.TrimSpace(config.User.EndMsgText) == "" {
-		config.User.EndMsgText = "<AR>"
-	}
-
-	var finalBuilder strings.Builder
-
-	if config.User.StartMsg && config.User.StartMsgText != "" {
-		normStart := parser.NormalizeText(config.User.StartMsgText)
-		cleanStart := strings.TrimSpace(parser.FilterValidMorse(normStart, morse.MorseTable))
-		if cleanStart != "" && !strings.HasPrefix(parsedText, cleanStart) {
-			finalBuilder.WriteString(cleanStart)
-			finalBuilder.WriteString(" ")
-		}
-	}
-
-	finalBuilder.WriteString(parsedText)
-
-	if config.User.EndMsg && config.User.EndMsgText != "" {
-		normEnd := parser.NormalizeText(config.User.EndMsgText)
-		cleanEnd := strings.TrimSpace(parser.FilterValidMorse(normEnd, morse.MorseTable))
-		if cleanEnd != "" && !strings.HasSuffix(parsedText, cleanEnd) {
-			finalBuilder.WriteString(" ")
-			finalBuilder.WriteString(cleanEnd)
-		}
-	}
-
-	if config.User.StartMsg && config.User.StartMsgText != "" {
-		normStart := parser.NormalizeText(config.User.StartMsgText)
-		cleanStart := strings.TrimSpace(parser.FilterValidMorse(normStart, morse.MorseTable))
-		if cleanStart != "" && !strings.HasPrefix(parsedText, cleanStart) {
-			finalBuilder.WriteString(cleanStart)
-			finalBuilder.WriteString(" ")
-		}
-	}
-
-	finalBuilder.WriteString(parsedText)
-
-	if config.User.EndMsg && config.User.EndMsgText != "" {
-		normEnd := parser.NormalizeText(config.User.EndMsgText)
-		cleanEnd := strings.TrimSpace(parser.FilterValidMorse(normEnd, morse.MorseTable))
-		if cleanEnd != "" && !strings.HasSuffix(parsedText, cleanEnd) {
-			finalBuilder.WriteString(" ")
-			finalBuilder.WriteString(cleanEnd)
-		}
-	}
-
-	parsedText = parser.CompressSpace(finalBuilder.String())
-
-	if config.User.StartDelay > 0 {
-		go func() {
-			defer func() {
-				if r := recover(); r != nil {
-					// Drop the shield if we crash, just in case
-					playPauseMu.Lock()
-					isCountingDown = false
-					playPauseMu.Unlock()
-
-					app.Stop()
-					fmt.Printf("\n[FATAL] YAMA Crashed in delayed engine start: %v\n", r)
-				}
-			}()
-
-			// The Countdown Loop
-			for i := config.User.StartDelay; i > 0; i-- {
-				// Ctrl-Q sets IsStopping. If pressed, drop the shield and abort.
-				if morse.IsStopping {
-					playPauseMu.Lock()
-					isCountingDown = false
-					playPauseMu.Unlock()
-					return
-				}
-				app.QueueUpdateDraw(func() {
-					msg := fmt.Sprintf("\n\n\n     Starting in %d...", i)
-					inputArea.SetText(msg, false)
-					statusLine.SetText(" [#00FF00]Preparing to Play...")
-				})
-				time.Sleep(1 * time.Second)
-			}
-
-			// Timer is done! Lock the mutex to safely transition states.
-			playPauseMu.Lock()
-
-			if morse.IsStopping {
-				isCountingDown = false
-				playPauseMu.Unlock()
-				return
-			}
-
-			// Drop the shield and officially enter the Playing state
-			isCountingDown = false
-			currentState = StatePlaying
-
-			app.QueueUpdateDraw(func() {
-				inputArea.SetText("", false)
-				refreshUI(StatePlaying)
-			})
-
-			morse.StartTime = time.Now()
-			playPauseMu.Unlock()
-
-			// Safely launch the audio
-			runEngine(parsedText, iwrMan)
-		}()
-	} else {
-		// Synchronous branch (Already protected by the mutex in handlePlayPause)
-		currentState = StatePlaying
-		refreshUI(StatePlaying)
-
-		morse.StartTime = time.Now()
-		go runEngine(parsedText, iwrMan)
-	}
-}
-
 func showSuccessModal(dir string, files []string) {
 	var sb strings.Builder
 
@@ -1840,4 +1711,132 @@ func showWaveModal(targetDir string) {
 
 	pages.AddPage("waveConfig", layout, true, true)
 	app.SetFocus(container)
+}
+
+func startAudioSequence(iwrMan *morse.IWRManager) {
+
+	// 1. SAFETY LOCK: Prevent playback if the audio engine is dead
+	if morse.AudioHardwareDead {
+		statusLine.SetText(" [red::b]FATAL: Audio hardware lost. Restart app.[::-]")
+		return
+	}
+
+	morse.IsStopping = false
+	morse.IsPaused = false
+	isBlocked = false
+	clearStats()
+
+	rawInput := inputArea.GetText()
+	rawInput = colorTagRegex.ReplaceAllString(rawInput, "")
+
+	fullTextToPlay = parser.NormalizeText(rawInput)
+
+	if config.User.UseSkip {
+		parser.SetSkipList(config.User.SkipList, morse.ProSignTable)
+		fullTextToPlay = parser.ApplySkip(fullTextToPlay)
+	}
+
+	actualText = ""
+	inputArea.SetText("", false)
+
+	parsedText := parser.FilterValidMorse(fullTextToPlay, morse.MorseTable)
+	parsedText = parser.CompressSpace(parsedText)
+
+	// Fixed the syntax error from the cut-and-paste
+	if config.User.StartMsg && strings.TrimSpace(config.User.StartMsgText) == "" {
+		config.User.StartMsgText = "VVV <KA>"
+	}
+	if config.User.EndMsg && strings.TrimSpace(config.User.EndMsgText) == "" {
+		config.User.EndMsgText = "<AR>"
+	}
+
+	var finalBuilder strings.Builder
+
+	// Removed the duplicated insertion logic blocks that followed this
+	if config.User.StartMsg && config.User.StartMsgText != "" {
+		normStart := parser.NormalizeText(config.User.StartMsgText)
+		cleanStart := strings.TrimSpace(parser.FilterValidMorse(normStart, morse.MorseTable))
+		if cleanStart != "" && !strings.HasPrefix(parsedText, cleanStart) {
+			finalBuilder.WriteString(cleanStart)
+			finalBuilder.WriteString(" ")
+		}
+	}
+
+	finalBuilder.WriteString(parsedText)
+
+	if config.User.EndMsg && config.User.EndMsgText != "" {
+		normEnd := parser.NormalizeText(config.User.EndMsgText)
+		cleanEnd := strings.TrimSpace(parser.FilterValidMorse(normEnd, morse.MorseTable))
+		if cleanEnd != "" && !strings.HasSuffix(parsedText, cleanEnd) {
+			finalBuilder.WriteString(" ")
+			finalBuilder.WriteString(cleanEnd)
+		}
+	}
+
+	parsedText = parser.CompressSpace(finalBuilder.String())
+
+	if config.User.StartDelay > 0 {
+		go func() {
+			defer func() {
+				if r := recover(); r != nil {
+					// Drop the shield if we crash, just in case
+					playPauseMu.Lock()
+					isCountingDown = false
+					playPauseMu.Unlock()
+
+					app.Stop()
+					fmt.Printf("\n[FATAL] YAMA Crashed in delayed engine start: %v\n", r)
+				}
+			}()
+
+			// The Countdown Loop
+			for i := config.User.StartDelay; i > 0; i-- {
+				// Ctrl-Q sets IsStopping. If pressed, drop the shield and abort.
+				if morse.IsStopping {
+					playPauseMu.Lock()
+					isCountingDown = false
+					playPauseMu.Unlock()
+					return
+				}
+				app.QueueUpdateDraw(func() {
+					msg := fmt.Sprintf("\n\n\n     Starting in %d...", i)
+					inputArea.SetText(msg, false)
+					statusLine.SetText(" [#00FF00]Preparing to Play...")
+				})
+				time.Sleep(1 * time.Second)
+			}
+
+			// Timer is done! Lock the mutex to safely transition states.
+			playPauseMu.Lock()
+
+			if morse.IsStopping {
+				isCountingDown = false
+				playPauseMu.Unlock()
+				return
+			}
+
+			// Drop the shield and officially enter the Playing state
+			isCountingDown = false
+			currentState = StatePlaying
+
+			// Apply the concurrency fix: Launch inside the QueueUpdateDraw closure
+			app.QueueUpdateDraw(func() {
+				inputArea.SetText("", false)
+				refreshUI(StatePlaying)
+
+				// Launch the audio STRICTLY AFTER the UI and IWR state are completely reset
+				morse.StartTime = time.Now()
+				go runEngine(parsedText, iwrMan)
+			})
+
+			playPauseMu.Unlock()
+		}()
+	} else {
+		// Synchronous branch (Already protected by the mutex in handlePlayPause)
+		currentState = StatePlaying
+		refreshUI(StatePlaying)
+
+		morse.StartTime = time.Now()
+		go runEngine(parsedText, iwrMan)
+	}
 }
