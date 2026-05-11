@@ -52,7 +52,6 @@ func handlePlayPause(iwrMan *morse.IWRManager) {
 
 	if currentState == StateIdle || currentState == StateStopped {
 		// Activate the shield if we have a delay.
-		// Notice we NO LONGER set currentState = StatePlaying here!
 		if config.User.StartDelay > 0 {
 			isCountingDown = true
 		} else {
@@ -144,13 +143,10 @@ func showStats() {
 	}
 	sort.Strings(statsIWRList)
 
-	// Since we now strictly use lockPlayTime(), finalPlayTime is guaranteed
-	// to be accurate here if the engine was stopped or finished.
 	var activePlayTime time.Duration
 	if finalPlayTime > 0 {
 		activePlayTime = finalPlayTime
 	} else {
-		// Fallback just in case they open stats while actively playing
 		totalElapsed := time.Since(morse.StartTime)
 		currentTotalPaused := morse.TotalPaused
 		if currentState == StatePaused {
@@ -159,13 +155,11 @@ func showStats() {
 		activePlayTime = totalElapsed - currentTotalPaused
 	}
 
-	// Format Current Session Time
 	totalSecs := int(activePlayTime.Seconds())
 	m := totalSecs / 60
 	s := totalSecs % 60
 	timeStr := fmt.Sprintf("%dm %ds", m, s)
 
-	// Format Lifetime Time
 	lifeTotal := config.User.LifetimePlaySeconds
 	lifeH := lifeTotal / 3600
 	lifeM := (lifeTotal % 3600) / 60
@@ -180,7 +174,6 @@ func showStats() {
 
 	var sb strings.Builder
 
-	// Print the shiny new Lifetime stat at the very top!
 	sb.WriteString(fmt.Sprintf("[yellow::b]Lifetime Practice Time: %s[::-]\n", lifeStr))
 	sb.WriteString(strings.Repeat("-", 32) + "\n\n")
 
@@ -210,7 +203,7 @@ func showStats() {
 }
 
 func updateVisibility() {
-	isProgrammaticUpdate = true // Lock the listener
+	isProgrammaticUpdate = true
 
 	if isBlocked {
 		inputArea.SetText(strings.Repeat("*", len(actualText)), false)
@@ -218,7 +211,7 @@ func updateVisibility() {
 		inputArea.SetText(actualText, false)
 	}
 
-	isProgrammaticUpdate = false // Unlock it
+	isProgrammaticUpdate = false
 }
 
 func updateBlueLine() {
@@ -229,14 +222,12 @@ func updateBlueLine() {
 
 	var info string
 	if config.User.CharacterSpeed <= config.User.EffectiveSpeed {
-		// UPDATED: Changed %d to %g for speeds
 		info = fmt.Sprintf(" [black]Character Speed: %g wpm | IWR: %s (%g wpm) ", config.User.CharacterSpeed, iwrStatus, config.User.IWRSpeed)
 	} else {
 		mode := "Farnsworth"
 		if config.User.UseWordsworth {
 			mode = "Wordsworth"
 		}
-		// UPDATED: Changed %d to %g for speeds
 		info = fmt.Sprintf(" [black]Mode: %s | Character Speed: %g wpm | Effective Speed: %g wpm | IWR: %s (%g wpm) ", mode, config.User.CharacterSpeed, config.User.EffectiveSpeed, iwrStatus, config.User.IWRSpeed)
 	}
 
@@ -254,7 +245,6 @@ func refreshUI(state AppState) {
 			status = "Stopped"
 		}
 
-		// INTERCEPT STATUS: If the watchdog aborted the run, warn the user!
 		if morse.AudioHardwareDead {
 			statusLine.SetText(" [red::b]ERROR: Audio Device Disconnected! Restart App.[::-]")
 		} else {
@@ -283,7 +273,6 @@ func refreshUI(state AppState) {
 
 // --- UI Components & Modals ---
 
-// applyFocusStyles forces InputFields to light up Green when focused
 func applyFocusStyles(form *tview.Form) {
 	for i := 0; i < form.GetFormItemCount(); i++ {
 		item := form.GetFormItem(i)
@@ -305,7 +294,7 @@ func createModal(p tview.Primitive, width, height int) tview.Primitive {
 }
 
 func showErrorModal(errors []string, onDismiss func()) {
-	msg := "[yellow::b]Configuration Adjustments ReqGuired:[::-]\n\n"
+	msg := "[yellow::b]Configuration Adjustments Required:[::-]\n\n"
 	for _, e := range errors {
 		msg += "- " + e + "\n"
 	}
@@ -406,6 +395,8 @@ Word Builder          | Plays words progressively (e.g., T, TH, THE) for
                       | comprehension.
                       | Mutually exclusive with IWR. IWR speed is used to 
 		      | sound the last word.
+Word Separator        | Randomly selects one character or ProSign from this 
+                      | list to play at the end of each fully built word.
 Use Start Msg         | Toggles injecting a custom message at the beginning 
                       | of the text.
 Start Msg Text        | Specific text to play at the start (e.g., VVV <KA>).
@@ -444,16 +435,6 @@ Key Clicks            | Injects a harsh electrical spark at the start and end
 
 Experiment and I'm sure you will quickly understand the capabilities. Remember, an ESC will always get you back to the previous screen, whether there is a Cancel button or not.
 
-[green::b]System Files (Misc)[::-]
-• [blue]yama_config.json:[-] Automatically manages your saved settings. Please use the UI menus rather than hand-editing this file.
-• [blue]yamaIWR.txt:[-] Your active dictionary for Instant Word Recognition. Edit this safely via the "Edit IWR" button in the Timing menu. Note: Edits via the app are rather simple, cursor keys, Insert/Delete, Backspace, TAB to access Save button.
-• [blue]yama_help.html:[-] This information saved in html format for browser display or printing.
-• [blue]YAMA directory:[-] On windows, [blue]$HOME/AppData/Roaming/YAMA[-], on Linux [blue]$HOME/.config/YAMA[-], will contain a file that holds your options and a stating IWR text file, neighter should be edited manually. If you ever discard the YAMA app, remoe this directory as well.
-
-Note: Yama does not require or make any changes to non-YAMA values on your PC. All files related to YAMA have, yama in the name for you to remove as you see fit.
-
-In the Wave creation screen, if you enter a non-existent directory, it will be created - this is recommended to make the eventual removal of WAV files simpler.
-
 73 and best of luck on your CW journey.
 WA2NFN
 [::-]`
@@ -465,15 +446,12 @@ WA2NFN
 
 	tv.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	// 1. BUILD THE FORM FIRST
 	form := tview.NewForm().
 		AddButton("Save to yama_help.html", func() {
 
-			// 1. ESCAPE THE PROSIGNS! <AR> becomes &lt;AR&gt; so the browser doesn't hide it.
 			htmlText := strings.ReplaceAll(helpText, "<", "&lt;")
 			htmlText = strings.ReplaceAll(htmlText, ">", "&gt;")
 
-			// 2. Translate tview color tags into HTML CSS spans
 			htmlText = strings.ReplaceAll(htmlText, "[yellow::b]", "<span style='color: #FFD700; font-weight: bold;'>")
 			htmlText = strings.ReplaceAll(htmlText, "[green::b]", "<span style='color: #00FF00; font-weight: bold;'>")
 			htmlText = strings.ReplaceAll(htmlText, "[white]", "<span style='color: white;'>")
@@ -483,7 +461,6 @@ WA2NFN
 			htmlText = strings.ReplaceAll(htmlText, "[-]", "</span>")
 			htmlText = strings.ReplaceAll(htmlText, "[::-]", "</span>")
 
-			// 3. Wrap it in a beautiful, printable HTML document
 			finalHTML := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
@@ -508,11 +485,10 @@ WA2NFN
         }
         pre { white-space: pre-wrap; font-family: inherit; margin: 0; }
 
-        /* This makes sure it looks good if they actually print it to paper */
         @media print {
             body, .container { background-color: white; color: black; box-shadow: none; border: none; padding: 0; }
             span { font-weight: bold !important; }
-            span[style*="color: #FFD700"] { color: #8B8B00 !important; } /* Darken yellow for white paper */
+            span[style*="color: #FFD700"] { color: #8B8B00 !important; }
             span[style*="color: white"] { color: black !important; }
             span[style*="color: #00FF00"] { color: darkgreen !important; }
             span[style*="color: #00BFFF"] { color: blue !important; }
@@ -545,7 +521,6 @@ WA2NFN
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	applyFocusStyles(form)
 
-	// The new static hint text
 	hint := tview.NewTextView().
 		SetText(" (Cursor Up/Down as needed) ").
 		SetTextColor(tcell.ColorYellow).
@@ -553,10 +528,9 @@ WA2NFN
 
 	hint.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	// 2. NOW WE CAN INTERCEPT TAB (Because 'form' actually exists!)
 	tv.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyTab {
-			app.SetFocus(form) // Jump down to the buttons!
+			app.SetFocus(form)
 			return nil
 		}
 		if event.Key() == tcell.KeyEscape {
@@ -567,15 +541,13 @@ WA2NFN
 		return event
 	})
 
-	// 3. BUILD THE LAYOUT
 	layout := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(tv, 0, 1, true).
 		AddItem(form, 3, 1, false).
-		AddItem(hint, 1, 1, false) // <-- Inserted the hint here! (1 row tall)
+		AddItem(hint, 1, 1, false)
 
 	layout.SetBorder(true).SetTitle(" Help Information ")
 	layout.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	// 3. BUILD THE LAYOUT
 
 	pages.AddPage("help", createModal(layout, 90, 26), true, true)
 	app.SetFocus(layout)
@@ -648,7 +620,6 @@ func showFile() {
 			list.AddItem("[#00BFFF]"+f.Name()+"/", "", 0, nil)
 		}
 
-		// The Empty Directory Indicator
 		if len(dirs) == 0 && len(txts) == 0 {
 			list.AddItem("[gray](Directory is empty)[-]", "", 0, nil)
 		} else if len(dirs) == 0 {
@@ -670,7 +641,7 @@ func showFile() {
 			return
 		}
 		if name == "[gray](No sub-directories found)[-]" || name == "[gray](Directory is empty)[-]" {
-			return // Unclickable
+			return
 		}
 
 		full := filepath.Join(currentDir, name)
@@ -690,10 +661,17 @@ func showFile() {
 
 		} else {
 			currentInputFile = name
-			currentFileDir = currentDir // Capture for Wave Exporter
+			currentFileDir = currentDir
 
 			go func(targetFile string) {
 				stopAudio()
+
+				// ==========================================
+				// 🚦 GHOST THREAD ASSASSIN 🚦
+				// ==========================================
+				// Wait for any playing thread to fully die before we
+				// wipe the UI text buffer to load the new file!
+				time.Sleep(150 * time.Millisecond)
 
 				data, err := os.ReadFile(targetFile)
 				if err != nil {
@@ -746,7 +724,6 @@ func showFile() {
 	app.SetFocus(list)
 }
 
-// we pass a string pointer (*activeEuroSkip) instead of the input field
 func showEuropeanCharSelector(parentContainer tview.Primitive, activeEuroSkip *string, parentSaveFunc func()) {
 	form := tview.NewForm()
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
@@ -844,7 +821,7 @@ func showOptions() {
 	europeanCharsCb := tview.NewCheckbox().SetLabel("European & Esparanto Chars")
 	useSkipCb := tview.NewCheckbox().SetLabel("Use Skip")
 
-	skipListInput := tview.NewInputField().SetLabel("Skip List").SetFieldWidth(35)
+	skipListInput := tview.NewInputField().SetLabel("    Skip List").SetFieldWidth(35)
 	skipListInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 	skipListInput.SetPlaceholder(" e.g. XYZ789<SK>").SetPlaceholderTextColor(tcell.ColorYellow)
 
@@ -856,15 +833,20 @@ func showOptions() {
 
 	randomOrderCb := tview.NewCheckbox().SetLabel("Random Order")
 	randomWordsCb := tview.NewCheckbox().SetLabel("Random Words")
+
 	wordBuilderCb := tview.NewCheckbox().SetLabel("Word Builder")
 
+	wordSeparatorInput := tview.NewInputField().SetLabel("    Word Separator").SetFieldWidth(35)
+	wordSeparatorInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	wordSeparatorInput.SetPlaceholder(" e.g. <BT>.,+").SetPlaceholderTextColor(tcell.ColorYellow)
+
 	startMsgCb := tview.NewCheckbox().SetLabel("Use Start Msg")
-	startMsgInput := tview.NewInputField().SetLabel("Start Msg Text").SetFieldWidth(30)
+	startMsgInput := tview.NewInputField().SetLabel("    Start Msg Text").SetFieldWidth(30)
 	startMsgInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 	startMsgInput.SetPlaceholder("VVV <KA>").SetPlaceholderTextColor(tcell.ColorYellow)
 
 	endMsgCb := tview.NewCheckbox().SetLabel("Use End Msg")
-	endMsgInput := tview.NewInputField().SetLabel("End Msg Text").SetFieldWidth(30)
+	endMsgInput := tview.NewInputField().SetLabel("    End Msg Text").SetFieldWidth(30)
 	endMsgInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 	endMsgInput.SetPlaceholder("<AR>").SetPlaceholderTextColor(tcell.ColorYellow)
 
@@ -895,6 +877,8 @@ func showOptions() {
 		randomOrderCb.SetChecked(config.User.RandomOrder)
 		randomWordsCb.SetChecked(config.User.RandomWords)
 		wordBuilderCb.SetChecked(config.User.WordBuilder)
+
+		wordSeparatorInput.SetText(config.User.WordSeparator)
 
 		dIdx := 0
 		for i, opt := range delayOptions {
@@ -928,6 +912,7 @@ func showOptions() {
 	form.AddFormItem(randomOrderCb)
 	form.AddFormItem(randomWordsCb)
 	form.AddFormItem(wordBuilderCb)
+	form.AddFormItem(wordSeparatorInput)
 	form.AddFormItem(startMsgCb)
 	form.AddFormItem(startMsgInput)
 	form.AddFormItem(endMsgCb)
@@ -969,6 +954,9 @@ func showOptions() {
 			config.User.RandomOrder = randomOrderCb.IsChecked()
 			config.User.RandomWords = isRandWords
 			config.User.WordBuilder = isWB
+
+			config.User.WordSeparator = wordSeparatorInput.GetText()
+
 			config.User.StartMsg = startMsgCb.IsChecked()
 			config.User.StartMsgText = startMsgInput.GetText()
 			config.User.EndMsg = endMsgCb.IsChecked()
@@ -1020,7 +1008,7 @@ func showOptions() {
 	optionsContainer.SetBorder(true).SetTitle(" Options ")
 	optionsContainer.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	pages.AddPage("options", createModal(optionsContainer, 70, 23), true, true)
+	pages.AddPage("options", createModal(optionsContainer, 70, 25), true, true)
 	app.SetFocus(optionsContainer)
 }
 
@@ -1101,7 +1089,6 @@ func showIWREditModal(parentContainer tview.Primitive) {
 	})
 
 	textArea.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		// Intercept Tab to jump to the buttons
 		if event.Key() == tcell.KeyTab {
 			app.SetFocus(form)
 			return nil
@@ -1181,7 +1168,7 @@ func showToneSpeed() {
 					}
 				}
 			}
-			return event // Pass the keypress back to the form so it still navigates!
+			return event
 		})
 	}
 
@@ -1365,23 +1352,19 @@ func showToneSpeed() {
 func showSuccessModal(dir string, files []string) {
 	var sb strings.Builder
 
-	// --- 1. CLEAN THE DIRECTORY PATH ---
 	cleanDir := morse.ResolvePath(dir)
 	if absDir, err := filepath.Abs(cleanDir); err == nil {
-		cleanDir = absDir // Expands "." or relative paths into the FULL path!
+		cleanDir = absDir
 	}
-	// -----------------------------------
 
 	sb.WriteString(fmt.Sprintf("[white]Saved to:\n[#00BFFF]%s[-]\n", cleanDir))
 	sb.WriteString(strings.Repeat("-", 46) + "\n")
 
 	for _, f := range files {
-		// Just show the filename for the individual files
 		sb.WriteString(fmt.Sprintf("[white]%s\n", filepath.Base(morse.ResolvePath(f))))
 	}
 	sb.WriteString("\n[yellow]ESC to close[-]")
 
-	// Use a TextView instead of a List so long directory paths wrap!
 	tv := tview.NewTextView().
 		SetDynamicColors(true).
 		SetWrap(true).
@@ -1403,7 +1386,7 @@ func showSuccessModal(dir string, files []string) {
 
 	boxHeight := len(files) + 10
 	if boxHeight > 22 {
-		boxHeight = 22 // Cap the height so it doesn't blow past the screen
+		boxHeight = 22
 	}
 
 	pages.AddPage("success", createModal(tv, 55, boxHeight), true, true)
@@ -1460,21 +1443,18 @@ func showImpairments() {
 	}
 
 	onClearAll := func() {
-		// 1. Reset the UI elements so the user sees the change
 		staticDropDown.SetCurrentOption(0)
 		fadingDropDown.SetCurrentOption(0)
 		toneDriftDropDown.SetCurrentOption(0)
 		speedDriftDropDown.SetCurrentOption(0)
 		keyClickCb.SetChecked(false)
 
-		// 2. Immediately update the global config memory
 		config.User.NoiseStaticLevel = 0
 		config.User.NoiseFadingLevel = 0
 		config.User.NoiseToneDriftLevel = 0
 		config.User.NoiseSpeedDriftLevel = 0
 		config.User.NoiseKeyClick = false
 
-		// 3. Commit it to disk instantly!
 		config.SaveConfig()
 	}
 
@@ -1721,6 +1701,14 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 		return
 	}
 
+	// ==========================================
+	// 🚦 THE GHOST THREAD ASSASSIN 🚦
+	// ==========================================
+	// Give the old goroutine 150ms to read IsStopping=true and completely
+	// exit its loop before we reset the flag. This guarantees the old
+	// thread is dead before the new one starts.
+	time.Sleep(150 * time.Millisecond)
+
 	morse.IsStopping = false
 	morse.IsPaused = false
 	isBlocked = false
@@ -1742,7 +1730,6 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 	parsedText := parser.FilterValidMorse(fullTextToPlay, morse.MorseTable)
 	parsedText = parser.CompressSpace(parsedText)
 
-	// Fixed the syntax error from the cut-and-paste
 	if config.User.StartMsg && strings.TrimSpace(config.User.StartMsgText) == "" {
 		config.User.StartMsgText = "VVV <KA>"
 	}
@@ -1752,7 +1739,6 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 
 	var finalBuilder strings.Builder
 
-	// Removed the duplicated insertion logic blocks that followed this
 	if config.User.StartMsg && config.User.StartMsgText != "" {
 		normStart := parser.NormalizeText(config.User.StartMsgText)
 		cleanStart := strings.TrimSpace(parser.FilterValidMorse(normStart, morse.MorseTable))
@@ -1779,7 +1765,6 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 		go func() {
 			defer func() {
 				if r := recover(); r != nil {
-					// Drop the shield if we crash, just in case
 					playPauseMu.Lock()
 					isCountingDown = false
 					playPauseMu.Unlock()
@@ -1789,9 +1774,7 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 				}
 			}()
 
-			// The Countdown Loop
 			for i := config.User.StartDelay; i > 0; i-- {
-				// Ctrl-Q sets IsStopping. If pressed, drop the shield and abort.
 				if morse.IsStopping {
 					playPauseMu.Lock()
 					isCountingDown = false
@@ -1806,7 +1789,6 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 				time.Sleep(1 * time.Second)
 			}
 
-			// Timer is done! Lock the mutex to safely transition states.
 			playPauseMu.Lock()
 
 			if morse.IsStopping {
@@ -1815,16 +1797,13 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 				return
 			}
 
-			// Drop the shield and officially enter the Playing state
 			isCountingDown = false
 			currentState = StatePlaying
 
-			// Apply the concurrency fix: Launch inside the QueueUpdateDraw closure
 			app.QueueUpdateDraw(func() {
 				inputArea.SetText("", false)
 				refreshUI(StatePlaying)
 
-				// Launch the audio STRICTLY AFTER the UI and IWR state are completely reset
 				morse.StartTime = time.Now()
 				go runEngine(parsedText, iwrMan)
 			})
@@ -1832,7 +1811,6 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 			playPauseMu.Unlock()
 		}()
 	} else {
-		// Synchronous branch (Already protected by the mutex in handlePlayPause)
 		currentState = StatePlaying
 		refreshUI(StatePlaying)
 

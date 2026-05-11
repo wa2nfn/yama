@@ -57,6 +57,7 @@ type UserSettings struct {
 	RandomOrder            bool   `json:"random_order"`
 	RandomWords            bool   `json:"random_words"`
 	WordBuilder            bool   `json:"word_builder"`
+	WordSeparator          string `json:"word_separator"`
 
 	// Messaging & Flow Control
 	StartMsg     bool   `json:"start_msg"`

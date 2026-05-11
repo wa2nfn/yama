@@ -105,17 +105,68 @@ func RunIWR(text string, iwrMan *IWRManager) {
 	//WDL VerifyParisTiming(config.User.CharacterSpeed)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
+	// ==========================================
+	// 🚦 PRE-PARSE SEPARATORS ONCE FOR SPEED 🚦
+	// ==========================================
+	var validSeparators []string
+	if config.User.WordSeparator != "" {
+		inProsign := false
+		var currentToken string
+
+		for _, rChar := range config.User.WordSeparator {
+			if rChar == ' ' {
+				continue
+			}
+			if rChar == '<' {
+				inProsign = true
+				currentToken = "<"
+			} else if rChar == '>' && inProsign {
+				currentToken += ">"
+				inner := currentToken[1 : len(currentToken)-1]
+
+				isValid := true
+				if len(inner) < 2 || len(inner) > 3 {
+					isValid = false
+				} else {
+					for _, c := range inner {
+						if (c < 'a' || c > 'z') && (c < 'A' || c > 'Z') {
+							isValid = false
+							break
+						}
+					}
+				}
+
+				if isValid {
+					upperInner := strings.ToUpper(inner)
+					if _, ok := ProSignTable[upperInner]; ok {
+						validSeparators = append(validSeparators, strings.ToUpper(currentToken))
+					} else {
+						validSeparators = append(validSeparators, strings.ToUpper(currentToken))
+					}
+				}
+
+				inProsign = false
+				currentToken = ""
+			} else if inProsign {
+				currentToken += string(rChar)
+			} else {
+				upperChar := []rune(strings.ToUpper(string(rChar)))[0]
+				if _, ok := MorseTable[upperChar]; ok {
+					validSeparators = append(validSeparators, string(rChar))
+				}
+			}
+		}
+	}
+
 	words := strings.Fields(text)
 
 	// --- 1. BRUTE-FORCE EXTRACTION ---
-	// Unconditionally slice the Start/End messages off the array based on
-	// their config length so WordBuilder and RandomOrder cannot touch them.
 	var startMsgWords []string
 	if config.User.StartMsg && config.User.StartMsgText != "" {
 		numStartTokens := len(strings.Fields(config.User.StartMsgText))
 		if len(words) >= numStartTokens {
 			startMsgWords = words[:numStartTokens]
-			words = words[numStartTokens:] // Remove from main processing
+			words = words[numStartTokens:]
 		}
 	}
 
@@ -124,7 +175,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		numEndTokens := len(strings.Fields(config.User.EndMsgText))
 		if len(words) >= numEndTokens {
 			endMsgWords = words[len(words)-numEndTokens:]
-			words = words[:len(words)-numEndTokens] // Remove from main processing
+			words = words[:len(words)-numEndTokens]
 		}
 	}
 
@@ -159,7 +210,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		if len(strings.TrimSpace(w)) > 0 {
 			playlist = append(playlist, PlayContext{
 				Word:     w,
-				IsIWR:    false, // Control messages never trigger IWR speed bursts
+				IsIWR:    false,
 				HideText: false,
 			})
 		}
@@ -186,8 +237,8 @@ func RunIWR(text string, iwrMan *IWRManager) {
 				}
 			} else {
 				if len(t) > 0 {
-					r := []rune(strings.ToUpper(t))[0]
-					if _, ok := MorseTable[r]; ok {
+					rCh := []rune(strings.ToUpper(t))[0]
+					if _, ok := MorseTable[rCh]; ok {
 						cleanBuilder.WriteString(t)
 					}
 				}
@@ -201,36 +252,6 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 		isProsign := strings.HasPrefix(w, "<") && strings.HasSuffix(w, ">")
 
-		// Apply WordBuilder ONLY to actual words (ignore Prosigns)
-		if config.User.WordBuilder && len(w) > 1 && !isProsign {
-
-			// 1. The buildup -> T, TH (Hidden from UI)
-			for i := 1; i < len(w); i++ {
-				playlist = append(playlist, PlayContext{
-					Word:     w[:i],
-					IsIWR:    false,
-					HideText: true,
-				})
-			}
-
-			// 2. The first full standard play -> THE (Visible on UI)
-			playlist = append(playlist, PlayContext{
-				Word:     w,
-				IsIWR:    false,
-				HideText: false,
-			})
-
-			// 3. The purposeful repeat!
-			// If IWR is on, it plays fast. If off, it plays standard.
-			playlist = append(playlist, PlayContext{
-				Word:     w,
-				IsIWR:    config.User.IWREnabled, // Automatically toggles speed!
-				HideText: true,                   // Keeps the UI from printing it twice
-			})
-
-			continue
-		}
-
 		var finalWord = w
 		var isIwrMatchFound bool
 
@@ -241,11 +262,104 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			isIwrMatchFound = isIWRMatch(w)
 		}
 
-		playlist = append(playlist, PlayContext{
-			Word:     finalWord,
-			IsIWR:    isIwrMatchFound,
-			HideText: false,
-		})
+		// ==========================================
+		// 🚦 CONSECUTIVE SEPARATOR PREVENTION 🚦
+		// ==========================================
+		isCurrentSep := false
+		for _, sep := range validSeparators {
+			if finalWord == sep {
+				isCurrentSep = true
+				break
+			}
+		}
+
+		lastIsSep := false
+		if len(playlist) > 0 {
+			lastItem := playlist[len(playlist)-1].Word
+			for _, sep := range validSeparators {
+				if lastItem == sep {
+					lastIsSep = true
+					break
+				}
+			}
+		}
+
+		// If the text file itself provided a separator, AND the last item was already a separator, 
+		// drop this word entirely to prevent "3 delimiters in a row".
+		if isCurrentSep && lastIsSep {
+			continue
+		}
+
+		// ==========================================
+		// 🚦 FIXED WORD BUILDER APPEND LOGIC 🚦
+		// ==========================================
+		if config.User.WordBuilder && len(w) > 1 && !isProsign {
+			// 1. The buildup -> T, TH
+			for i := 1; i < len(w); i++ {
+				playlist = append(playlist, PlayContext{
+					Word:     w[:i],
+					IsIWR:    false,
+					HideText: false, // Visible
+				})
+			}
+
+			// 2. The first full standard play -> THE
+			playlist = append(playlist, PlayContext{
+				Word:     finalWord,
+				IsIWR:    false,
+				HideText: false, // Visible
+			})
+
+			// 3. The standard full repeat -> THE
+			// Word Builder ALWAYS plays the final word twice at normal speed.
+			playlist = append(playlist, PlayContext{
+				Word:     finalWord,
+				IsIWR:    false,
+				HideText: false, // Visible
+			})
+
+			// 4. ONE extra full word at IWR speed -> THE
+			// Special interaction: if IWR is enabled, tack on one more play really fast.
+			if config.User.IWREnabled {
+				playlist = append(playlist, PlayContext{
+					Word:     finalWord,
+					IsIWR:    true,  // Fast!
+					HideText: false, // Visible
+				})
+			}
+
+		} else {
+			// Standard isolated append (when WordBuilder is OFF)
+			playlist = append(playlist, PlayContext{
+				Word:     finalWord,
+				IsIWR:    isIwrMatchFound,
+				HideText: false,
+			})
+		}
+
+		// ==========================================
+		// 🚦 DYNAMIC SEPARATOR APPEND LOGIC 🚦
+		// ==========================================
+		if len(validSeparators) > 0 {
+			// Re-verify the last item in the playlist just in case the word we just appended WAS a separator.
+			lastItem := playlist[len(playlist)-1].Word
+			lastIsSep = false
+			for _, sep := range validSeparators {
+				if lastItem == sep {
+					lastIsSep = true
+					break
+				}
+			}
+
+			if !lastIsSep {
+				selectedSep := validSeparators[r.Intn(len(validSeparators))] // Using perfectly seeded 'r'
+				playlist = append(playlist, PlayContext{
+					Word:     selectedSep,
+					IsIWR:    false,
+					HideText: false, // Visible
+				})
+			}
+		}
 	}
 
 	// 4. Queue the End Message natively
@@ -261,7 +375,6 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			OnStatusUpdate(" [yellow]Generating .wav file...")
 		}
 
-		// Pass the speeds and ramping boolean directly to our helper
 		speedBlock := getSpeedBlock(config.User.CharacterSpeed, config.User.EffectiveSpeed)
 		fileName := fmt.Sprintf("yama_output_%s.wav", speedBlock)
 
@@ -290,39 +403,27 @@ func RunIWR(text string, iwrMan *IWRManager) {
 	// Start the standard audio loop
 	for i, ctx := range playlist {
 
-		// 1. SLEEP LOCK: If paused, just hang out here.
 		for IsPaused && !IsStopping {
 			time.Sleep(100 * time.Millisecond)
 		}
 
-		// 2. STOP LOCK: If they hit stop (or closed the app), bail out immediately.
 		if IsStopping {
 			break
 		}
 
-		// 3. FRESH MATH: Grab the user config
 		tempConf := config.User
 
-		// --- SPEED RAMPING LOGIC ---
 		totalWords := len(playlist)
 		if tempConf.EndSpeed > tempConf.CharacterSpeed && totalWords > 1 {
-			// Calculate progress from 0.0 (first word) to 1.0 (last word)
 			progress := float64(i) / float64(totalWords-1)
-
-			// Calculate the new instantaneous Character Speed
 			charSpd := tempConf.CharacterSpeed + (tempConf.EndSpeed-tempConf.CharacterSpeed)*progress
-
-			// Calculate the exact multiplier to keep the other speeds proportional
 			multiplier := charSpd / tempConf.CharacterSpeed
 
-			// Apply the multiplier to Effective and IWR speeds
 			tempConf.CharacterSpeed = charSpd
 			tempConf.EffectiveSpeed = tempConf.EffectiveSpeed * multiplier
 			tempConf.IWRSpeed = tempConf.IWRSpeed * multiplier
 		}
-		// ---------------------------
 
-		// Build the profiles using our freshly calculated speeds!
 		baseProfile := GetTiming(false, tempConf)
 		iwrProfile := GetTiming(true, tempConf)
 
@@ -333,7 +434,6 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			p = baseProfile
 		}
 
-		// 4. PLAY THE WORD
 		buildWordBuffer(ctx, p)
 
 		wordSpaceSamples := int(p.WordSpace * float64(SampleRate))

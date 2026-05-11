@@ -22,7 +22,7 @@ const (
 	StatePlaying
 	StatePaused
 	StateStopped
-	Ver = "1.0.4"
+	Ver = "1.1.0"
 )
 
 const AppBackgroundColor = "#1B2B44"
