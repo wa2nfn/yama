@@ -395,8 +395,12 @@ Word Builder          | Plays words progressively (e.g., T, TH, THE) for
                       | comprehension.
                       | Mutually exclusive with IWR. IWR speed is used to 
 		      | sound the last word.
-Word Separator        | Randomly selects one character or ProSign from this 
-                      | list to play at the end of each fully built word.
+Word Separator        | If using Word Builder, one character or ProSign in this
+                      | option separates output. i.e. A AM AM I IT IT could 
+		      | play as: A AM AM <BT> I IT IT ?, if <BT> and ? were in
+		      | the Word Separator field.
+		      | Note: if IWR enabled, one more full word played at IWR
+		      | speed.
 Use Start Msg         | Toggles injecting a custom message at the beginning 
                       | of the text.
 Start Msg Text        | Specific text to play at the start (e.g., VVV <KA>).
