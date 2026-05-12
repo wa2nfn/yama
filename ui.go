@@ -1083,13 +1083,13 @@ func showIWREditModal(parentContainer tview.Primitive) {
 		}
 
 		pages.RemovePage("iwredit")
-		app.SetFocus(parentContainer)
+		app.SetFocus(parentContainer) // HERE
 	}
 
 	form.AddButton("Save", onSave)
 	form.AddButton("Cancel", func() {
 		pages.RemovePage("iwredit")
-		app.SetFocus(parentContainer)
+		app.SetFocus(parentContainer) // HERE
 	})
 
 	textArea.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -1328,7 +1328,7 @@ func showToneSpeed() {
 	}
 
 	onEditIWR := func() {
-		showIWREditModal(timingContainer)
+		showIWREditModal(form.GetButton(0))
 	}
 
 	form.AddButton("Save", onSave)

@@ -340,7 +340,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		// ==========================================
 		// 🚦 DYNAMIC SEPARATOR APPEND LOGIC 🚦
 		// ==========================================
-		if len(validSeparators) > 0 {
+		if config.User.WordBuilder && len(validSeparators) > 0 {
 			// Re-verify the last item in the playlist just in case the word we just appended WAS a separator.
 			lastItem := playlist[len(playlist)-1].Word
 			lastIsSep = false
