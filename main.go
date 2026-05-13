@@ -100,10 +100,16 @@ func main() {
 		}
 	}()
 
-	// 2. Hook into the draw loop to access the hidden screen and set the cursor globally
 	app.SetBeforeDrawFunc(func(s tcell.Screen) bool {
 		s.SetCursorStyle(tcell.CursorStyleBlinkingBlock)
 		return false // MUST return false so tview continues to draw the screen!
+	})
+
+	app.SetAfterDrawFunc(func(s tcell.Screen) {
+		// If we are playing, nuke the cursor from the screen after tview tries to draw it
+		if currentState == StatePlaying {
+			s.HideCursor()
+		}
 	})
 
 	iwrMan := &morse.IWRManager{

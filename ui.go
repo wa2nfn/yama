@@ -174,19 +174,19 @@ func showStats() {
 
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("[yellow::b]Lifetime Practice Time: %s[::-]\n", lifeStr))
-	sb.WriteString(strings.Repeat("-", 32) + "\n\n")
+	sb.WriteString(fmt.Sprintf("[yellow::b] Lifetime Practice Time: %s[::-]\n", lifeStr))
+	sb.WriteString(strings.Repeat("-", 36) + "\n\n")
 
-	sb.WriteString("[white::b]Current Session[::-]\n")
-	sb.WriteString(fmt.Sprintf("Total Words Played: %d\n", statsTotalWords))
-	sb.WriteString(fmt.Sprintf("Total IWR Matches: %d\n", statsIWRWords))
-	sb.WriteString(fmt.Sprintf("Active Play Time: %s\n\n", timeStr))
+	sb.WriteString("[white::b] Current Session[::-]\n")
+	sb.WriteString(fmt.Sprintf(" Total Words Played: %d\n", statsTotalWords))
+	sb.WriteString(fmt.Sprintf(" Total IWR Matches: %d\n", statsIWRWords))
+	sb.WriteString(fmt.Sprintf(" Active Play Time: %s\n\n", timeStr))
 
-	sb.WriteString("[#00BFFF::b]IWR WORD    COUNT[::-]\n")
+	sb.WriteString("[#00BFFF::b] IWR WORD    COUNT[::-]\n")
 	sb.WriteString(strings.Repeat("-", 20) + "\n")
 
 	for _, w := range statsIWRList {
-		sb.WriteString(fmt.Sprintf("%-11s %d\n", w, statsIWRMap[w]))
+		sb.WriteString(fmt.Sprintf(" %-11s  %d\n", w, statsIWRMap[w]))
 	}
 
 	tv := tview.NewTextView().
