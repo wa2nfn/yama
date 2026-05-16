@@ -22,7 +22,7 @@ const (
 	StatePlaying
 	StatePaused
 	StateStopped
-	Ver = "1.1.0"
+	Ver = "1.1.1"
 )
 
 const AppBackgroundColor = "#1B2B44"
@@ -76,6 +76,13 @@ func checkIWRFiles() (targetPath string) {
 	}
 
 	return fallbackPath
+}
+
+func setupInputCapture(app *tview.Application) {
+
+	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		return event
+	})
 }
 
 func main() {
@@ -225,6 +232,11 @@ func main() {
 
 		if event.Key() == tcell.KeyEsc {
 			frontName, _ := pages.GetFrontPage()
+
+			if frontName == "iwredit" {
+				return event
+			}
+
 			if frontName != "main" && frontName != "" {
 				pages.RemovePage(frontName)
 				newFrontName, newFrontPrim := pages.GetFrontPage()
