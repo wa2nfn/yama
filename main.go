@@ -22,7 +22,7 @@ const (
 	StatePlaying
 	StatePaused
 	StateStopped
-	Ver = "1.1.1"
+	Ver = "1.2.0"
 )
 
 const AppBackgroundColor = "#1B2B44"
@@ -78,12 +78,13 @@ func checkIWRFiles() (targetPath string) {
 	return fallbackPath
 }
 
+/*
 func setupInputCapture(app *tview.Application) {
-
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		return event
 	})
 }
+*/
 
 func main() {
 	config.LoadConfig()
@@ -151,7 +152,7 @@ func main() {
 	inputArea = tview.NewTextArea()
 	inputArea.SetBackgroundColor(bgColor)
 	inputArea.SetBorder(true).SetTitle(" [white]Text Input ")
-	inputArea.SetPlaceholder("Enter text, then Ctrl-P to Play or F1 for Help; ESC closes screens.")
+	inputArea.SetPlaceholder("Enter text, then Ctrl-P to Play; or F1 for Help.")
 
 	inputArea.SetChangedFunc(func() {
 		// If the engine typed this, ignore it so the menu doesn't reset!
@@ -161,6 +162,11 @@ func main() {
 		if currentState == StateStopped || currentState == StatePaused {
 			currentState = StateIdle
 		}
+
+		// Clear snapshot memory if the user manually edits the text
+		isResized = false
+		preResizeSnapshot = ""
+
 		refreshUI(currentState)
 	})
 
@@ -278,9 +284,16 @@ func main() {
 			}
 			return event
 		case tcell.KeyCtrlB:
-			// Locked during Paused state (requires full stop)
-			if currentState != StatePlaying && currentState != StatePaused {
+			text := inputArea.GetText()
+			hasText := len(strings.Fields(text)) > 0
+			// Locked during Paused state OR if there is text in the input area
+			if currentState != StatePlaying && currentState != StatePaused && !hasText {
 				showAbout()
+			}
+			return nil
+		case tcell.KeyCtrlN:
+			if currentState != StatePlaying && len(inputArea.GetText()) > 0 {
+				showNumWordsModal()
 			}
 			return nil
 		case tcell.KeyCtrlP:
@@ -337,6 +350,11 @@ func main() {
 				actualText = ""
 				inputArea.SetText("", false)
 				clearStats()
+
+				// Wipe the memory when they erase the screen
+				isResized = false
+				preResizeSnapshot = ""
+
 				refreshUI(currentState)
 				currentInputFile = ""
 			}
@@ -384,36 +402,27 @@ func main() {
 	}
 }
 
-// EmergencyQuit cleanly tears down the tview TUI and forces an immediate process exit.
-// Use this for unrecoverable hardware deadlocks (e.g., Audio Watchdog).
 func EmergencyQuit(errorMessage string) {
-	// 1. Log it to yama.log so you have a record of the crash
 	log.Println("FATAL ERROR:", errorMessage)
 
-	// 2. Cleanup: If the log is still empty (e.g., the write failed or buffered), remove it
 	logPath := morse.ResolvePath("yama.log")
 	if info, err := os.Stat(logPath); err == nil && info.Size() == 0 {
 		os.Remove(logPath)
 	}
 
 	if app != nil {
-		// 3. Suspend strips away the TUI and restores the normal terminal state instantly
 		app.Suspend(func() {
 			fmt.Printf("\n[YAMA WATCHDOG] FATAL ERROR: %s\n", errorMessage)
 			fmt.Println("The application had to be forcefully terminated to prevent a deadlock.")
-			os.Exit(1) // 4. The nuclear option.
+			os.Exit(1)
 		})
 	} else {
-		// Fallback just in case the app crashes before the UI even finishes initializing
 		fmt.Printf("\n[YAMA WATCHDOG] FATAL ERROR: %s\n", errorMessage)
 		os.Exit(1)
 	}
 }
 
-// getModifierWarning checks if any active options will cause the audio
-// to differ from the visual text input, returning a UI warning tag.
 func getModifierWarning() string {
-	// If any of these are true, the text being played is modified or out of order
 	isModified := config.User.RandomWords ||
 		config.User.RandomOrder ||
 		config.User.UseSkip ||
@@ -421,29 +430,23 @@ func getModifierWarning() string {
 		config.User.Playprosigns
 
 	if isModified {
-		// Using tview's color tags to make it pop in yellow on the blue line
 		return " [yellow][Input Modified][-]"
 	}
 
-	// If everything is strictly WYSIWYG, return an empty string
 	return ""
 }
 
-// lockPlayTime safely finalizes the session time and adds it to the user's lifetime total.
 func lockPlayTime() {
-	// Only calculate if we haven't already, and ensure the engine actually started
 	if finalPlayTime == 0 && !morse.StartTime.IsZero() {
 		totalElapsed := time.Since(morse.StartTime)
 		currentTotalPaused := morse.TotalPaused
 
-		// If they hit stop WHILE paused, we need to account for that active pause time!
 		if currentState == StatePaused {
 			currentTotalPaused += time.Since(morse.PauseStart)
 		}
 
 		finalPlayTime = totalElapsed - currentTotalPaused
 
-		// Gamification: Add to lifetime and save instantly!
 		config.User.LifetimePlaySeconds += int(finalPlayTime.Seconds())
 		config.SaveConfig()
 	}

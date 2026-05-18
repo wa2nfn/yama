@@ -29,6 +29,10 @@ var currentFileDir string
 var playPauseMu sync.Mutex
 var isCountingDown bool
 
+// Memory for the Ctrl-N Text Resizer Revert feature
+var preResizeSnapshot string
+var isResized bool
+
 func handlePlayPause(iwrMan *morse.IWRManager) {
 	playPauseMu.Lock()
 	defer playPauseMu.Unlock()
@@ -222,14 +226,18 @@ func updateBlueLine() {
 
 	var info string
 	if config.User.CharacterSpeed <= config.User.EffectiveSpeed {
-		info = fmt.Sprintf(" [black]Character Speed: %g wpm | IWR: %s (%g wpm) ", config.User.CharacterSpeed, iwrStatus, config.User.IWRSpeed)
+		info = fmt.Sprintf(" [black]Char Speed: %g wpm | IWR: %s (%g wpm) ", config.User.CharacterSpeed, iwrStatus, config.User.IWRSpeed)
 	} else {
 		mode := "Farnsworth"
 		if config.User.UseWordsworth {
 			mode = "Wordsworth"
 		}
-		info = fmt.Sprintf(" [black]Mode: %s | Character Speed: %g wpm | Effective Speed: %g wpm | IWR: %s (%g wpm) ", mode, config.User.CharacterSpeed, config.User.EffectiveSpeed, iwrStatus, config.User.IWRSpeed)
+		info = fmt.Sprintf(" [black]Mode: %s | Char Speed: %g wpm | Effective Speed: %g wpm | IWR: %s (%g wpm) ", mode, config.User.CharacterSpeed, config.User.EffectiveSpeed, iwrStatus, config.User.IWRSpeed)
 	}
+
+	// Calculate and append the dynamic word count
+	wordCount := len(strings.Fields(inputArea.GetText()))
+	info += fmt.Sprintf("| Word Cnt: %d ", wordCount)
 
 	blueLine.SetText(info + getModifierWarning())
 }
@@ -237,6 +245,8 @@ func updateBlueLine() {
 func refreshUI(state AppState) {
 	var menu string
 	hasText := len(inputArea.GetText()) > 0
+
+	updateBlueLine()
 
 	switch state {
 	case StateIdle, StateStopped:
@@ -254,6 +264,8 @@ func refreshUI(state AppState) {
 		menu = "[#00FF00]F[white]ile  [#00FF00]P[white]lay  [#00FF00]T[white]iming  [#00FF00]A[white]udio  [#00FF00]O[white]ption  [#00FF00]F1[white]-help  a[#00FF00]B[white]out  [#00FF00]Q[white]uit "
 
 		if hasText {
+			menu = strings.Replace(menu, "a[#00FF00]B[white]out  ", "", 1)
+			menu = strings.Replace(menu, "[#00FF00]F[white]ile", "[#00FF00]F[white]ile  [#00FF00]N[white]umWords", 1)
 			menu = strings.Replace(menu, "[#00FF00]P[white]lay", "[#00FF00]P[white]lay  [#00FF00]W[white]ave  [#00FF00]E[white]rase", 1)
 		}
 
@@ -343,6 +355,7 @@ A few keys offer alternatives.
 [white]Key           | Menu Name  | Purpose[-]
 --------------|------------|--------------------------------------------------------
 Ctrl-F, F3    | File       | Open a .txt file for playback
+Ctrl-N        | NumWords   | Iteratively copies or truncates the current text
 Ctrl-P        | Play/Pause | Start or pause the current loaded input text
 Ctrl-S        | Stop       | Halt playback immediately (cannot be resumed)
 Ctrl-W        | Wave       | Export current text to .wav file(s)
@@ -702,6 +715,8 @@ func showFile() {
 					app.SetFocus(inputArea)
 
 					isProgrammaticUpdate = true
+					isResized = false
+					preResizeSnapshot = ""
 					inputArea.SetText(actualText, false)
 					isProgrammaticUpdate = false
 
@@ -712,6 +727,11 @@ func showFile() {
 						if currentState == StateStopped || currentState == StatePaused {
 							currentState = StateIdle
 						}
+
+						// Make sure loading a file also wipes any manual edits properly
+						isResized = false
+						preResizeSnapshot = ""
+
 						refreshUI(currentState)
 					})
 
@@ -1140,7 +1160,7 @@ func showToneSpeed() {
 
 	modeDropDown := tview.NewDropDown().SetLabel("Mode").SetOptions([]string{"Standard", "Farnsworth", "Wordsworth"}, nil)
 
-	charInput := tview.NewInputField().SetLabel("Character Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
+	charInput := tview.NewInputField().SetLabel("Char Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
 	charInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 
 	endSpeedInput := tview.NewInputField().SetLabel("      End Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
@@ -1481,6 +1501,106 @@ func showImpairments() {
 	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
 	pages.AddPage("impairments", createModal(container, 35, 12), true, true)
+	app.SetFocus(container)
+}
+
+func showNumWordsModal() {
+	form := tview.NewForm()
+	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	form.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+
+	rawText := inputArea.GetText()
+	words := strings.Fields(rawText)
+	currentCount := len(words)
+
+	input := tview.NewInputField().
+		SetLabel("Target Word Count (1-99999): ").
+		SetText(fmt.Sprintf("%d", currentCount)).
+		SetFieldWidth(10).
+		SetAcceptanceFunc(tview.InputFieldInteger)
+
+	form.AddFormItem(input)
+
+	form.AddButton("Save", func() {
+		val, err := strconv.Atoi(input.GetText())
+
+		if err != nil || val < 1 {
+			val = 1
+		} else if val > 99999 {
+			val = 99999
+		}
+
+		if val != currentCount && currentCount > 0 {
+			// Lock in the snapshot before the very first modification
+			if !isResized {
+				preResizeSnapshot = rawText
+				isResized = true
+			}
+
+			var newWords []string
+			for i := 0; i < val; i++ {
+				newWords = append(newWords, words[i%currentCount])
+			}
+
+			isProgrammaticUpdate = true
+			inputArea.SetText(strings.Join(newWords, " "), false)
+			actualText = inputArea.GetText()
+			isProgrammaticUpdate = false
+
+			refreshUI(currentState)
+		}
+
+		pages.RemovePage("numWords")
+		app.SetFocus(inputArea)
+	})
+
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("numWords")
+		app.SetFocus(inputArea)
+	})
+
+	// Only show the Revert button if we actually have a snapshot memory saved
+	if isResized {
+		form.AddButton("Revert", func() {
+			isProgrammaticUpdate = true
+			inputArea.SetText(preResizeSnapshot, false)
+			actualText = inputArea.GetText()
+			isProgrammaticUpdate = false
+
+			// Clear the memory
+			isResized = false
+			preResizeSnapshot = ""
+
+			refreshUI(currentState)
+			pages.RemovePage("numWords")
+			app.SetFocus(inputArea)
+		})
+	}
+
+	applyFocusStyles(form)
+	form.SetBorder(false)
+
+	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
+	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	footerView.SetText("\n[yellow]ESC to Close[-]\n")
+
+	container := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(form, 0, 1, true).
+		AddItem(footerView, 2, 1, false)
+
+	container.SetBorder(true).SetTitle(" Resize Text Input ")
+	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+
+	container.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			pages.RemovePage("numWords")
+			app.SetFocus(inputArea)
+			return nil
+		}
+		return event
+	})
+
+	pages.AddPage("numWords", createModal(container, 45, 12), true, true)
 	app.SetFocus(container)
 }
 

@@ -3,7 +3,6 @@ package morse
 import (
 	"bufio"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -148,6 +147,7 @@ func (m *IWRManager) LoadIWRFile() (bool, error) {
 	return isFirstRun, nil
 }
 
+/* WDL
 func checkIWRFiles() string {
 	localPath := ResolvePath("./yamaIWR.txt")
 
@@ -181,6 +181,7 @@ func checkIWRFiles() string {
 
 	return fallbackPath
 }
+*/
 
 func ResolvePath(inputPath string) string {
 	homeDir, err := os.UserHomeDir()
