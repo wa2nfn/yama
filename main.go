@@ -18,14 +18,16 @@ import (
 type AppState int
 
 const (
+	AppBackgroundColor = "#1B2B44"
+	playPauseDelay = 200
+	Ver = "1.2.0"
+
 	StateIdle AppState = iota
 	StatePlaying
 	StatePaused
 	StateStopped
-	Ver = "1.2.0"
 )
 
-const AppBackgroundColor = "#1B2B44"
 
 var (
 	app        *tview.Application

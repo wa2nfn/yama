@@ -43,7 +43,7 @@ func handlePlayPause(iwrMan *morse.IWRManager) {
 	}
 
 	// 1. DEBOUNCE
-	if time.Since(lastPlayPause) < 250*time.Millisecond {
+	if time.Since(lastPlayPause) < playPauseDelay*time.Millisecond {
 		return
 	}
 	lastPlayPause = time.Now()

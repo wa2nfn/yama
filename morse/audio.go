@@ -160,6 +160,7 @@ func startAudioEngine() error {
 		SampleRate:   SampleRate,
 		ChannelCount: 1,
 		Format:       oto.FormatSignedInt16LE,
+		//WDL BufferSize: 100 * time.Millisecond,
 	}
 	ctx, ready, e := oto.NewContext(op)
 	if e != nil {
