@@ -58,6 +58,9 @@ type UserSettings struct {
 	RandomWords            bool   `json:"random_words"`
 	WordBuilder            bool   `json:"word_builder"`
 	WordSeparator          string `json:"word_separator"`
+	TextBuilder            bool   `json:"text_builder"`
+	TextSeparator          string `json:"text_separator"`
+	TextWordCount		int	`json:"text_word_count"`
 
 	// Messaging & Flow Control
 	StartMsg     bool   `json:"start_msg"`
@@ -142,9 +145,11 @@ func LoadConfig() {
 		User.IWRSpeed = 30
 		User.IWRTone = 600
 		User.WordBuilder = false
+		User.TextBuilder = false
 		User.RandomWords = false
 		User.RandomOrder = false
 		User.RepeatLimit = 3
+		User.TextWordCount = 2
 		User.StartDelay = 0
 
 		// 2. Save immediately. This creates the directory AND a valid JSON file.

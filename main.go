@@ -80,19 +80,12 @@ func checkIWRFiles() (targetPath string) {
 	return fallbackPath
 }
 
-/*
-func setupInputCapture(app *tview.Application) {
-	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		return event
-	})
-}
-*/
-
 func main() {
 	config.LoadConfig()
 
 	logPath := morse.ResolvePath("yama.log")
-	logFile, _ := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	logFile, _ := os.OpenFile(logPath, os.O_RDWR|os.O_TRUNC, 0666)
+	//logFile, _ := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	log.SetOutput(logFile)
 
 	if err := morse.InitAudio(); err != nil {

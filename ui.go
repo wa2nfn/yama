@@ -344,32 +344,31 @@ YAMA uses a Terminal User Interface (TUI), navigation and selection will be by k
 [green::b]Dynamic Menus & Navigation[::-]
 [white]YAMA is operated entirely via keyboard shortcuts. Keep an eye on the top menu bar — it is dynamic. YAMA will only show you the shortcuts that make sense for what you are currently doing. For example, you cannot open the Options menu while audio is actively playing, therefore there will not be an Options label and [yellow]Ctrl-O[-] will be ignored, Wave export label will only appear when you actually have text loaded to export.
 
-The method to enter or change an option on the Ctrl-O or Ctrl-T screen will depend on the type of option it is. First navigate to the option of interest using the TAB or BACKTAB, then if the option is a single-charater field like Use ... or Random Order simply hit Enter or space to toggle the option (then TAB forward); if the option shows a single digit or the name of a timing mode (i.e. Farnsworth) the choices are provided by a drop down, use the cursor and hit Enter; multi digit options like tones or speeds, use Backspace, type new value and hit Enter or TAB; input text boxes, use Backspace, enter a value and hit Enter or TAB. 
+The method to enter or change an option on the Ctrl-O or Ctrl-T screen will depend on the type of option it is. First navigate to the option of interest using the TAB or BACKTAB, then if the option is a single-charater field like Use ... or Random Order simply hit Enter or space to toggle the option (then TAB forward); if the option shows a single digit or the name of a timing mode (i.e. Farnsworth) the choices are provided by a drop down, use the cursor and hit Enter; multi-digit options like tones or speeds, use Backspace, type new value and hit Enter or TAB; input text boxes, use Backspace, enter a value and hit Enter or TAB. 
 
 If you ever get stuck in a menu, just press [yellow]ESC[-] to safely close it without saving.
 
 [red](Note: insertion or removal of headphones can trigger a Windows hang of the Yama app requiring an app restart.)[-]
 
-A few keys offer alternatives.
+The following keys display sub menus or perform significant actions.
 
-[white]Key           | Menu Name  | Purpose[-]
---------------|------------|--------------------------------------------------------
-Ctrl-F, F3    | File       | Open a .txt file for playback
-Ctrl-N        | NumWords   | Iteratively copies or truncates the current text
-Ctrl-P        | Play/Pause | Start or pause the current loaded input text
-Ctrl-S        | Stop       | Halt playback immediately (cannot be resumed)
-Ctrl-W        | Wave       | Export current text to .wav file(s)
-Ctrl-E,Ctrl-L | Erase      | Clear the current text input aka screen clear
-Ctrl-T        | Timing     | Speed, Tone, and IWR settings
-Ctrl-O        | Options    | Parser, messaging, and text processing options
-Ctrl-A        | Audio      | Audio impacting impairements (QRN, QSB, Drift, etc.)
-Ctrl-D        | Data-Stats | View statistics and IWR counts. Use when play stops,
-                           | any new input clears the old data.
-CtrlB         | aBout      | App info and License
-F1            | Help       | This screen text.
-Ctrl-Q        | Quit       | Exit YAMA. 
-ESC           | Close      | Cancel/Close menus without saving
-Spacebar      | Hide/Unhide| Toggle text visibility during audio playback.
+[white]Key            | Menu Name  | Purpose[-]
+---------------|------------|--------------------------------------------------------
+Ctrl-F, F3     | File       | Open a .txt file for playback.
+Ctrl-N         | NumWords   | Iteratively copies or truncates the current text.
+Ctrl-P         | Play/Pause | Start or pause the current loaded input text.
+Ctrl-S         | Stop       | Halt playback immediately (cannot be resumed).
+Ctrl-W         | Wave       | Export current text to .wav file(s).
+Ctrl-E, Ctrl-L | Erase      | Clear the current text input aka screen clear.
+Ctrl-T         | Timing     | Speed, Tone, and IWR settings.
+Ctrl-O         | Options    | Parser, messaging, and text processing options.
+Ctrl-A         | Audio      | Audio impacting impairements (QRN, QSB, Drift, etc.)
+Ctrl-D         | Data-Stats | View statistics and IWR counts. New input clears the old data.
+CtrlB          | aBout      | App info and License.
+F1             | Help       | This screen text.
+Ctrl-Q         | Quit       | Exit YAMA. 
+ESC            | Close      | Cancel/Close menus without saving.
+Spacebar       | Hide/Unhide| Toggle text visibility during audio playback.
 
 [green::b]Supported Characters & Punctuation[::-]
 [white]YAMA naturally supports standard letters [yellow]A-Z[-] and numbers [yellow]0-9[-].
@@ -380,42 +379,37 @@ Spacebar      | Hide/Unhide| Toggle text visibility during audio playback.
 [green::b]ProSigns & Equivalents[::-]
 [white]Supported ProSigns:[yellow] <AR> <AS> <BT> <KA> <SK> <VA> <VE> <SN> <BK> <HH> <DU> <SOS> <CH>[-].
 
-If "Play ProSigns" is disabled in Options ([yellow]Ctrl-O[-]), bracketed ProSigns will be ignored (including their use in the Start/End Msg). However, the standard keyboard equivalents [yellow]+[-] (<AR>), [yellow]=[-] (<BT>), and [yellow]-[-] (<DU>) will still play, unless added to the Skip List in the Options screen. (Note: any other use of '<' or '>' is ignored.)
+If "Play ProSigns" is disabled in Options ([yellow]Ctrl-O[-]), bracketed ProSigns will be ignored (including their use in the Start/End Msg). However, the standard keyboard equivalents [yellow]+[-] (<AR>), [yellow]=[-] (<BT>), and [yellow]-[-] (<DU>) will still play, unless added to the Skip List in the Options screen. (Note: any other use of the '<' or '>' character is ignored.)
 
 [green::b]Options Screen (Ctrl-O) - Settings[::-]
 [white]Setting               | Description
 ----------------------|---------------------------------------------------------
-Play ProSigns         | Toggles support for bracketed ProSigns (e.g., <AR>).
-                      | Does NOT affect [yellow]-+=[-]. (Note: <BK> is sounded as  "B K").
+Play ProSigns         | Toggles support for bracketed ProSigns (e.g., <AR>). Does NOT affect [yellow]-+=[-].
+                      | (Note: <BK> is sounded as  "B K").
 Extended Punctuation  | Toggles support for extended punctuation marks.
-European Characters   | Toggles support for European & Esparanto Morse 
-                      | characters ([yellow]Ä, Ö, Ĝ, Ŭ[-])
+European Characters   | Toggles support for European & Esparanto Morse characters ([yellow]Ä, Ö, Ĝ, Ŭ[-])
 Use Skip              | Enables the Skip List filtering during playback.
-Skip List             | Define specific characters or ProSigns to silently 
-                      | ignore.
-                      | Entered without any separators. e.g. XY7<BT>=
-Start Delay           | Adds a countdown timer (in seconds) before playback 
-                      | begins.
+Skip List             | Define specific characters or ProSigns to silently ignore.
+                      | Entered without any separators (e.g. XY7<BT>=).
+Start Delay           | Adds a countdown timer (in seconds) before playback begins.
 Repeat Limit          | Caps consecutive repeating characters to prevent 
-                      | runaway use of a character.
-                      | sometimes used in books to underline titles. Default 3.
-Random Order          | Shuffles the playback order of the entire document's 
-                      | words.
-Random Words          | Scrambles the letters within individual words (e.g. a 
-                      | code group).
+                      | runaway use of a character (e.g. underline titles). Default 3.
+Random Order          | Shuffles the playback order of the entire document's words.
+Random Words          | Scrambles the letters within individual words (e.g. code group).
                       | Mutually exclusive with the IWR function.
-Word Builder          | Plays words progressively (e.g., T, TH, THE) for 
-                      | comprehension.
-                      | Mutually exclusive with IWR. IWR speed is used to 
-		      | sound the last word.
-Word Separator        | If using Word Builder, one character or ProSign in this
-                      | option separates output. i.e. A AM AM I IT IT could 
-		      | play as: A AM AM <BT> I IT IT ?, if <BT> and ? were in
-		      | the Word Separator field.
-		      | Note: if IWR enabled, one more full word played at IWR
-		      | speed.
-Use Start Msg         | Toggles injecting a custom message at the beginning 
-                      | of the text.
+Word Builder          | Plays words progressively (e.g., T, TH, THE) for comprehension. Mutually 
+                      | exclusive with IWR. IWR speed is used to sound the last word.
+Word Separator        | If it exists, one character or ProSign in this option separates output.
+                      | e.g. A AM AM I IT IT could play as: A AM AM <BT> I IT IT ?. 
+                      | If <BT> and ? were in the Word Separator field. If IWR is enabled, one 
+                      | more full word played at IWR speed.
+Text Builder          | Plays input words progressively (e.g., HE DID IT =>
+                      | HE HE DID HE DID IT).
+                      | Mutually exclusive with Word Builder and Random Words.
+Text Separator        | If its exists, one character or ProSign in this option 
+                      | separates output iterations. e.g.  HE DID IT play as: 
+                      | HE HE DID HE DID IT <BT>, if <BT> was in the Text Separator field.
+Use Start Msg         | Toggles injecting a custom message at the beginning of the text.
 Start Msg Text        | Specific text to play at the start (e.g., VVV <KA>).
 Use End Msg           | Toggles injecting a custom message at the end of text.
 End Msg Text          | The specific text to play at the end (e.g., <AR>).
@@ -429,16 +423,11 @@ Note that the bottom of the screen has a [green]green[-] status line and below t
 [green::b]Audio Screen (Ctrl-A) - Audio-impacting impairments[::-]
 [white]Setting               | Description
 ----------------------|---------------------------------------------------------
-Static (QRN)          | Injects constant background hiss and random lightning 
-                      | crashes.
-Fading (QSB)          | Simulates a slow ionospheric roll, dipping and 
-                      | recovering volume.
-Tone Drift            | Simulates an unstable oscillator, bending the pitch up
-                      | and down.
-Speed Drift           | Simulates a tired operator by slowly 
-                      | expanding/contracting the timing.
-Key Clicks            | Injects a harsh electrical spark at the start and end 
-                      | of elements.
+Static (QRN)          | Injects constant background hiss and random lightning crashes.
+Fading (QSB)          | Simulates a slow ionospheric roll, dipping and recovering volume.
+Tone Drift            | Simulates an unstable oscillator, bending the pitch up and down.
+Speed Drift           | Simulates a tired operator by slowly expanding/contracting the timing.
+Key Clicks            | Injects a harsh electrical spark at the start and end of elements.
 
 [yellow]Note that you can make changes to the currently playing audio with the Timing or Audio screens.[-]
 
@@ -446,11 +435,15 @@ Key Clicks            | Injects a harsh electrical spark at the start and end
 [white]YAMA exports 16-bit Mono audio. The wave screen lets you select a target directory for the created wave files, if the path does not exist, it will create it. The approximate play time for the chosen speed and the corresponding size is shown. You can also specify (actually limit) the number of files. If your input is a large novel you can certainly limit output to a handful of practice files. If you are emailing the completed files to yourself so that you can play them on cell phone, then capping the file size near 10Mb should be reasonable.
 
 [green::b]IWR - Instant Word Recognition Feature[::-]
-[white]This a a head-copy- related feature. I looks to match words (actually any space separated string of supported characters (e.g. the qsl 73 cul) in the input, and override the chosen timing mode (standard, Farnsworth, Wordsworth and the associated speed/tone) and play the matched word at a increased speed with standard timing. To do this you must create an [blue]yamaIWR.txt[-] file. A sample file has been created in the in your OS's standard configuration file directory ($HOME\AppData\Roaming\YAMA for Windows). That file will be editable from the Timing screen ([yellow]Ctrl-T[-], or you may create another one in the same directory that Yama is launched from, this one will take priority but you will have to edit it with notepad, vi, emacs or what ever your favorite text editor is (not a word processor, unless it has a save as txt option). The file should list one word per line (any case, any order); a [yellow]'#'[-] at the start of line tells YAMA to ignore that line. If you choose to also match the word if its immediately follow by [yellow], . ? : [-] as well as the bare word, this is indicated by a trailing asterisk (e.g. qsl* matches: qsl qsl? qsl. qsl: qsl, ). The IWR feature as described is ignored if you have choosen either WordBuilder or Random Word in the Options menu, since you would never get a match. A small purposeful interaction with IWR speed is as follows: if you chose Word Builder and have IWR enabled, then when word builder has completed constructing a word (as in: t te tes test) you will have one more sounding of the final word, but this time at IWR speed.
+[white]This a a head-copy- related feature. I looks to match words (actually any space separated string of supported characters (e.g. the qsl 73 cul) in the input, and override the chosen timing mode (standard, Farnsworth, Wordsworth and the associated speed/tone) and play the matched word at a increased speed with standard timing. To do this you must create an [blue]yamaIWR.txt[-] file. A sample file has been created in the in your OS's standard configuration file directory ($HOME\AppData\Roaming\YAMA for Windows). That file will be editable from the Timing screen ([yellow]Ctrl-T[-], or you may create another one in the same directory that Yama is launched from, this one will take priority but you will have to edit it with notepad, vi, emacs or your favorite text editor is (not a word processor, unless it has a save as txt option). The file should list one word per line (any case, any order); a [yellow]'#'[-] at the start of line tells YAMA to ignore that line. If you choose to also match the word if its immediately follow by [yellow], . ? : [-] as well as the bare word, this is indicated by a trailing asterisk (e.g. qsl* matches: qsl qsl? qsl. qsl: qsl, ). The IWR feature as described is ignored if you have choosen either Word Builder or Random Word in the Options menu, since you would never get a match. A small purposeful interaction with IWR speed is as follows: if you chose Word Builder and have IWR enabled, when Word Builder has completed constructing the word (as in: t te tes test) you will have one more sounding of the final word, but now at IWR speed.
 
 [red]Note: Using the high end of the 2K Tone limit may impact the audio profile for QRQ speeds, let your ears guide your choice, rather than the app limit you.[-]
 
 Experiment and I'm sure you will quickly understand the capabilities. Remember, an ESC will always get you back to the previous screen, whether there is a Cancel button or not.
+
+You can see the app is not for beginners, or attempt to complete with many excellent training apps such as: Precision CW Tutor, 
+G4FON, LCWO.net, LICW.org, etc. but rather to bundle a number of practice features, and especially a few which can help with
+increasing headcopy in a single app.
 
 73 and best of luck on your CW journey.
 WA2NFN
@@ -566,7 +559,7 @@ WA2NFN
 	layout.SetBorder(true).SetTitle(" Help Information ")
 	layout.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	pages.AddPage("help", createModal(layout, 90, 26), true, true)
+	pages.AddPage("help", createModal(layout, 100, 26), true, true)
 	app.SetFocus(layout)
 }
 
@@ -834,6 +827,7 @@ func showEuropeanCharSelector(parentContainer tview.Primitive, activeEuroSkip *s
 	app.SetFocus(container)
 }
 
+// OPTIONS_MENU
 func showOptions() {
 	form := tview.NewForm()
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
@@ -859,10 +853,22 @@ func showOptions() {
 	randomWordsCb := tview.NewCheckbox().SetLabel("Random Words")
 
 	wordBuilderCb := tview.NewCheckbox().SetLabel("Word Builder")
-
 	wordSeparatorInput := tview.NewInputField().SetLabel("    Word Separator").SetFieldWidth(35)
 	wordSeparatorInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
-	wordSeparatorInput.SetPlaceholder(" e.g. <BT>.,+").SetPlaceholderTextColor(tcell.ColorYellow)
+	wordSeparatorInput.SetPlaceholder(" e.g. <BT>.,+").SetPlaceholderTextColor(tcell.ColorYellow) //WRONG
+
+	textBuilderCb := tview.NewCheckbox().SetLabel("Text Builder")
+
+	textSeparatorInput := tview.NewInputField().SetLabel("    Text Separator").SetFieldWidth(35)
+	textSeparatorInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	textSeparatorInput.SetPlaceholder(" e.g. <BT>.,+").SetPlaceholderTextColor(tcell.ColorYellow) // CORRECT
+
+	textWordCnt := tview.NewInputField().
+		SetLabel("    Word Count (2-25): ").
+		SetFieldWidth(5).
+		SetText("2"). // <-- Sets the default to 2
+		SetAcceptanceFunc(tview.InputFieldInteger)
+	textWordCnt.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 
 	startMsgCb := tview.NewCheckbox().SetLabel("Use Start Msg")
 	startMsgInput := tview.NewInputField().SetLabel("    Start Msg Text").SetFieldWidth(30)
@@ -900,9 +906,25 @@ func showOptions() {
 		skipListInput.SetText(config.User.SkipList)
 		randomOrderCb.SetChecked(config.User.RandomOrder)
 		randomWordsCb.SetChecked(config.User.RandomWords)
-		wordBuilderCb.SetChecked(config.User.WordBuilder)
 
+
+		wordBuilderCb.SetChecked(config.User.WordBuilder)
 		wordSeparatorInput.SetText(config.User.WordSeparator)
+		// Trim spaces to ensure empty strings trigger the placeholder
+		wordSeparatorInput.SetText(strings.TrimSpace(config.User.WordSeparator))
+		textBuilderCb.SetChecked(config.User.TextBuilder)
+		textSeparatorInput.SetText(config.User.TextSeparator)
+		textWordCnt.SetText(fmt.Sprintf("%d", config.User.TextWordCount))
+		textSeparatorInput.SetText(strings.TrimSpace(config.User.TextSeparator))
+		
+		textBuilderCb.SetChecked(config.User.TextBuilder)
+
+		// Set the count field to the config value, but default to "2" if the config is 0 (unsaved)
+		if config.User.TextWordCount <= 0 {
+			textWordCnt.SetText("2")
+		} else {
+			textWordCnt.SetText(fmt.Sprintf("%d", config.User.TextWordCount))
+		}
 
 		dIdx := 0
 		for i, opt := range delayOptions {
@@ -937,6 +959,9 @@ func showOptions() {
 	form.AddFormItem(randomWordsCb)
 	form.AddFormItem(wordBuilderCb)
 	form.AddFormItem(wordSeparatorInput)
+	form.AddFormItem(textBuilderCb)
+	form.AddFormItem(textSeparatorInput)
+	form.AddFormItem(textWordCnt)
 	form.AddFormItem(startMsgCb)
 	form.AddFormItem(startMsgInput)
 	form.AddFormItem(endMsgCb)
@@ -947,13 +972,28 @@ func showOptions() {
 	onSave := func() {
 		isRandWords := randomWordsCb.IsChecked()
 		isWB := wordBuilderCb.IsChecked()
+		isTB := textBuilderCb.IsChecked()
 		isSkip := useSkipCb.IsChecked()
 
 		var errors []string
 
+		// Mutual Exclusivity Checks
 		if isWB && isRandWords {
 			errors = append(errors, "Word Builder and Random Words cannot both be enabled. Random Words disabled.")
 			isRandWords = false
+		}
+		if isTB && isRandWords {
+			errors = append(errors, "Text Builder and Random Words cannot both be enabled. Random Words disabled.")
+			isRandWords = false
+		}
+		if isTB && isWB {
+			errors = append(errors, "Text Builder and Word Builder cannot both be enabled. Word Builder disabled.")
+			isWB = false
+		}
+
+		count, err := strconv.Atoi(textWordCnt.GetText())
+		if err != nil || count < 2 || count > 25 {
+			errors = append(errors, "Word Count must be a number between 2 and 25.")
 		}
 
 		rawSkipFields := strings.Fields(skipListInput.GetText())
@@ -978,8 +1018,13 @@ func showOptions() {
 			config.User.RandomOrder = randomOrderCb.IsChecked()
 			config.User.RandomWords = isRandWords
 			config.User.WordBuilder = isWB
+			config.User.TextBuilder = isTB
 
 			config.User.WordSeparator = wordSeparatorInput.GetText()
+			config.User.TextSeparator = textSeparatorInput.GetText()
+			if count, err := strconv.Atoi(textWordCnt.GetText()); err == nil {
+				config.User.TextWordCount = count
+			}
 
 			config.User.StartMsg = startMsgCb.IsChecked()
 			config.User.StartMsgText = startMsgInput.GetText()
@@ -1032,7 +1077,7 @@ func showOptions() {
 	optionsContainer.SetBorder(true).SetTitle(" Options ")
 	optionsContainer.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	pages.AddPage("options", createModal(optionsContainer, 70, 25), true, true)
+	pages.AddPage("options", createModal(optionsContainer, 70, 28), true, true)
 	app.SetFocus(optionsContainer)
 }
 
@@ -1504,6 +1549,7 @@ func showImpairments() {
 	app.SetFocus(container)
 }
 
+// NUMWORDS_MENU
 func showNumWordsModal() {
 	form := tview.NewForm()
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))

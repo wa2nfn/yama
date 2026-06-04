@@ -186,6 +186,45 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		})
 	}
 
+	// ==========================================
+	// 🚦 TEXT BUILDER LOGIC 🚦
+	// ==========================================
+	if config.User.TextBuilder {
+		count := config.User.TextWordCount
+		if count < 2 {
+			count = 2 // Safety fallback
+		}
+
+		sep := strings.TrimSpace(config.User.TextSeparator)
+		var textBuilderWords []string
+
+		for start := 0; start < len(words); start += count {
+			end := start + count
+			if end > len(words) {
+				end = len(words)
+			}
+
+			chunk := words[start:end]
+
+			// Pyramid logic for the current chunk
+			for i := 0; i < len(chunk); i++ {
+				for j := 0; j <= i; j++ {
+					textBuilderWords = append(textBuilderWords, chunk[j])
+				}
+			}
+
+			// Append TextSeparator after the chunk, if it's not the very last chunk
+			if sep != "" && end < len(words) {
+				// Split by spaces just in case the user entered multiple separated prosigns like "<BT> <AR>"
+				sepTokens := strings.Fields(sep)
+				textBuilderWords = append(textBuilderWords, sepTokens...)
+			}
+		}
+
+		// Replace the core words array with our new flattened pyramid sequence
+		words = textBuilderWords
+	}
+
 	playlist := []PlayContext{}
 
 	// Helper function to safely clean and queue words bypassing WordBuilder
@@ -284,7 +323,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			}
 		}
 
-		// If the text file itself provided a separator, AND the last item was already a separator, 
+		// If the text file itself provided a separator, AND the last item was already a separator,
 		// drop this word entirely to prevent "3 delimiters in a row".
 		if isCurrentSep && lastIsSep {
 			continue
