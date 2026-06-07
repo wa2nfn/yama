@@ -85,7 +85,6 @@ func main() {
 
 	logPath := morse.ResolvePath("yama.log")
 	logFile, _ := os.OpenFile(logPath, os.O_RDWR|os.O_TRUNC, 0666)
-	//logFile, _ := os.OpenFile(logPath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	log.SetOutput(logFile)
 
 	if err := morse.InitAudio(); err != nil {
@@ -147,7 +146,7 @@ func main() {
 	inputArea = tview.NewTextArea()
 	inputArea.SetBackgroundColor(bgColor)
 	inputArea.SetBorder(true).SetTitle(" [white]Text Input ")
-	inputArea.SetPlaceholder("Enter text, then Ctrl-P to Play; or F1 for Help.")
+	inputArea.SetPlaceholder("Enter text, then Ctrl-P to Play;\n or F1 for Help.")
 
 	inputArea.SetChangedFunc(func() {
 		// If the engine typed this, ignore it so the menu doesn't reset!
@@ -368,11 +367,27 @@ func main() {
 			return nil
 		}
 
-		// 1. Strict catch-all: If PLAYING, swallow absolutely all unhandled keys. No exceptions.
-		if currentState == StatePlaying {
-			return nil
+// 1. Strict catch-all: If PLAYING, swallow absolutely all unhandled keys.
+	if currentState == StatePlaying {
+
+		// Check if the pressed key is RETURN
+		if event.Key() == tcell.KeyEnter {
+
+			// Ask the morse package if the engine is waiting (Note the parentheses!)
+			if morse.IsWaitingForUserReturn() {
+				
+				// Tell the morse package to unpause
+				morse.SignalUserReturn()
+				
+				// Return nil to swallow the Return key. 
+				// The engine heard it, so we don't want the UI acting on it too!
+				return nil
+			}
 		}
 
+		// Always return nil to swallow all other keystrokes during playback
+		return nil
+	}
 		// 2. Relaxed catch-all: If PAUSED, swallow keys ONLY if main text box is focused,
 		// allowing users to type inside modals (like Tone Speed or File screens).
 		if currentState == StatePaused && app.GetFocus() == inputArea {

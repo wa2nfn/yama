@@ -409,6 +409,8 @@ Text Builder          | Plays input words progressively (e.g., HE DID IT =>
 Text Separator        | If its exists, one character or ProSign in this option 
                       | separates output iterations. e.g.  HE DID IT play as: 
                       | HE HE DID HE DID IT <BT>, if <BT> was in the Text Separator field.
+Word-At-A-Time        | For live play except Word Builder, play a word at current speed and wait for user
+                      | to recognize and hit Enter.
 Use Start Msg         | Toggles injecting a custom message at the beginning of the text.
 Start Msg Text        | Specific text to play at the start (e.g., VVV <KA>).
 Use End Msg           | Toggles injecting a custom message at the end of text.
@@ -870,6 +872,8 @@ func showOptions() {
 		SetAcceptanceFunc(tview.InputFieldInteger)
 	textWordCnt.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 
+	wordAtATimeCb := tview.NewCheckbox().SetLabel("Word-At-A-Time")
+
 	startMsgCb := tview.NewCheckbox().SetLabel("Use Start Msg")
 	startMsgInput := tview.NewInputField().SetLabel("    Start Msg Text").SetFieldWidth(30)
 	startMsgInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
@@ -918,6 +922,7 @@ func showOptions() {
 		textSeparatorInput.SetText(strings.TrimSpace(config.User.TextSeparator))
 		
 		textBuilderCb.SetChecked(config.User.TextBuilder)
+		wordAtATimeCb.SetChecked(config.User.RequireReturnAfterWord)
 
 		// Set the count field to the config value, but default to "2" if the config is 0 (unsaved)
 		if config.User.TextWordCount <= 0 {
@@ -962,6 +967,7 @@ func showOptions() {
 	form.AddFormItem(textBuilderCb)
 	form.AddFormItem(textSeparatorInput)
 	form.AddFormItem(textWordCnt)
+	form.AddFormItem(wordAtATimeCb)
 	form.AddFormItem(startMsgCb)
 	form.AddFormItem(startMsgInput)
 	form.AddFormItem(endMsgCb)
@@ -973,6 +979,7 @@ func showOptions() {
 		isRandWords := randomWordsCb.IsChecked()
 		isWB := wordBuilderCb.IsChecked()
 		isTB := textBuilderCb.IsChecked()
+		isWAAT := wordAtATimeCb.IsChecked()
 		isSkip := useSkipCb.IsChecked()
 
 		var errors []string
@@ -988,6 +995,10 @@ func showOptions() {
 		}
 		if isTB && isWB {
 			errors = append(errors, "Text Builder and Word Builder cannot both be enabled. Word Builder disabled.")
+			isWB = false
+		}
+		if isWAAT && isWB {
+			errors = append(errors, "Word-At-A-Time and Word Builder cannot both be enabled. Word Builder disabled.")
 			isWB = false
 		}
 
@@ -1026,6 +1037,7 @@ func showOptions() {
 				config.User.TextWordCount = count
 			}
 
+			config.User.RequireReturnAfterWord = isWAAT
 			config.User.StartMsg = startMsgCb.IsChecked()
 			config.User.StartMsgText = startMsgInput.GetText()
 			config.User.EndMsg = endMsgCb.IsChecked()
@@ -1077,7 +1089,7 @@ func showOptions() {
 	optionsContainer.SetBorder(true).SetTitle(" Options ")
 	optionsContainer.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	pages.AddPage("options", createModal(optionsContainer, 70, 28), true, true)
+	pages.AddPage("options", createModal(optionsContainer, 70, 29), true, true)
 	app.SetFocus(optionsContainer)
 }
 

@@ -57,6 +57,7 @@ type UserSettings struct {
 	RandomOrder            bool   `json:"random_order"`
 	RandomWords            bool   `json:"random_words"`
 	WordBuilder            bool   `json:"word_builder"`
+	RequireReturnAfterWord            bool `json:"require_return_after_word"`
 	WordSeparator          string `json:"word_separator"`
 	TextBuilder            bool   `json:"text_builder"`
 	TextSeparator          string `json:"text_separator"`
@@ -151,6 +152,7 @@ func LoadConfig() {
 		User.RepeatLimit = 3
 		User.TextWordCount = 2
 		User.StartDelay = 0
+		User.RequireReturnAfterWord  = true     //WDL
 
 		// 2. Save immediately. This creates the directory AND a valid JSON file.
 		SaveConfig()

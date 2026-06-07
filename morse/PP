@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"strings"
-	"sync"
 	"time"
 	"yama/config"
 )
@@ -21,28 +20,6 @@ type PlayContext struct {
 	Word     string
 	IsIWR    bool
 	HideText bool
-}
-
-var (
-	// Unexported state variables (hidden from the UI)
-	waitReturnChan     = make(chan struct{}, 1)
-	isWaitingForReturn bool
-	waitMutex          sync.RWMutex
-)
-
-// IsWaitingForUserReturn safely checks if the engine is paused waiting for a key.
-func IsWaitingForUserReturn() bool {
-	waitMutex.RLock()
-	defer waitMutex.RUnlock()
-	return isWaitingForReturn
-}
-
-// SignalUserReturn sends a non-blocking signal to unpause the engine.
-func SignalUserReturn() {
-	select {
-	case waitReturnChan <- struct{}{}:
-	default: // Don't block if the channel is already full
-	}
 }
 
 func shuffleWord(w string, r *rand.Rand) string {
@@ -507,41 +484,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			isIWRMatch := iwrMan.Match(ctx.Word)
 			OnWordPlayed(ctx.Word, isIWRMatch)
 		}
-
-		// ==========================================
-		// 🚦 WAIT FOR USER RETURN LOGIC 🚦
-		// ==========================================
-		if config.User.RequireReturnAfterWord { 
-			
-			// 1. Drain the channel to ignore premature keystrokes
-			select {
-			case <-waitReturnChan:
-			default:
-			}
-
-			// 2. Safely flag that we are waiting
-			waitMutex.Lock()
-			isWaitingForReturn = true
-			OnStatusUpdate(" [yellow]In Word-At-A-Time, hit Enter...")
-			waitMutex.Unlock()
-
-			// 3. Block and wait for SignalUserReturn() to be called
-		WaitLoop:
-			//for !IsStopping && !IsPaused {
-			for !IsStopping && !IsPaused {
-				select {
-				case <-waitReturnChan:
-					break WaitLoop 
-				case <-time.After(50 * time.Millisecond):
-				}
-			}
-
-			// 4. Reset state
-			waitMutex.Lock()
-			isWaitingForReturn = false
-			OnStatusUpdate(" [green]Playing")
-			waitMutex.Unlock()
-		}
+		// HERE ??
 	}
 
 	IsPaused = false
