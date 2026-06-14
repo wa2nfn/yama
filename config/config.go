@@ -40,6 +40,8 @@ type UserSettings struct {
 
 	NoiseStaticLevel     int  `json:"noise_static_level"`
 	NoiseFadingLevel     int  `json:"noise_fading_level"`
+	BrownNoiseLevel      int  `json:"brown_noise_level"`
+	PinkNoiseLevel      int  `json:"pink_noise_level"`
 	NoiseToneDriftLevel  int  `json:"noise_tone_drift_level"`
 	NoiseSpeedDriftLevel int  `json:"noise_speed_drift_level"`
 	NoiseKeyClick        bool `json:"noise_key_click"`
@@ -153,6 +155,8 @@ func LoadConfig() {
 		User.TextWordCount = 2
 		User.StartDelay = 0
 		User.RequireReturnAfterWord  = true     //WDL
+		User.BrownNoiseLevel = 0   
+		User.PinkNoiseLevel = 0   
 
 		// 2. Save immediately. This creates the directory AND a valid JSON file.
 		SaveConfig()

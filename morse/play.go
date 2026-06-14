@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 	"yama/config"
+	"log"
 )
 
 // Add IsPaused so the engine can halt in place without losing its index
@@ -500,6 +501,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 		wordSpaceSamples := int(p.WordSpace * float64(SampleRate))
 		QueuePCM(SilencePCM(wordSpaceSamples).Samples, " ", -1)
+		log.Println(p)
 
 		Flush()
 
@@ -522,7 +524,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			// 2. Safely flag that we are waiting
 			waitMutex.Lock()
 			isWaitingForReturn = true
-			OnStatusUpdate(" [yellow]In Word-At-A-Time, hit Enter...")
+			OnStatusUpdate(" [yellow]Word-At-A-Time: use ENTER for more...")
 			waitMutex.Unlock()
 
 			// 3. Block and wait for SignalUserReturn() to be called

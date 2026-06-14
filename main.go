@@ -146,7 +146,7 @@ func main() {
 	inputArea = tview.NewTextArea()
 	inputArea.SetBackgroundColor(bgColor)
 	inputArea.SetBorder(true).SetTitle(" [white]Text Input ")
-	inputArea.SetPlaceholder("Enter text, then Ctrl-P to Play;\n or F1 for Help.")
+	inputArea.SetPlaceholder("Enter text (or Ctrl-F select a file), then Ctrl-P to Play;\nor use function key F1 for full Help.")
 
 	inputArea.SetChangedFunc(func() {
 		// If the engine typed this, ignore it so the menu doesn't reset!
@@ -330,9 +330,7 @@ func main() {
 			}
 			return nil
 		case tcell.KeyCtrlA:
-			if currentState != StatePlaying {
-				showImpairments()
-			}
+			showImpairments()
 			return nil
 		case tcell.KeyCtrlD:
 			if statsTotalWords > 0 && (currentState == StateIdle || currentState == StateStopped) {
@@ -367,8 +365,34 @@ func main() {
 			return nil
 		}
 
-// 1. Strict catch-all: If PLAYING, swallow absolutely all unhandled keys.
+	// 1. Strict catch-all: If PLAYING, swallow absolutely all unhandled keys.
+	
 	if currentState == StatePlaying {
+		// 1. Ask tview what page is currently active on top
+		frontPageName, _ := pages.GetFrontPage()
+
+		// 2. If the Impairments modal is on top, DO NOT swallow the keys.
+		// Return the event immediately so the tview Form can use Tab, Space, Enter, etc.
+		if frontPageName == "impairments" {
+			return event
+		}
+
+		// Check if the pressed key is RETURN
+		if event.Key() == tcell.KeyEnter {
+
+			// Ask the morse package if the engine is waiting
+			if morse.IsWaitingForUserReturn() {
+
+				// Tell the morse package to unpause
+				morse.SignalUserReturn()
+
+				// Return nil to swallow the Return key.
+				return nil
+			}
+		}
+
+		// Always return nil to swallow all other keystrokes during playback
+		return nil
 
 		// Check if the pressed key is RETURN
 		if event.Key() == tcell.KeyEnter {
@@ -388,11 +412,11 @@ func main() {
 		// Always return nil to swallow all other keystrokes during playback
 		return nil
 	}
-		// 2. Relaxed catch-all: If PAUSED, swallow keys ONLY if main text box is focused,
-		// allowing users to type inside modals (like Tone Speed or File screens).
-		if currentState == StatePaused && app.GetFocus() == inputArea {
-			return nil
-		}
+	// 2. Relaxed catch-all: If PAUSED, swallow keys ONLY if main text box is focused,
+	// allowing users to type inside modals (like Tone Speed or File screens).
+	if currentState == StatePaused && app.GetFocus() == inputArea {
+		return nil
+	}
 
 		return event
 	})

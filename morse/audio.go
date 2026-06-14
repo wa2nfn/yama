@@ -22,6 +22,11 @@ var (
 	SimTime              float64
 	activeCrashSamples   int     // Tracks remaining samples in a lightning crash
 	activeCrashIntensity float32 // Tracks the volume of the current crash
+	lastBrown            float32 // Tracks the brown noise filter state across gapless elements
+	pink0 float32
+	pink1 float32
+	pink2 float32
+	
 	// Inside your morse package
 	OnFatalError func(errorMessage string)
 )
@@ -160,7 +165,6 @@ func startAudioEngine() error {
 		SampleRate:   SampleRate,
 		ChannelCount: 1,
 		Format:       oto.FormatSignedInt16LE,
-		//WDL BufferSize: 100 * time.Millisecond,
 	}
 	ctx, ready, e := oto.NewContext(op)
 	if e != nil {
@@ -271,6 +275,28 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 		staticVol = 0.40
 	}
 
+	// BROWN NOISE BASE
+	var brownVol float32 = 0.0
+	switch config.User.BrownNoiseLevel {
+	case 1:
+		brownVol = 0.15 // ~ -40dB
+	case 2:
+		brownVol = 0.30 // ~ -30dB
+	case 3:
+		brownVol = 0.50 // ~ -20dB
+	}
+
+	// Pink Noise
+	var pinkVol float32 = 0.0
+	switch config.User.PinkNoiseLevel {
+	case 1:
+		pinkVol = 0.15 // ~ -40dB
+	case 2:
+		pinkVol = 0.30 // ~ -30dB
+	case 3:
+		pinkVol = 0.50 // ~ -20dB
+	}
+	
 	buf := make([]byte, duration*2)
 
 	// 1. Calculate ideal max ramp (5ms)
@@ -332,14 +358,32 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 			s += currentNoise
 		}
 
-		if s > 1.0 {
-			s = 1.0
-		}
-		if s < -1.0 {
-			s = -1.0
+		// BROWN NOISE
+		if brownVol > 0 {
+			white := (rand.Float32() * 2.0) - 1.0
+			// A simple leaky integrator creates the Brown noise 6dB/octave roll-off
+			lastBrown = (lastBrown * 0.95) + (white * 0.05)
+			s += lastBrown * brownVol
 		}
 
-		v := int16(s * 32767)
+		// PINK NOISE
+		if pinkVol > 0 {
+			white := (rand.Float32() * 2.0) - 1.0
+
+			// The Paul Kellet 3-pole approximation
+			pink0 = (0.99765 * pink0) + (white * 0.0990460)
+			pink1 = (0.96300 * pink1) + (white * 0.2965164)
+			pink2 = (0.57000 * pink2) + (white * 1.0526913) // FIX: Multiply by pink2!
+
+			// FIX: Add the touch of raw white noise back in for the high-frequency "rain" sound
+			pink := pink0 + pink1 + pink2 + (white * 0.1848)
+
+			// adjust because Kellet has boosted level
+			s += (pink * 0.15) * pinkVol
+		}
+		s64 := math.Tanh(float64(s))
+
+		v := int16(s64 * 32767)
 		binary.LittleEndian.PutUint16(buf[i*2:], uint16(v))
 	}
 
@@ -372,11 +416,35 @@ func SilencePCM(duration int) PCMData {
 		staticVol = 0.40
 	}
 
+	// BROWN NOISE BASE
+	var brownVol float32 = 0.0
+	switch config.User.BrownNoiseLevel {
+	case 1:
+		brownVol = 0.15 // ~ -40dB
+	case 2:
+		brownVol = 0.30 // ~ -30dB
+	case 3:
+		brownVol = 0.50 // ~ -20dB
+	}
+
+	// PINK NOISE BASE
+	var pinkVol float32 = 0.0
+	switch config.User.PinkNoiseLevel {
+	case 1:
+		pinkVol = 0.15 // ~ -40dB
+	case 2:
+		pinkVol = 0.30 // ~ -30dB
+	case 3:
+		pinkVol = 0.50 // ~ -20dB
+	}
+
 	buf := make([]byte, duration*2)
 
 	for i := 0; i < duration; i++ {
 		var v int16 = 3
+		var s float32 = 0.0
 
+		// STATIC HISS & LIGHTNING CRASHES
 		if staticVol > 0 {
 			if activeCrashSamples == 0 && rand.Float32() < 0.00001 {
 				activeCrashSamples = rand.Intn(int(SampleRate / 2))
@@ -391,16 +459,36 @@ func SilencePCM(duration int) PCMData {
 				activeCrashSamples--
 			}
 
-			s := currentNoise
-			if s > 1.0 {
-				s = 1.0
-			}
-			if s < -1.0 {
-				s = -1.0
-			}
-
-			v = int16(s * 32767)
+			s += currentNoise
 		}
+
+		// BROWN NOISE
+		if brownVol > 0 {
+			white := (rand.Float32() * 2.0) - 1.0
+			lastBrown = (lastBrown * 0.95) + (white * 0.05)
+			s += lastBrown * brownVol
+		}
+
+		// PINK NOISE
+		if pinkVol > 0 {
+			white := (rand.Float32() * 2.0) - 1.0
+
+			// The Paul Kellet 3-pole approximation
+			pink0 = (0.99765 * pink0) + (white * 0.0990460)
+			pink1 = (0.96300 * pink1) + (white * 0.2965164)
+			pink2 = (0.57000 * pink2) + (white * 1.0526913) // FIX: Multiply by pink2!
+
+			// FIX: Add the touch of raw white noise back in for the high-frequency "rain" sound
+			pink := pink0 + pink1 + pink2 + (white * 0.1848)
+
+			// adjust because Kellet has boosted level
+			s += (pink * 0.15) * pinkVol
+		}
+
+		// Calculate final sample value if any noise is active
+		s64 := math.Tanh(float64(s))
+
+		v = int16(s64 * 32767)
 
 		binary.LittleEndian.PutUint16(buf[i*2:], uint16(v))
 	}

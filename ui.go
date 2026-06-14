@@ -430,14 +430,17 @@ Fading (QSB)          | Simulates a slow ionospheric roll, dipping and recoverin
 Tone Drift            | Simulates an unstable oscillator, bending the pitch up and down.
 Speed Drift           | Simulates a tired operator by slowly expanding/contracting the timing.
 Key Clicks            | Injects a harsh electrical spark at the start and end of elements.
+Brown Noise           | Not an impairment. Can increase mental focus by masking other noise.
+Pink Noise            | Not an impairment. Can increase learning (some clinical evidence).
 
 [yellow]Note that you can make changes to the currently playing audio with the Timing or Audio screens.[-]
+[yellow]Note the two noise tones are hypothetical, not specific to morse code.[-]
 
 [green::b]WAV File Export (Ctrl-W)[::-]
 [white]YAMA exports 16-bit Mono audio. The wave screen lets you select a target directory for the created wave files, if the path does not exist, it will create it. The approximate play time for the chosen speed and the corresponding size is shown. You can also specify (actually limit) the number of files. If your input is a large novel you can certainly limit output to a handful of practice files. If you are emailing the completed files to yourself so that you can play them on cell phone, then capping the file size near 10Mb should be reasonable.
 
 [green::b]IWR - Instant Word Recognition Feature[::-]
-[white]This a a head-copy- related feature. I looks to match words (actually any space separated string of supported characters (e.g. the qsl 73 cul) in the input, and override the chosen timing mode (standard, Farnsworth, Wordsworth and the associated speed/tone) and play the matched word at a increased speed with standard timing. To do this you must create an [blue]yamaIWR.txt[-] file. A sample file has been created in the in your OS's standard configuration file directory ($HOME\AppData\Roaming\YAMA for Windows). That file will be editable from the Timing screen ([yellow]Ctrl-T[-], or you may create another one in the same directory that Yama is launched from, this one will take priority but you will have to edit it with notepad, vi, emacs or your favorite text editor is (not a word processor, unless it has a save as txt option). The file should list one word per line (any case, any order); a [yellow]'#'[-] at the start of line tells YAMA to ignore that line. If you choose to also match the word if its immediately follow by [yellow], . ? : [-] as well as the bare word, this is indicated by a trailing asterisk (e.g. qsl* matches: qsl qsl? qsl. qsl: qsl, ). The IWR feature as described is ignored if you have choosen either Word Builder or Random Word in the Options menu, since you would never get a match. A small purposeful interaction with IWR speed is as follows: if you chose Word Builder and have IWR enabled, when Word Builder has completed constructing the word (as in: t te tes test) you will have one more sounding of the final word, but now at IWR speed.
+[white]This a a head-copy- related feature. I looks to match words (actually any space separated string of supported characters (e.g. the qsl 73 cul) in the input, and override the chosen timing mode (standard, Farnsworth, Wordsworth and the associated speed/tone) and play the matched word at a increased speed with standard timing. To do this you must create an [blue]yamaIWR.txt[-] file. A sample file has been created in the in your OS's standard configuration file directory ($HOME\AppData\Roaming\YAMA for Windows). That file will be editable (cursor keys, home. end,pg up, pg down, backspace, delete, insert) from the Timing screen ([yellow]Ctrl-T[-], or you may create another one in the same directory that Yama is launched from, this one will take priority but you will have to edit it with notepad, vi, emacs or your favorite text editor is (not a word processor, unless it has a save as txt option). The file should list one word per line (any case, any order); a [yellow]'#'[-] at the start of line tells YAMA to ignore that line. If you choose to also match the word if its immediately follow by [yellow], . ? : [-] as well as the bare word, this is indicated by a trailing asterisk (e.g. qsl* matches: qsl qsl? qsl. qsl: qsl, ). The IWR feature as described is ignored if you have choosen either Word Builder or Random Word in the Options menu, since you would never get a match. A small purposeful interaction with IWR speed is as follows: if you chose Word Builder and have IWR enabled, when Word Builder has completed constructing the word (as in: t te tes test) you will have one more sounding of the final word, but now at IWR speed.
 
 [red]Note: Using the high end of the 2K Tone limit may impact the audio profile for QRQ speeds, let your ears guide your choice, rather than the app limit you.[-]
 
@@ -1474,11 +1477,13 @@ func showSuccessModal(dir string, files []string) {
 	app.SetFocus(tv)
 }
 
+// IMPAIRMENTS MENU
 func showImpairments() {
 	form := tview.NewForm()
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	form.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
 	form.SetItemPadding(0)
+	var container *tview.Flex
 
 	levels := []string{"Off", "Light", "Heavy", "Severe"}
 
@@ -1489,12 +1494,18 @@ func showImpairments() {
 
 	keyClickCb := tview.NewCheckbox().SetLabel("Key Clicks")
 
+levelsB_PN := []string{"Off", "Low", "Medium", "High"}
+	brownNoiseDropDown := tview.NewDropDown().SetLabel("Brown Noise").SetOptions(levelsB_PN, nil)
+	pinkNoiseDropDown := tview.NewDropDown().SetLabel("Pink Noise").SetOptions(levelsB_PN, nil) // Fixed "Prown" typo!
+
 	resetState := func() {
 		staticDropDown.SetCurrentOption(config.User.NoiseStaticLevel)
 		fadingDropDown.SetCurrentOption(config.User.NoiseFadingLevel)
 		toneDriftDropDown.SetCurrentOption(config.User.NoiseToneDriftLevel)
 		speedDriftDropDown.SetCurrentOption(config.User.NoiseSpeedDriftLevel)
 		keyClickCb.SetChecked(config.User.NoiseKeyClick)
+		brownNoiseDropDown.SetCurrentOption(config.User.BrownNoiseLevel)
+		pinkNoiseDropDown.SetCurrentOption(config.User.PinkNoiseLevel)
 	}
 
 	resetState()
@@ -1504,15 +1515,44 @@ func showImpairments() {
 	form.AddFormItem(toneDriftDropDown)
 	form.AddFormItem(speedDriftDropDown)
 	form.AddFormItem(keyClickCb)
+	form.AddFormItem(brownNoiseDropDown)
+	form.AddFormItem(pinkNoiseDropDown)
 
 	onSave := func() {
+		// 1. Grab the current UI selections for the noise filters
+		brownLvl, _ := brownNoiseDropDown.GetCurrentOption()
+		pinkLvl, _ := pinkNoiseDropDown.GetCurrentOption()
+
+		// 2. The Mutually Exclusive Check
+		// Index 0 is "Off". If both are > 0, the user selected both.
+		if brownLvl > 0 && pinkLvl > 0 {
+			
+			// Create a warning modal
+			errorModal := tview.NewModal().
+				SetText("Brown Noise and Pink Noise cannot be active at the same time.\n\nPlease set one of them to 'Off'.").
+				AddButtons([]string{"OK"}).
+				SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+					// Close the error modal and give focus back to the impairments form
+					pages.RemovePage("noise_error")
+					app.SetFocus(container) 
+				})
+
+			// Add it to the page stack so it pops up immediately
+			pages.AddPage("noise_error", errorModal, true, true)
+			
+			// Exit early! Do not save the config or close the main form
+			return 
+		}
+
+		// 3. If validation passes, save everything as normal
 		config.User.NoiseStaticLevel, _ = staticDropDown.GetCurrentOption()
 		config.User.NoiseFadingLevel, _ = fadingDropDown.GetCurrentOption()
 		config.User.NoiseToneDriftLevel, _ = toneDriftDropDown.GetCurrentOption()
 		config.User.NoiseSpeedDriftLevel, _ = speedDriftDropDown.GetCurrentOption()
+		config.User.BrownNoiseLevel = brownLvl
+		config.User.PinkNoiseLevel = pinkLvl
 
 		config.User.NoiseKeyClick = keyClickCb.IsChecked()
-
 		config.SaveConfig()
 
 		pages.RemovePage("impairments")
@@ -1532,6 +1572,8 @@ func showImpairments() {
 
 		config.User.NoiseStaticLevel = 0
 		config.User.NoiseFadingLevel = 0
+		config.User.BrownNoiseLevel = 0
+		config.User.PinkNoiseLevel = 0
 		config.User.NoiseToneDriftLevel = 0
 		config.User.NoiseSpeedDriftLevel = 0
 		config.User.NoiseKeyClick = false
@@ -1550,14 +1592,25 @@ func showImpairments() {
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	footerView.SetText("\n[yellow]ESC to Close[-]\n")
 
-	container := tview.NewFlex().SetDirection(tview.FlexRow).
+	container = tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(form, 0, 1, true).
 		AddItem(footerView, 2, 1, false)
 
 	container.SetBorder(true).SetTitle(" Audio Impairments ")
 	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	pages.AddPage("impairments", createModal(container, 35, 12), true, true)
+	// Catch the ESC key specifically for this modal to close it without saving
+	container.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			pages.RemovePage("impairments")
+			app.SetFocus(inputArea)
+			return nil // Swallow the key
+		}
+		return event // Pass all other keys (like Tab/Enter) down to the form
+	})
+
+	// Your existing code:
+	pages.AddPage("impairments", createModal(container, 35, 14), true, true)
 	app.SetFocus(container)
 }
 
