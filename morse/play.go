@@ -8,7 +8,8 @@ import (
 	"time"
 	"yama/config"
 	"log"
-)
+	"os"
+
 
 // Add IsPaused so the engine can halt in place without losing its index
 var IsPaused bool
@@ -126,7 +127,6 @@ func buildWordBuffer(ctx PlayContext, p TimingProfile) {
 }
 
 func RunIWR(text string, iwrMan *IWRManager) {
-	//WDL VerifyParisTiming(config.User.CharacterSpeed)
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// ==========================================

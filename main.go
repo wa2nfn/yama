@@ -18,16 +18,15 @@ import (
 type AppState int
 
 const (
-	AppBackgroundColor = "#1B2B44"
-	playPauseDelay = 200
-	Ver = "1.3.0"
+	AppBackgroundColor = "#000000" // black
+	playPauseDelay     = 200
+	Ver                = "1.3.0"
 
 	StateIdle AppState = iota
 	StatePlaying
 	StatePaused
 	StateStopped
 )
-
 
 var (
 	app        *tview.Application
@@ -52,7 +51,6 @@ var (
 
 	colorTagRegex = regexp.MustCompile(`\[.*?\]`)
 
-	// Flag to prevent the text box from resetting the menu when the engine updates it
 	isProgrammaticUpdate bool
 )
 
@@ -93,22 +91,36 @@ func main() {
 
 	morse.RebuildMorseTable(config.User.UseExtendedPunctuation, config.User.UseEuropeanChars, config.User.UseSkip, config.User.SkipList, config.User.EuropeanSkipList)
 
-	// 1. Initialize app normally so tview handles Windows terminal setup properly
+	// ==========================================
+	// EXPLICIT TCELL COLORS (Fixes the Hex-to-Green bug)
+	// ==========================================
+	tview.Styles.PrimitiveBackgroundColor = tcell.ColorBlack
+	tview.Styles.ContrastBackgroundColor = tcell.ColorNavy // <--- FIXED!
+	tview.Styles.BorderColor = tcell.ColorGray
+	tview.Styles.GraphicsColor = tcell.ColorGray
+	tview.Styles.PrimaryTextColor = tcell.ColorWhite
+
 	app = tview.NewApplication()
 	defer func() {
 		if r := recover(); r != nil {
-			app.Stop()                          // Restore the terminal
-			fmt.Printf("YAMA Crashed: %v\n", r) // Print the actual error safely
+			app.Stop()
+			fmt.Printf("YAMA Crashed: %v\n", r)
 		}
 	}()
 
 	app.SetBeforeDrawFunc(func(s tcell.Screen) bool {
+		// ==========================================
+		// THE SLEDGEHAMMER (Fixes the PowerShell Navy Bleed)
+		// We force the entire double-buffer to clear to pure black
+		// every single frame before tview draws the widgets.
+		// ==========================================
+		s.SetStyle(tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorWhite))
+		s.Clear()
 		s.SetCursorStyle(tcell.CursorStyleBlinkingBlock)
-		return false // MUST return false so tview continues to draw the screen!
+		return false
 	})
 
 	app.SetAfterDrawFunc(func(s tcell.Screen) {
-		// If we are playing, nuke the cursor from the screen after tview tries to draw it
 		if currentState == StatePlaying {
 			s.HideCursor()
 		}
@@ -120,36 +132,40 @@ func main() {
 	}
 	morse.SetManager(iwrMan)
 
-	// 1. Ensure directory and files exist
 	checkIWRFiles()
 
-	// 2. Load the IWR file directly (it is guaranteed to exist now)
 	if _, err := iwrMan.LoadIWRFile(); err != nil {
 		log.Printf("IWR Load Error: %v", err)
 	}
 
-	bgColor := tcell.GetColor(AppBackgroundColor)
-	tview.Styles.PrimitiveBackgroundColor = bgColor
-	tview.Styles.PrimaryTextColor = tcell.ColorWhite
-	tview.Styles.ContrastBackgroundColor = tcell.ColorDarkGreen
+	tview.Borders.HorizontalFocus = tview.BoxDrawingsLightHorizontal
+	tview.Borders.VerticalFocus = tview.BoxDrawingsLightVertical
+	tview.Borders.TopLeftFocus = tview.BoxDrawingsLightDownAndRight
+	tview.Borders.TopRightFocus = tview.BoxDrawingsLightDownAndLeft
+	tview.Borders.BottomLeftFocus = tview.BoxDrawingsLightUpAndRight
+	tview.Borders.BottomRightFocus = tview.BoxDrawingsLightUpAndLeft
 
 	header = tview.NewTextView()
 	header.SetDynamicColors(true).SetTextAlign(tview.AlignCenter)
+	header.SetBackgroundColor(tcell.ColorBlack)
 
 	statusLine = tview.NewTextView()
 	statusLine.SetDynamicColors(true)
+	statusLine.SetBackgroundColor(tcell.ColorBlack)
 
 	blueLine = tview.NewTextView()
 	blueLine.SetDynamicColors(true)
 	blueLine.SetBackgroundColor(tcell.ColorSteelBlue)
 
 	inputArea = tview.NewTextArea()
-	inputArea.SetBackgroundColor(bgColor)
-	inputArea.SetBorder(true).SetTitle(" [white]Text Input ")
+	inputArea.SetBackgroundColor(tcell.ColorBlack)
+	inputArea.SetBorder(true).SetTitle(" Text Input ")
 	inputArea.SetPlaceholder("Enter text (or Ctrl-F select a file), then Ctrl-P to Play;\nor use function key F1 for full Help.")
 
+	// Explicitly map the placeholder to Gray to stop PowerShell from guessing Green
+	inputArea.SetPlaceholderStyle(tcell.StyleDefault.Foreground(tcell.ColorGray).Background(tcell.ColorBlack))
+
 	inputArea.SetChangedFunc(func() {
-		// If the engine typed this, ignore it so the menu doesn't reset!
 		if isProgrammaticUpdate {
 			return
 		}
@@ -157,10 +173,8 @@ func main() {
 			currentState = StateIdle
 		}
 
-		// Clear snapshot memory if the user manually edits the text
 		isResized = false
 		preResizeSnapshot = ""
-
 		refreshUI(currentState)
 	})
 
@@ -214,14 +228,16 @@ func main() {
 	morse.OnFatalError = EmergencyQuit
 
 	pages = tview.NewPages()
-	tview.Styles.PrimitiveBackgroundColor = bgColor
+	pages.SetBackgroundColor(tcell.ColorBlack)
 	refreshUI(StateIdle)
 
 	mainFlex = tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(header, 2, 0, false).
+		AddItem(header, 3, 0, false).
 		AddItem(inputArea, 0, 1, true).
 		AddItem(statusLine, 1, 0, false).
 		AddItem(blueLine, 1, 0, false)
+
+	mainFlex.SetBackgroundColor(tcell.ColorBlack)
 
 	pages.AddPage("main", mainFlex, true, true)
 
@@ -268,11 +284,9 @@ func main() {
 
 		switch event.Key() {
 		case tcell.KeyCtrlH, tcell.KeyBackspace, tcell.KeyBackspace2:
-			// 1. Strict lock during Play. No backspacing allowed anywhere.
 			if currentState == StatePlaying {
 				return nil
 			}
-			// 2. Relaxed lock during Pause. Allow backspace inside modal menus.
 			if currentState == StatePaused && app.GetFocus() == inputArea {
 				return nil
 			}
@@ -280,7 +294,6 @@ func main() {
 		case tcell.KeyCtrlB:
 			text := inputArea.GetText()
 			hasText := len(strings.Fields(text)) > 0
-			// Locked during Paused state OR if there is text in the input area
 			if currentState != StatePlaying && currentState != StatePaused && !hasText {
 				showAbout()
 			}
@@ -318,13 +331,11 @@ func main() {
 			}
 			return nil
 		case tcell.KeyCtrlT:
-			// Unlocked during Paused state!
 			if currentState != StatePlaying {
 				showToneSpeed()
 			}
 			return nil
 		case tcell.KeyCtrlO:
-			// Locked during Paused state (requires full stop)
 			if currentState != StatePlaying && currentState != StatePaused {
 				showOptions()
 			}
@@ -342,11 +353,8 @@ func main() {
 				actualText = ""
 				inputArea.SetText("", false)
 				clearStats()
-
-				// Wipe the memory when they erase the screen
 				isResized = false
 				preResizeSnapshot = ""
-
 				refreshUI(currentState)
 				currentInputFile = ""
 			}
@@ -365,58 +373,26 @@ func main() {
 			return nil
 		}
 
-	// 1. Strict catch-all: If PLAYING, swallow absolutely all unhandled keys.
-	
-	if currentState == StatePlaying {
-		// 1. Ask tview what page is currently active on top
-		frontPageName, _ := pages.GetFrontPage()
+		if currentState == StatePlaying {
+			frontPageName, _ := pages.GetFrontPage()
 
-		// 2. If the Impairments modal is on top, DO NOT swallow the keys.
-		// Return the event immediately so the tview Form can use Tab, Space, Enter, etc.
-		if frontPageName == "impairments" {
-			return event
-		}
-
-		// Check if the pressed key is RETURN
-		if event.Key() == tcell.KeyEnter {
-
-			// Ask the morse package if the engine is waiting
-			if morse.IsWaitingForUserReturn() {
-
-				// Tell the morse package to unpause
-				morse.SignalUserReturn()
-
-				// Return nil to swallow the Return key.
-				return nil
+			if frontPageName == "impairments" {
+				return event
 			}
-		}
 
-		// Always return nil to swallow all other keystrokes during playback
-		return nil
-
-		// Check if the pressed key is RETURN
-		if event.Key() == tcell.KeyEnter {
-
-			// Ask the morse package if the engine is waiting (Note the parentheses!)
-			if morse.IsWaitingForUserReturn() {
-				
-				// Tell the morse package to unpause
-				morse.SignalUserReturn()
-				
-				// Return nil to swallow the Return key. 
-				// The engine heard it, so we don't want the UI acting on it too!
-				return nil
+			if event.Key() == tcell.KeyEnter {
+				if morse.IsWaitingForUserReturn() {
+					morse.SignalUserReturn()
+					return nil
+				}
 			}
+
+			return nil
 		}
 
-		// Always return nil to swallow all other keystrokes during playback
-		return nil
-	}
-	// 2. Relaxed catch-all: If PAUSED, swallow keys ONLY if main text box is focused,
-	// allowing users to type inside modals (like Tone Speed or File screens).
-	if currentState == StatePaused && app.GetFocus() == inputArea {
-		return nil
-	}
+		if currentState == StatePaused && app.GetFocus() == inputArea {
+			return nil
+		}
 
 		return event
 	})

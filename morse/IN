@@ -1,8 +1,0 @@
-var (
-	// Buffered by 1 so the UI doesn't block if it sends a signal
-	// right as the engine stops waiting.
-	WaitReturnChan     = make(chan struct{}, 1)
-	IsWaitingForReturn bool
-	waitMutex          sync.RWMutex
-)
-

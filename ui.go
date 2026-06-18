@@ -50,7 +50,7 @@ func handlePlayPause(iwrMan *morse.IWRManager) {
 
 	// 2. SAFETY LOCK
 	if morse.AudioHardwareDead {
-		statusLine.SetText(" [red::b]FATAL: Audio hardware lost. Restart app.[::-]")
+		statusLine.SetText(" [#FFFF55::b]FATAL: Audio hardware lost. Restart app.[::-]")
 		return
 	}
 
@@ -95,7 +95,7 @@ func runEngine(parsedText string, iwrMan *morse.IWRManager) {
 			app.QueueUpdateDraw(func() {
 				isBlocked = false
 				currentState = StateStopped
-				statusLine.SetText(" [red::b]Engine Crashed![::-]")
+				statusLine.SetText(" [#FFFF55::b]Engine Crashed![::-]")
 				refreshUI(StateStopped)
 			})
 		}
@@ -132,9 +132,9 @@ func stopAudio() {
 
 	// Ensure a manual stop doesn't overwrite a hardware death warning
 	if morse.AudioHardwareDead {
-		statusLine.SetText(" [red::b]ERROR: Audio Device Disconnected! Restart App.[::-]")
+		statusLine.SetText(" [#FFFF55::b]ERROR: Audio Device Disconnected! Restart App.[::-]")
 	} else {
-		statusLine.SetText(" [#00FF00]Stopped")
+		statusLine.SetText(" [#FFFF55]Stopped")
 	}
 
 	refreshUI(StateStopped)
@@ -178,7 +178,7 @@ func showStats() {
 
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("[yellow::b] Lifetime Practice Time: %s[::-]\n", lifeStr))
+	sb.WriteString(fmt.Sprintf("[yellow::b] Lifetime Practice: %s[::-]\n", lifeStr))
 	sb.WriteString(strings.Repeat("-", 36) + "\n\n")
 
 	sb.WriteString("[white::b] Current Session[::-]\n")
@@ -200,7 +200,7 @@ func showStats() {
 
 	tv.SetBackgroundColor(tcell.GetColor(AppBackgroundColor)).
 		SetBorder(true).
-		SetTitle(" Data Stats ")
+		SetTitle(" DataStats ")
 
 	pages.AddPage("stats", createModal(tv, 38, 22), true, true)
 	app.SetFocus(tv)
@@ -256,31 +256,31 @@ func refreshUI(state AppState) {
 		}
 
 		if morse.AudioHardwareDead {
-			statusLine.SetText(" [red::b]ERROR: Audio Device Disconnected! Restart App.[::-]")
+			statusLine.SetText(" [#FFFF55::b]ERROR: Audio Device Disconnected! Restart App.[::-]")
 		} else {
-			statusLine.SetText(" [#00FF00]" + status)
+			statusLine.SetText(" [#FFFF55]" + status)
 		}
 
-		menu = "[#00FF00]F[white]ile  [#00FF00]P[white]lay  [#00FF00]T[white]iming  [#00FF00]A[white]udio  [#00FF00]O[white]ption  [#00FF00]F1[white]-help  a[#00FF00]B[white]out  [#00FF00]Q[white]uit "
+		menu = "[#FFFF55]F[white]ile  [#FFFF55]P[white]lay  [#FFFF55]T[white]iming  [#FFFF55]A[white]udio  [#FFFF55]O[white]ption  [#FFFF55]F1[white]help  a[#FFFF55]B[white]out  [#FFFF55]Q[white]uit "
 
 		if hasText {
-			menu = strings.Replace(menu, "a[#00FF00]B[white]out  ", "", 1)
-			menu = strings.Replace(menu, "[#00FF00]F[white]ile", "[#00FF00]F[white]ile  [#00FF00]N[white]umWords", 1)
-			menu = strings.Replace(menu, "[#00FF00]P[white]lay", "[#00FF00]P[white]lay  [#00FF00]W[white]ave  [#00FF00]E[white]rase", 1)
+			menu = strings.Replace(menu, "a[#FFFF55]B[white]out  ", "", 1)
+			menu = strings.Replace(menu, "[#FFFF55]F[white]ile", "[#FFFF55]F[white]ile  [#FFFF55]N[white]umWords", 1)
+			menu = strings.Replace(menu, "[#FFFF55]P[white]lay", "[#FFFF55]P[white]lay  [#FFFF55]W[white]ave  [#FFFF55]E[white]rase", 1)
 		}
 
 		if statsTotalWords > 0 {
-			menu = strings.Replace(menu, "[#00FF00]O[white]ption", "[#00FF00]O[white]ption  [#00FF00]D[white]ata-Stats", 1)
+			menu = strings.Replace(menu, "[#FFFF55]O[white]ption", "[#FFFF55]O[white]ption  [#FFFF55]D[white]ataStats", 1)
 		}
 
 	case StatePlaying:
-		statusLine.SetText(" [#00FF00]Playing")
-		menu = "[#00FF00]P[white]ause  [#00FF00]S[white]top [#00FF00]A[white]udio"
+		statusLine.SetText(" [#FFFF55]Playing")
+		menu = "[#FFFF55]P[white]ause  [#FFFF55]S[white]top [#FFFF55]A[white]udio"
 	case StatePaused:
-		statusLine.SetText(" [#00FF00]Paused")
-		menu = "[#00FF00]R[white]esume  [#00FF00]S[white]top  [#00FF00]T[white]iming  [#00FF00]A[white]udio  [#00FF00]Q[white]uit "
+		statusLine.SetText(" [#FFFF55]Paused")
+		menu = "[#FFFF55]R[white]esume  [#FFFF55]S[white]top  [#FFFF55]T[white]iming  [#FFFF55]A[white]udio  [#FFFF55]Q[white]uit "
 	}
-	header.SetText("[#00FF00::b] YAMA - Yet Another Morse App[white::-]\n" + menu)
+	header.SetText("[#55FFFF::b] YAMA - Yet Another Morse App[white::-]\n\n" + menu)
 }
 
 // --- UI Components & Modals ---
@@ -290,7 +290,7 @@ func applyFocusStyles(form *tview.Form) {
 		item := form.GetFormItem(i)
 		if input, ok := item.(*tview.InputField); ok {
 			input.SetFocusFunc(func() { input.SetFieldBackgroundColor(tcell.ColorDarkGreen) })
-			input.SetBlurFunc(func() { input.SetFieldBackgroundColor(tcell.ColorBlack) })
+			input.SetBlurFunc(func() { input.SetFieldBackgroundColor(tcell.ColorBlue) })
 		}
 	}
 }
@@ -327,28 +327,28 @@ func showErrorModal(errors []string, onDismiss func()) {
 }
 
 func showHelp() {
-	helpText := `
-                         [yellow::b]Welcome to YAMA - Yet Another Morse App[::-]
+	helpText := ` [white::-]
+Whether you are looking for routine practice, some headcopy tools, or want to test your copying limits against simulated audio impairments, YAMA is built to help you.
 
-Whether you are looking for routine practice, some head copy, or want to test your copying limits against a simulated ionospheric storm, YAMA is built to help you.
+YAMA has some standard input processing, for example: discarding non-morseable characters, space compression, input case agnostic, as well as some non-traditional ones: ProSign support, selected character filtering, expansion of contractions, European & Esparanto support, graduating speed, and dynamic wave shaping for QRQ. Changes to speed/tone and audio impairments can be made during play.
 
-YAMA has some standard, input processing for example: discarding non-morseable characters, space compression, input case agnostic, as well as some non-traditional ones: ProSign support, selected character filtering, expansion of contractions, European & Esparanto support, graduating speed, and dynamic wave shaping for QRQ. Changes to speed/tone and audio impairments can be made during play.
-
-YAMA uses a Terminal User Interface (TUI), navigation and selection will be by key combinations, mostly the Control Key and one letter, a few Function keys are supporrted as alternatives. Help is an exception which uses the standard F1 key (Note: In menu screens: timing, options, and audio; back-tab is often quicker cases.)
+YAMA uses a Terminal User Interface (TUI), navigation and selection will be by key combinations, mostly the Control Key and one letter, a few Function keys are supported as alternatives. Help is available with the standard F1 function key. Note: In the menu screens: Timing, Options, and Audio; the back-tab is often quicker to navigate to a field.
 
 [green::b]Getting Started: Entering Text[::-]
-[white]Before YAMA can play anything, it needs some text! You have two easy ways to do this:
-1. Type or Paste: Simply click into the main Text Input box and type or paste your practice text directly. Cursor keys, Backspace, Delete are supported for editing)
-2. Load a File: Press [yellow]Ctrl-F[-] (note: Ctrl-F, for example means hold the Control Key and simultaneously the 'f' key) to open the File Selector and browse for any standard '.txt' file on your computer.
+[white]Before YAMA can play anything, it needs some text. You have three easy ways to do this:
+1. Type or Paste: Simply click into the main Text Input box and type or paste your practice text directly. Cursor keys, Backspace, Delete/Insert, Page Up/Down, Home/End, are supported for editing.
+2. File Load: Press [yellow]Ctrl-F[-] (note: Ctrl-F, means hold the Control Key and simultaneously the 'f' key) to open the File Selector and browse for any standard '.txt' file on your computer.
+
+With text on the Text Input screen, You can increase or decrease the amount of text with the Numwords option [yellow]Ctrl-N[-].
 
 [green::b]Dynamic Menus & Navigation[::-]
-[white]YAMA is operated entirely via keyboard shortcuts. Keep an eye on the top menu bar — it is dynamic. YAMA will only show you the shortcuts that make sense for what you are currently doing. For example, you cannot open the Options menu while audio is actively playing, therefore there will not be an Options label and [yellow]Ctrl-O[-] will be ignored, Wave export label will only appear when you actually have text loaded to export.
+[white]YAMA is operated entirely via keyboard shortcuts (no mouse). Keep an eye on the top menu bar — it is dynamic. YAMA will only show you the shortcuts that make sense for the current context. For example, you cannot open the Options menu while audio is actively playing, therefore there will not be an Options label and [yellow]Ctrl-O[-] will be ignored, the Wave export label will only appear when you actually have text loaded to export.
 
-The method to enter or change an option on the Ctrl-O or Ctrl-T screen will depend on the type of option it is. First navigate to the option of interest using the TAB or BACKTAB, then if the option is a single-charater field like Use ... or Random Order simply hit Enter or space to toggle the option (then TAB forward); if the option shows a single digit or the name of a timing mode (i.e. Farnsworth) the choices are provided by a drop down, use the cursor and hit Enter; multi-digit options like tones or speeds, use Backspace, type new value and hit Enter or TAB; input text boxes, use Backspace, enter a value and hit Enter or TAB. 
+The method to enter or change an option on the Ctrl-O or Ctrl-T screen will depend on the option type. First navigate to the option of interest using the TAB or BACKTAB, then if the option is a single-character field, like Use ... or Random Order, simply hit Enter or space to toggle the option (then TAB forward); if the option shows a single digit or the name of a timing mode (i.e. Farnsworth) the choices are provided by a drop down, use the cursor and hit Enter; multi-digit options like tones or speeds, use Backspace, type new value and hit Enter or TAB; input text boxes, such as start/end msg or skip characters, use Backspace, enter a value and hit Enter or TAB. 
 
-If you ever get stuck in a menu, just press [yellow]ESC[-] to safely close it without saving.
+You can always exit a menu, without a SAVE, by pressing [yellow]ESC[-] to safely close and return to the prior screen.
 
-[red](Note: insertion or removal of headphones can trigger a Windows hang of the Yama app requiring an app restart.)[-]
+[#FFFF55](Note: insertion or removal of headphones can trigger a Windows hang of the Yama app requiring an app restart. This is a common Windows issue, not YAMA's.)[-]
 
 The following keys display sub menus or perform significant actions.
 
@@ -363,10 +363,10 @@ Ctrl-E, Ctrl-L | Erase      | Clear the current text input aka screen clear.
 Ctrl-T         | Timing     | Speed, Tone, and IWR settings.
 Ctrl-O         | Options    | Parser, messaging, and text processing options.
 Ctrl-A         | Audio      | Audio impacting impairements (QRN, QSB, Drift, etc.)
-Ctrl-D         | Data-Stats | View statistics and IWR counts. New input clears the old data.
-CtrlB          | aBout      | App info and License.
+Ctrl-D         | DataStats  | View statistics and IWR counts. New input clears old data.
+Ctrl-B         | aBout      | App info and License.
+Ctrl-Q         | Quit       | Exit YAMA. (Or close the parent window.)
 F1             | Help       | This screen text.
-Ctrl-Q         | Quit       | Exit YAMA. 
 ESC            | Close      | Cancel/Close menus without saving.
 Spacebar       | Hide/Unhide| Toggle text visibility during audio playback.
 
@@ -379,7 +379,7 @@ Spacebar       | Hide/Unhide| Toggle text visibility during audio playback.
 [green::b]ProSigns & Equivalents[::-]
 [white]Supported ProSigns:[yellow] <AR> <AS> <BT> <KA> <SK> <VA> <VE> <SN> <BK> <HH> <DU> <SOS> <CH>[-].
 
-If "Play ProSigns" is disabled in Options ([yellow]Ctrl-O[-]), bracketed ProSigns will be ignored (including their use in the Start/End Msg). However, the standard keyboard equivalents [yellow]+[-] (<AR>), [yellow]=[-] (<BT>), and [yellow]-[-] (<DU>) will still play, unless added to the Skip List in the Options screen. (Note: any other use of the '<' or '>' character is ignored.)
+If "Play ProSigns" is disabled in Options ([yellow]Ctrl-O[-]), bracketed ProSigns will be ignored (including their use in the Start/End Msg). However, the standard keyboard equivalents [yellow]+[-] (<AR>), [yellow]=[-] (<BT>), and [yellow]-[-] (<DU>) will still play, unless the shortcuts are added to the Skip List in the Options screen. (Note: any other use of the '<' or '>' character within YAMA is ignored.)
 
 [green::b]Options Screen (Ctrl-O) - Settings[::-]
 [white]Setting               | Description
@@ -397,20 +397,22 @@ Repeat Limit          | Caps consecutive repeating characters to prevent
 Random Order          | Shuffles the playback order of the entire document's words.
 Random Words          | Scrambles the letters within individual words (e.g. code group).
                       | Mutually exclusive with the IWR function.
-Word Builder          | Plays words progressively (e.g., T, TH, THE) for comprehension. Mutually 
-                      | exclusive with IWR. IWR speed is used to sound the last word.
+Word Builder          | Plays words progressively (e.g., T, TH, THE) for building head
+                      | buffer comprehension. Mutually exclusive with IWR. IWR speed is 
+                      | used to sound the last word.
 Word Separator        | If it exists, one character or ProSign in this option separates output.
                       | e.g. A AM AM I IT IT could play as: A AM AM <BT> I IT IT ?. 
-                      | If <BT> and ? were in the Word Separator field. If IWR is enabled, one 
-                      | more full word played at IWR speed.
-Text Builder          | Plays input words progressively (e.g., HE DID IT =>
-                      | HE HE DID HE DID IT).
+                      | If <BT> and ? were in the Word Separator field. If IWR is enabled,
+                      | one more full word is played at IWR speed.
+Text Builder          | Plays input words progressively (e.g., 11 22 33 44 plays as:  
+                      | 11 11 22 11 22 33 11 22 33 44).
                       | Mutually exclusive with Word Builder and Random Words.
+Word Count            | Limits the count of words used by Text Builder (2-25).
 Text Separator        | If its exists, one character or ProSign in this option 
-                      | separates output iterations. e.g.  HE DID IT play as: 
-                      | HE HE DID HE DID IT <BT>, if <BT> was in the Text Separator field.
-Word-At-A-Time        | For live play except Word Builder, play a word at current speed and wait for user
-                      | to recognize and hit Enter.
+                      | separates output iterations. e.g. aa bb cc play as: 
+                      | aa aa bb aa bb cc <BT>, if <BT> was in the Text Separator field.
+Word-At-A-Time        | For live play except Word Builder, play a word at current speed and waits
+                      | for the user to recognize and hit Enter to get the next word.
 Use Start Msg         | Toggles injecting a custom message at the beginning of the text.
 Start Msg Text        | Specific text to play at the start (e.g., VVV <KA>).
 Use End Msg           | Toggles injecting a custom message at the end of text.
@@ -420,7 +422,7 @@ End Msg Text          | The specific text to play at the end (e.g., <AR>).
 [white]You can define specific characters or ProSigns to silently skip during playback (Options -> Skip List).
 [yellow]Important Apostrophe Rule:[-] If you add the apostrophe [yellow](')[-] to your skip list, YAMA will automatically expand 17 common English contractions before removing the remaining apostrophes (e.g., "DON'T" safely becomes "DO NOT").
 
-Note that the bottom of the screen has a [green]green[-] status line and below that a [blue]blue[-] reminder line about your current vales from the Timing screen. It may also the phrase [yellow]Input Modified[-], this indicates that a least one option on the Options screen will modify the input in the text screen, before it becomes audible CW, so you are not surprised when the firt string is sounded and it maybe very different that what was just displayed.
+Note that the bottom of the screen has a [yellow]yellow[-] status line and below that a [blue]blue[-] reminder line about your current vales from the Timing screen. It may also the phrase [yellow]Input Modified[-], this indicates that a least one option on the Options screen will modify the input in the text screen before it becomes audible CW, so you are not surprised when the first string is sounded that it maybe different than what was just displayed.
 
 [green::b]Audio Screen (Ctrl-A) - Audio-impacting impairments[::-]
 [white]Setting               | Description
@@ -440,15 +442,16 @@ Pink Noise            | Not an impairment. Can increase learning (some clinical 
 [white]YAMA exports 16-bit Mono audio. The wave screen lets you select a target directory for the created wave files, if the path does not exist, it will create it. The approximate play time for the chosen speed and the corresponding size is shown. You can also specify (actually limit) the number of files. If your input is a large novel you can certainly limit output to a handful of practice files. If you are emailing the completed files to yourself so that you can play them on cell phone, then capping the file size near 10Mb should be reasonable.
 
 [green::b]IWR - Instant Word Recognition Feature[::-]
-[white]This a a head-copy- related feature. I looks to match words (actually any space separated string of supported characters (e.g. the qsl 73 cul) in the input, and override the chosen timing mode (standard, Farnsworth, Wordsworth and the associated speed/tone) and play the matched word at a increased speed with standard timing. To do this you must create an [blue]yamaIWR.txt[-] file. A sample file has been created in the in your OS's standard configuration file directory ($HOME\AppData\Roaming\YAMA for Windows). That file will be editable (cursor keys, home. end,pg up, pg down, backspace, delete, insert) from the Timing screen ([yellow]Ctrl-T[-], or you may create another one in the same directory that Yama is launched from, this one will take priority but you will have to edit it with notepad, vi, emacs or your favorite text editor is (not a word processor, unless it has a save as txt option). The file should list one word per line (any case, any order); a [yellow]'#'[-] at the start of line tells YAMA to ignore that line. If you choose to also match the word if its immediately follow by [yellow], . ? : [-] as well as the bare word, this is indicated by a trailing asterisk (e.g. qsl* matches: qsl qsl? qsl. qsl: qsl, ). The IWR feature as described is ignored if you have choosen either Word Builder or Random Word in the Options menu, since you would never get a match. A small purposeful interaction with IWR speed is as follows: if you chose Word Builder and have IWR enabled, when Word Builder has completed constructing the word (as in: t te tes test) you will have one more sounding of the final word, but now at IWR speed.
+[white]This a a head-copy related feature. I looks to match words (actually any space separated string of supported characters (e.g. the qsl 73 cul) in the input, and override the chosen timing mode (standard, Farnsworth, Wordsworth and the associated speed/tone) and play the matched word at a increased speed with standard timing. To do this you must create an [blue]yamaIWR.txt[-] file. A sample file has been created in the in your OS's standard configuration file directory ($HOME\AppData\Roaming\YAMA for Windows). The file will be editable (cursor keys, home/end, pg up/down, backspace, delete/insert) from the Timing screen ([yellow]Ctrl-T[-], or you may create a local one in the same directory that Yama is launched from, this one will take priority but you will have to edit it with notepad, vi, emacs or your favorite text editor is (not a word processor, unless it has a save as txt option). The file should list one word per line (any case, any order); a [yellow]'#'[-] at the start of line tells YAMA to ignore that line. If you choose to also match the word if its immediately follow by [yellow], . ? : [-] as well as the bare word, this is indicated by a trailing asterisk (e.g. qsl* matches: qsl qsl? qsl. qsl: qsl, Note this is the only supported use of asterisk in the app). The IWR feature as described is ignored if you have choosen either Word Builder or Random Word in the Options menu since you would never get a match. A small purposeful interaction with IWR speed is as follows: if you chose Word Builder and have IWR enabled, when Word Builder has completed constructing the word (as in: t te tes test) you will have one more sounding of the final word, but now at IWR speed.
 
-[red]Note: Using the high end of the 2K Tone limit may impact the audio profile for QRQ speeds, let your ears guide your choice, rather than the app limit you.[-]
+[#FFFF55]Note: Using the high end of the 2K Tone limit may impact the audio profile for QRQ speeds, let your ears guide your choice, rather than the app limit you.[-]
 
 Experiment and I'm sure you will quickly understand the capabilities. Remember, an ESC will always get you back to the previous screen, whether there is a Cancel button or not.
 
-You can see the app is not for beginners, or attempt to complete with many excellent training apps such as: Precision CW Tutor, 
-G4FON, LCWO.net, LICW.org, etc. but rather to bundle a number of practice features, and especially a few which can help with
-increasing headcopy in a single app.
+You can see the app is not for complete beginners, nor does it attempt to complete with many excellent training apps such as: Precision CW Tutor, 
+G4FON, LCWO.net, LICW.org, etc. but rather to bundle a number of practice features, and especially a few which can help with increasing headcopy in a single app.
+
+You can email me at cw.or.bust@gmail.com if you find something that needs clarification, a bug, typo , or if a numerical limit causes you an issue; I do not expect to add any features, the sound library will not work on MAC, a mouse will never be supported by the ui libarary.
 
 73 and best of luck on your CW journey.
 WA2NFN
@@ -468,10 +471,10 @@ WA2NFN
 			htmlText = strings.ReplaceAll(htmlText, ">", "&gt;")
 
 			htmlText = strings.ReplaceAll(htmlText, "[yellow::b]", "<span style='color: #FFD700; font-weight: bold;'>")
-			htmlText = strings.ReplaceAll(htmlText, "[green::b]", "<span style='color: #00FF00; font-weight: bold;'>")
+			htmlText = strings.ReplaceAll(htmlText, "[green::b]", "<span style='color: #FFFF55; font-weight: bold;'>")
 			htmlText = strings.ReplaceAll(htmlText, "[white]", "<span style='color: white;'>")
 			htmlText = strings.ReplaceAll(htmlText, "[yellow]", "<span style='color: #FFD700;'>")
-			htmlText = strings.ReplaceAll(htmlText, "[red]", "<span style='color: #FF6666;'>")
+			htmlText = strings.ReplaceAll(htmlText, "[#FFFF55]", "<span style='color: #FF6666;'>")
 			htmlText = strings.ReplaceAll(htmlText, "[blue]", "<span style='color: #00BFFF;'>")
 			htmlText = strings.ReplaceAll(htmlText, "[-]", "</span>")
 			htmlText = strings.ReplaceAll(htmlText, "[::-]", "</span>")
@@ -505,7 +508,7 @@ WA2NFN
             span { font-weight: bold !important; }
             span[style*="color: #FFD700"] { color: #8B8B00 !important; }
             span[style*="color: white"] { color: black !important; }
-            span[style*="color: #00FF00"] { color: darkgreen !important; }
+            span[style*="color: #FFFF55"] { color: darkgreen !important; }
             span[style*="color: #00BFFF"] { color: blue !important; }
         }
     </style>
@@ -521,9 +524,9 @@ WA2NFN
 
 			err := os.WriteFile(exportPath, []byte(finalHTML), 0644)
 			if err == nil {
-				statusLine.SetText(" [#00FF00]Help manual exported to " + exportPath + "![-]")
+				statusLine.SetText(" [#FFFF55]Help manual exported to " + exportPath + "![-]")
 			} else {
-				statusLine.SetText(" [red]Failed to export HTML file.[-]")
+				statusLine.SetText(" [#FFFF55]Failed to export HTML file.[-]")
 			}
 			pages.RemovePage("help")
 			app.SetFocus(inputArea)
@@ -540,7 +543,6 @@ WA2NFN
 		SetText(" (Cursor Up/Down as needed) ").
 		SetTextColor(tcell.ColorYellow).
 		SetTextAlign(tview.AlignCenter)
-
 	hint.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
 	tv.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -569,7 +571,7 @@ WA2NFN
 }
 
 func showAbout() {
-	aboutText := `About [yellow]YAMA - Yet Another Morse App[-]
+	aboutText := `About [#55FFFF]YAMA - Yet Another Morse App[-]
 ` + "Version " + Ver +
 		`
 Created by: Bill Lanahan, WA2NFN
@@ -600,9 +602,9 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMA
 
 	tv.SetBackgroundColor(tcell.GetColor(AppBackgroundColor)).
 		SetBorder(true).
-		SetTitle(" About (cursor) ")
+		SetTitle(" About ")
 
-	pages.AddPage("about", createModal(tv, 90, 26), true, true)
+	pages.AddPage("about", createModal(tv, 110, 28), true, true)
 	app.SetFocus(tv)
 }
 
@@ -742,6 +744,7 @@ func showFile() {
 		}
 
 	})
+
 	pages.AddPage("file", createModal(list, 40, 20), true, true)
 	app.SetFocus(list)
 }
@@ -749,7 +752,7 @@ func showFile() {
 func showEuropeanCharSelector(parentContainer tview.Primitive, activeEuroSkip *string, parentSaveFunc func()) {
 	form := tview.NewForm()
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	form.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	form.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	form.SetItemPadding(0)
 	type ExtChar struct {
@@ -836,7 +839,7 @@ func showEuropeanCharSelector(parentContainer tview.Primitive, activeEuroSkip *s
 func showOptions() {
 	form := tview.NewForm()
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	form.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	form.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	form.SetItemPadding(0)
 
 	useProsignsCb := tview.NewCheckbox().SetLabel("Play ProSigns")
@@ -845,7 +848,7 @@ func showOptions() {
 	useSkipCb := tview.NewCheckbox().SetLabel("Use Skip")
 
 	skipListInput := tview.NewInputField().SetLabel("    Skip List").SetFieldWidth(35)
-	skipListInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	skipListInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	skipListInput.SetPlaceholder(" e.g. XYZ789<SK>").SetPlaceholderTextColor(tcell.ColorYellow)
 
 	delayOptions := []string{"0", "1", "2", "3", "4", "5"}
@@ -859,32 +862,32 @@ func showOptions() {
 
 	wordBuilderCb := tview.NewCheckbox().SetLabel("Word Builder")
 	wordSeparatorInput := tview.NewInputField().SetLabel("    Word Separator").SetFieldWidth(35)
-	wordSeparatorInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
-	wordSeparatorInput.SetPlaceholder(" e.g. <BT>.,+").SetPlaceholderTextColor(tcell.ColorYellow) //WRONG
+	wordSeparatorInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
+	wordSeparatorInput.SetPlaceholder("e.g. <BT>.,+").SetPlaceholderTextColor(tcell.ColorYellow) //WRONG
 
 	textBuilderCb := tview.NewCheckbox().SetLabel("Text Builder")
 
 	textSeparatorInput := tview.NewInputField().SetLabel("    Text Separator").SetFieldWidth(35)
-	textSeparatorInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
-	textSeparatorInput.SetPlaceholder(" e.g. <BT>.,+").SetPlaceholderTextColor(tcell.ColorYellow) // CORRECT
+	textSeparatorInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
+	textSeparatorInput.SetPlaceholder("e.g. <BT>.,+").SetPlaceholderTextColor(tcell.ColorYellow) // CORRECT
 
 	textWordCnt := tview.NewInputField().
-		SetLabel("    Word Count (2-25): ").
+		SetLabel("    Word Count (2-25) ").
 		SetFieldWidth(5).
 		SetText("2"). // <-- Sets the default to 2
 		SetAcceptanceFunc(tview.InputFieldInteger)
-	textWordCnt.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	textWordCnt.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	wordAtATimeCb := tview.NewCheckbox().SetLabel("Word-At-A-Time")
 
 	startMsgCb := tview.NewCheckbox().SetLabel("Use Start Msg")
 	startMsgInput := tview.NewInputField().SetLabel("    Start Msg Text").SetFieldWidth(30)
-	startMsgInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	startMsgInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	startMsgInput.SetPlaceholder("VVV <KA>").SetPlaceholderTextColor(tcell.ColorYellow)
 
 	endMsgCb := tview.NewCheckbox().SetLabel("Use End Msg")
 	endMsgInput := tview.NewInputField().SetLabel("    End Msg Text").SetFieldWidth(30)
-	endMsgInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	endMsgInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	endMsgInput.SetPlaceholder("<AR>").SetPlaceholderTextColor(tcell.ColorYellow)
 
 	euroSkipList := config.User.EuropeanSkipList
@@ -914,7 +917,6 @@ func showOptions() {
 		randomOrderCb.SetChecked(config.User.RandomOrder)
 		randomWordsCb.SetChecked(config.User.RandomWords)
 
-
 		wordBuilderCb.SetChecked(config.User.WordBuilder)
 		wordSeparatorInput.SetText(config.User.WordSeparator)
 		// Trim spaces to ensure empty strings trigger the placeholder
@@ -923,7 +925,7 @@ func showOptions() {
 		textSeparatorInput.SetText(config.User.TextSeparator)
 		textWordCnt.SetText(fmt.Sprintf("%d", config.User.TextWordCount))
 		textSeparatorInput.SetText(strings.TrimSpace(config.User.TextSeparator))
-		
+
 		textBuilderCb.SetChecked(config.User.TextBuilder)
 		wordAtATimeCb.SetChecked(config.User.RequireReturnAfterWord)
 
@@ -1200,7 +1202,7 @@ func showIWREditModal(parentContainer tview.Primitive) {
 func showToneSpeed() {
 	form := tview.NewForm()
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	form.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	form.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	acceptDigits := func(textToCheck string, lastChar rune) bool {
 		if textToCheck == "" {
@@ -1221,24 +1223,24 @@ func showToneSpeed() {
 	modeDropDown := tview.NewDropDown().SetLabel("Mode").SetOptions([]string{"Standard", "Farnsworth", "Wordsworth"}, nil)
 
 	charInput := tview.NewInputField().SetLabel("Char Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
-	charInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	charInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	endSpeedInput := tview.NewInputField().SetLabel("      End Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
-	endSpeedInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	endSpeedInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	effInput := tview.NewInputField().SetLabel("Effective Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
-	effInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	effInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	toneInput := tview.NewInputField().SetLabel("Tone (Hz)").SetFieldWidth(5).SetAcceptanceFunc(acceptDigits)
-	toneInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	toneInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	iwrCheckbox := tview.NewCheckbox().SetLabel("Use IWR")
 
 	iwrSpdInput := tview.NewInputField().SetLabel("IWR Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
-	iwrSpdInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	iwrSpdInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	iwrToneInput := tview.NewInputField().SetLabel("IWR Tone (Hz)").SetFieldWidth(5).SetAcceptanceFunc(acceptDigits)
-	iwrToneInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	iwrToneInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	formatFloatOnExit := func(input *tview.InputField) {
 		input.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -1481,7 +1483,7 @@ func showSuccessModal(dir string, files []string) {
 func showImpairments() {
 	form := tview.NewForm()
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	form.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	form.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	form.SetItemPadding(0)
 	var container *tview.Flex
 
@@ -1494,9 +1496,9 @@ func showImpairments() {
 
 	keyClickCb := tview.NewCheckbox().SetLabel("Key Clicks")
 
-levelsB_PN := []string{"Off", "Low", "Medium", "High"}
+	levelsB_PN := []string{"Off", "Low", "Medium", "High"}
 	brownNoiseDropDown := tview.NewDropDown().SetLabel("Brown Noise").SetOptions(levelsB_PN, nil)
-	pinkNoiseDropDown := tview.NewDropDown().SetLabel("Pink Noise").SetOptions(levelsB_PN, nil) // Fixed "Prown" typo!
+	pinkNoiseDropDown := tview.NewDropDown().SetLabel("Pink Noise").SetOptions(levelsB_PN, nil)
 
 	resetState := func() {
 		staticDropDown.SetCurrentOption(config.User.NoiseStaticLevel)
@@ -1526,7 +1528,7 @@ levelsB_PN := []string{"Off", "Low", "Medium", "High"}
 		// 2. The Mutually Exclusive Check
 		// Index 0 is "Off". If both are > 0, the user selected both.
 		if brownLvl > 0 && pinkLvl > 0 {
-			
+
 			// Create a warning modal
 			errorModal := tview.NewModal().
 				SetText("Brown Noise and Pink Noise cannot be active at the same time.\n\nPlease set one of them to 'Off'.").
@@ -1534,14 +1536,14 @@ levelsB_PN := []string{"Off", "Low", "Medium", "High"}
 				SetDoneFunc(func(buttonIndex int, buttonLabel string) {
 					// Close the error modal and give focus back to the impairments form
 					pages.RemovePage("noise_error")
-					app.SetFocus(container) 
+					app.SetFocus(container)
 				})
 
 			// Add it to the page stack so it pops up immediately
 			pages.AddPage("noise_error", errorModal, true, true)
-			
+
 			// Exit early! Do not save the config or close the main form
-			return 
+			return
 		}
 
 		// 3. If validation passes, save everything as normal
@@ -1581,6 +1583,7 @@ levelsB_PN := []string{"Off", "Low", "Medium", "High"}
 		config.SaveConfig()
 	}
 
+	form.AddTextView(" ", "", 0, 1, false, false)
 	form.AddButton("Save", onSave)
 	form.AddButton("Reset", onReset)
 	form.AddButton("Clear All", onClearAll)
@@ -1610,7 +1613,7 @@ levelsB_PN := []string{"Off", "Low", "Medium", "High"}
 	})
 
 	// Your existing code:
-	pages.AddPage("impairments", createModal(container, 35, 14), true, true)
+	pages.AddPage("impairments", createModal(container, 35, 16), true, true)
 	app.SetFocus(container)
 }
 
@@ -1618,7 +1621,7 @@ levelsB_PN := []string{"Off", "Low", "Medium", "High"}
 func showNumWordsModal() {
 	form := tview.NewForm()
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	form.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	form.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	rawText := inputArea.GetText()
 	words := strings.Fields(rawText)
@@ -1752,10 +1755,10 @@ func showWaveModal(targetDir string) {
 		SetLabel("Save Directory:").
 		SetText(targetDir).
 		SetFieldWidth(40)
-	dirInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	dirInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	prefixInput := tview.NewInputField().SetLabel("File Prefix:").SetText(filePrefix).SetFieldWidth(40)
-	prefixInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	prefixInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	minsInput := tview.NewInputField().
 		SetLabel("Minutes/File:").
@@ -1768,13 +1771,13 @@ func showWaveModal(targetDir string) {
 			val, err := strconv.Atoi(textToCheck)
 			return err == nil && val >= 1 && val <= 60
 		})
-	minsInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	minsInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	numFilesInput := tview.NewInputField().
 		SetLabel("Number Of Files:").
 		SetFieldWidth(10).
 		SetAcceptanceFunc(tview.InputFieldInteger)
-	numFilesInput.SetFieldBackgroundColor(tcell.ColorBlack).SetFieldTextColor(tcell.ColorWhite)
+	numFilesInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	updateCalculations := func() {
 		minsStr := minsInput.GetText()
@@ -1809,7 +1812,7 @@ func showWaveModal(targetDir string) {
 
 		msg := fmt.Sprintf("\n [yellow]Generating up to %d files (Max %d mins each)\n"+
 			"Maximum Output: ~%.1f MB | (~%.1f MB max per file)[-]\n"+
-			"[gray]*Note: Actual size will be smaller if your text doesn't fill the block.[-]",
+			"[gray]Note: Size will be smaller if text doesn't fill the block.[-]",
 			numFiles, mins, totalMB, mbPerFile)
 
 		infoTextView.SetText(msg)
@@ -1875,7 +1878,7 @@ func showWaveModal(targetDir string) {
 		}
 
 		if err := os.MkdirAll(exportDir, 0755); err != nil {
-			statusLine.SetText(" [red]Error: Cannot create save directory![-]")
+			statusLine.SetText(" [#FFFF55]Error: Cannot create save directory![-]")
 			return
 		}
 
@@ -1887,11 +1890,11 @@ func showWaveModal(targetDir string) {
 
 			app.QueueUpdateDraw(func() {
 				if err != nil {
-					statusLine.SetText(" [red]Export failed: " + err.Error())
+					statusLine.SetText(" [#FFFF55]Export failed: " + err.Error())
 					app.SetFocus(inputArea)
 					return
 				}
-				statusLine.SetText(" [#00FF00]WAV files generated successfully!")
+				statusLine.SetText(" [#FFFF55]WAV files generated successfully!")
 				showSuccessModal(exportDir, generatedNames)
 			})
 		}()
@@ -1912,14 +1915,14 @@ func showWaveModal(targetDir string) {
 		AddItem(infoTextView, 5, 1, false).
 		AddItem(form, 0, 1, true)
 
-	container.SetBorder(true).SetTitle(" Generate Wave Files (ESC To Cancel) ")
+	container.SetBorder(true).SetTitle(" Generate Wave Files ")
 	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
 	layout := tview.NewFlex().
 		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			AddItem(container, 22, 1, true).
+			AddItem(container, 18, 1, true).
 			AddItem(nil, 0, 4, false),
 			65, 1, true).
 		AddItem(nil, 0, 1, false)
@@ -1932,7 +1935,7 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 
 	// 1. SAFETY LOCK: Prevent playback if the audio engine is dead
 	if morse.AudioHardwareDead {
-		statusLine.SetText(" [red::b]FATAL: Audio hardware lost. Restart app.[::-]")
+		statusLine.SetText(" [#FFFF55::b]FATAL: Audio hardware lost. Restart app.[::-]")
 		return
 	}
 
@@ -2019,7 +2022,7 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 				app.QueueUpdateDraw(func() {
 					msg := fmt.Sprintf("\n\n\n     Starting in %d...", i)
 					inputArea.SetText(msg, false)
-					statusLine.SetText(" [#00FF00]Preparing to Play...")
+					statusLine.SetText(" [#FFFF55]Preparing to Play...")
 				})
 				time.Sleep(1 * time.Second)
 			}
