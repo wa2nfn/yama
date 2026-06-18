@@ -8,7 +8,7 @@ import (
 	"time"
 	"yama/config"
 	"log"
-	"os"
+)
 
 
 // Add IsPaused so the engine can halt in place without losing its index
