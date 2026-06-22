@@ -330,16 +330,16 @@ func showHelp() {
 	helpText := ` [white::-]
 Whether you are looking for routine practice, some headcopy tools, or want to test your copying limits against simulated audio impairments, YAMA is built to help you.
 
-YAMA has some standard input processing, for example: discarding non-morseable characters, space compression, input case agnostic, as well as some non-traditional ones: ProSign support, selected character filtering, expansion of contractions, European & Esparanto support, graduating speed, and dynamic wave shaping for QRQ. Changes to speed/tone and audio impairments can be made during play.
+YAMA has some standard input processing, for example: discarding non-morseable characters, space compression, input case agnostic, as well as some non-traditional ones: selectable ProSign support, selected character filtering, expansion of contractions (e.g. won't to will not), European & Esparanto support, graduating speed, and dynamic wave shaping for QRQ. Changes to speed/tone and audio impairments can be made during play.
 
-YAMA uses a Terminal User Interface (TUI), navigation and selection will be by key combinations, mostly the Control Key and one letter, a few Function keys are supported as alternatives. Help is available with the standard F1 function key. Note: In the menu screens: Timing, Options, and Audio; the back-tab is often quicker to navigate to a field.
+YAMA uses a Terminal User Interface (TUI), navigation and selections will be by key combinations, mostly the Control Key and one letter, a few Function keys are supported as alternatives. Help is available with the standard F1 function key. Note: In the menu screens: Timing, Options, and Audio; the back-tab is often quicker to navigate to a field, than several forward tabs.
 
 [green::b]Getting Started: Entering Text[::-]
 [white]Before YAMA can play anything, it needs some text. You have three easy ways to do this:
 1. Type or Paste: Simply click into the main Text Input box and type or paste your practice text directly. Cursor keys, Backspace, Delete/Insert, Page Up/Down, Home/End, are supported for editing.
 2. File Load: Press [yellow]Ctrl-F[-] (note: Ctrl-F, means hold the Control Key and simultaneously the 'f' key) to open the File Selector and browse for any standard '.txt' file on your computer.
 
-With text on the Text Input screen, You can increase or decrease the amount of text with the Numwords option [yellow]Ctrl-N[-].
+With text on the Text Input screen, you can increase or decrease the amount of text with the NumWords option [yellow]Ctrl-N[-].
 
 [green::b]Dynamic Menus & Navigation[::-]
 [white]YAMA is operated entirely via keyboard shortcuts (no mouse). Keep an eye on the top menu bar — it is dynamic. YAMA will only show you the shortcuts that make sense for the current context. For example, you cannot open the Options menu while audio is actively playing, therefore there will not be an Options label and [yellow]Ctrl-O[-] will be ignored, the Wave export label will only appear when you actually have text loaded to export.
@@ -385,7 +385,7 @@ If "Play ProSigns" is disabled in Options ([yellow]Ctrl-O[-]), bracketed ProSign
 [white]Setting               | Description
 ----------------------|---------------------------------------------------------
 Play ProSigns         | Toggles support for bracketed ProSigns (e.g., <AR>). Does NOT affect [yellow]-+=[-].
-                      | (Note: <BK> is sounded as  "B K").
+                      | (Note: <BK> is sounded as  "B K"). 
 Extended Punctuation  | Toggles support for extended punctuation marks.
 European Characters   | Toggles support for European & Esparanto Morse characters ([yellow]Ä, Ö, Ĝ, Ŭ[-])
 Use Skip              | Enables the Skip List filtering during playback.

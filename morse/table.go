@@ -39,6 +39,8 @@ var basicMap = map[rune]string{
 	'=': "-...-",  // <BT>
 	'+': ".-.-.",  // <AR>
 	'-': "-....-", // <DU>
+	'\u2013': "-....-", // en dash <DU>
+	'\u2014': "-....-", // em dash <DU>
 }
 
 var extendedPunctuationMap = map[rune]string{
