@@ -2,14 +2,13 @@ package morse
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"strings"
 	"sync"
 	"time"
 	"yama/config"
-	"log"
 )
-
 
 // Add IsPaused so the engine can halt in place without losing its index
 var IsPaused bool
@@ -27,22 +26,22 @@ type PlayContext struct {
 
 var (
 	// Unexported state variables (hidden from the UI)
-	waitReturnChan     = make(chan struct{}, 1)
-	isWaitingForReturn bool
-	waitMutex          sync.RWMutex
+	waitActionChan  = make(chan rune, 1)
+	isWaitingForKey bool
+	waitMutex       sync.RWMutex
 )
 
 // IsWaitingForUserReturn safely checks if the engine is paused waiting for a key.
-func IsWaitingForUserReturn() bool {
+func IsWaitingForUserKey() bool {
 	waitMutex.RLock()
 	defer waitMutex.RUnlock()
-	return isWaitingForReturn
+	return isWaitingForKey
 }
 
 // SignalUserReturn sends a non-blocking signal to unpause the engine.
-func SignalUserReturn() {
+func SignalUserKey(key rune) {
 	select {
-	case waitReturnChan <- struct{}{}:
+	case waitActionChan <- key:
 	default: // Don't block if the channel is already full
 	}
 }
@@ -497,52 +496,69 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			p = baseProfile
 		}
 
-		buildWordBuffer(ctx, p)
+		for {
+			buildWordBuffer(ctx, p)
 
-		wordSpaceSamples := int(p.WordSpace * float64(SampleRate))
-		QueuePCM(SilencePCM(wordSpaceSamples).Samples, " ", -1)
-		log.Println(p)
+			wordSpaceSamples := int(p.WordSpace * float64(SampleRate))
+			QueuePCM(SilencePCM(wordSpaceSamples).Samples, " ", -1)
+			log.Println(p)
 
-		Flush()
+			Flush()
 
-		if OnWordPlayed != nil {
-			isIWRMatch := iwrMan.Match(ctx.Word)
-			OnWordPlayed(ctx.Word, isIWRMatch)
-		}
-
-		// ==========================================
-		// 🚦 WAIT FOR USER RETURN LOGIC 🚦
-		// ==========================================
-		if config.User.RequireReturnAfterWord { 
-			
-			// 1. Drain the channel to ignore premature keystrokes
-			select {
-			case <-waitReturnChan:
-			default:
+			if OnWordPlayed != nil {
+				isIWRMatch := iwrMan.Match(ctx.Word)
+				OnWordPlayed(ctx.Word, isIWRMatch)
 			}
 
-			// 2. Safely flag that we are waiting
-			waitMutex.Lock()
-			isWaitingForReturn = true
-			OnStatusUpdate(" [yellow]Word-At-A-Time: use ENTER for more...")
-			waitMutex.Unlock()
+			// ==========================================
+			// 🚦 WAIT FOR USER RETURN / REPEAT LOGIC 🚦
+			// ==========================================
+			if config.User.RequireReturnAfterWord {
 
-			// 3. Block and wait for SignalUserReturn() to be called
-		WaitLoop:
-			//for !IsStopping && !IsPaused {
-			for !IsStopping && !IsPaused {
+				// 1. Drain the channel to ignore premature keystrokes
+				// (Assuming you rename it to waitActionChan and make it chan string)
 				select {
-				case <-waitReturnChan:
-					break WaitLoop 
-				case <-time.After(50 * time.Millisecond):
+				case <-waitActionChan:
+				default:
 				}
-			}
 
-			// 4. Reset state
-			waitMutex.Lock()
-			isWaitingForReturn = false
-			OnStatusUpdate(" [green]Playing")
-			waitMutex.Unlock()
+				// 2. Safely flag that we are waiting
+				waitMutex.Lock()
+				isWaitingForKey = true
+				OnStatusUpdate(" [yellow]Word-At-A-Time: ENTER to continue, BACKSPACE to repeat")
+				waitMutex.Unlock()
+
+				var action rune
+
+				// 3. Block and wait for SignalUserAction(key) to be called
+			WaitLoop:
+				for !IsStopping && !IsPaused {
+					select {
+					case action = <-waitActionChan:
+						if action == 'B' { //backspace
+						} else if action == 'E' {
+						}
+						break WaitLoop
+					case <-time.After(50 * time.Millisecond):
+					}
+				}
+
+				// 4. Reset state
+				waitMutex.Lock()
+				isWaitingForKey = false
+				OnStatusUpdate(" [green]Playing")
+				waitMutex.Unlock()
+
+				// 5. Evaluate the user's action
+				if action == 'B' {
+					// Clears any lingering state if necessary, then repeats the inner loop
+					continue
+				}
+				// Break the inner retry loop (advances to the next word in your outer loop)
+				break
+			} else {
+				break
+			}
 		}
 	}
 

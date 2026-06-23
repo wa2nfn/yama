@@ -285,6 +285,11 @@ func main() {
 		switch event.Key() {
 		case tcell.KeyCtrlH, tcell.KeyBackspace, tcell.KeyBackspace2:
 			if currentState == StatePlaying {
+				if currentState == StatePlaying {
+					if morse.IsWaitingForUserKey() {
+						morse.SignalUserKey('B')
+					}
+				}
 				return nil
 			}
 			if currentState == StatePaused && app.GetFocus() == inputArea {
@@ -381,8 +386,16 @@ func main() {
 			}
 
 			if event.Key() == tcell.KeyEnter {
-				if morse.IsWaitingForUserReturn() {
-					morse.SignalUserReturn()
+				if morse.IsWaitingForUserKey() {
+					morse.SignalUserKey('E')
+					return nil
+				}
+			}
+
+			if event.Key() == tcell.KeyBackspace || event.Key() == tcell.KeyBackspace2 {
+				fmt.Printf("got it: %v", event.Key())
+				if morse.IsWaitingForUserKey() {
+					morse.SignalUserKey('B')
 					return nil
 				}
 			}

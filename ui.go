@@ -413,6 +413,7 @@ Text Separator        | If its exists, one character or ProSign in this option
                       | aa aa bb aa bb cc <BT>, if <BT> was in the Text Separator field.
 Word-At-A-Time        | For live play except Word Builder, play a word at current speed and waits
                       | for the user to recognize and hit Enter to get the next word.
+                      | Backspace will replay the current word for another listen.
 Use Start Msg         | Toggles injecting a custom message at the beginning of the text.
 Start Msg Text        | Specific text to play at the start (e.g., VVV <KA>).
 Use End Msg           | Toggles injecting a custom message at the end of text.
