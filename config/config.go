@@ -8,6 +8,7 @@ import (
 )
 
 var User UserSettings
+var StatsTotalWords int
 
 var Contractions = map[string]string{
 	"CAN'T": "CANNOT", "WON'T": "WILL NOT", "DON'T": "DO NOT",

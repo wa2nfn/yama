@@ -79,7 +79,7 @@ func handlePlayPause(iwrMan *morse.IWRManager) {
 }
 
 func clearStats() {
-	statsTotalWords = 0
+	config.StatsTotalWords = 0
 	statsIWRWords = 0
 	statsIWRMap = make(map[string]int)
 	statsIWRList = []string{}
@@ -182,7 +182,7 @@ func showStats() {
 	sb.WriteString(strings.Repeat("-", 36) + "\n\n")
 
 	sb.WriteString("[white::b] Current Session[::-]\n")
-	sb.WriteString(fmt.Sprintf(" Total Words Played: %d\n", statsTotalWords))
+	sb.WriteString(fmt.Sprintf(" Total Words Played: %d\n", config.StatsTotalWords))
 	sb.WriteString(fmt.Sprintf(" Total IWR Matches: %d\n", statsIWRWords))
 	sb.WriteString(fmt.Sprintf(" Active Play Time: %s\n\n", timeStr))
 
@@ -269,7 +269,7 @@ func refreshUI(state AppState) {
 			menu = strings.Replace(menu, "[#FFFF55]P[white]lay", "[#FFFF55]P[white]lay  [#FFFF55]W[white]ave  [#FFFF55]E[white]rase", 1)
 		}
 
-		if statsTotalWords > 0 {
+		if config.StatsTotalWords > 0 {
 			menu = strings.Replace(menu, "[#FFFF55]O[white]ption", "[#FFFF55]O[white]ption  [#FFFF55]D[white]ataStats", 1)
 		}
 

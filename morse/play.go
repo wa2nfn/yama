@@ -182,6 +182,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 	}
 
 	words := strings.Fields(text)
+	var inputWordCnt = len(words)
 
 	// --- 1. BRUTE-FORCE EXTRACTION ---
 	var startMsgWords []string
@@ -514,6 +515,9 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			// 🚦 WAIT FOR USER RETURN / REPEAT LOGIC 🚦
 			// ==========================================
 			if config.User.RequireReturnAfterWord {
+				if inputWordCnt == config.StatsTotalWords {
+					break // done no need to wait
+				}
 
 				// 1. Drain the channel to ignore premature keystrokes
 				// (Assuming you rename it to waitActionChan and make it chan string)

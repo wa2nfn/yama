@@ -42,7 +42,6 @@ var (
 	actualText     string
 	fullTextToPlay string
 
-	statsTotalWords int
 	statsIWRWords   int
 	statsIWRList    []string
 	statsIWRMap     = make(map[string]int)
@@ -207,11 +206,12 @@ func main() {
 	}
 
 	morse.OnWordPlayed = func(word string, isIWR bool) {
-		statsTotalWords++
+		config.StatsTotalWords++
 		if isIWR {
 			statsIWRWords++
 			statsIWRMap[word]++
 		}
+		updateBlueLine()// for word cnt
 	}
 
 	morse.OnStatusUpdate = func(msg string) {
@@ -349,7 +349,7 @@ func main() {
 			showImpairments()
 			return nil
 		case tcell.KeyCtrlD:
-			if statsTotalWords > 0 && (currentState == StateIdle || currentState == StateStopped) {
+			if config.StatsTotalWords > 0 && (currentState == StateIdle || currentState == StateStopped) {
 				showStats()
 			}
 			return nil
