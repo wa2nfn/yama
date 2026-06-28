@@ -206,11 +206,14 @@ func ResolvePath(inputPath string) string {
 
 // CreateDefaultIWRFile generates a fresh IWR configuration file with instructions
 func CreateDefaultIWRFile(targetPath string) error {
-	defaultText := `# Add IWR words, one per line.
+	defaultText := `# Add IWR words meaningful to you, one per line.
 # Lines beginning with # are ignored.
 # Words ending with * (i.e. QRZ*) match: QRZ QRZ? QRZ. QRZ, QRZ:
 # To edit, use cursor keys, Backspace, Insert/Delete; Hit Tab to access buttons.
 # words start below
+# Make sure the "Use IWR" checkbox on the Timing menu is checked.
+# An input with "The dog chased the cat and barked." will send the 2 "the" and the 1
+# "and" at the higher IWR speed, and the rest at the char/effective speeds.
 the
 and
 qrz?
