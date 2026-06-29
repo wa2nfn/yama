@@ -1497,7 +1497,7 @@ func showImpairments() {
 
 	keyClickCb := tview.NewCheckbox().SetLabel("Key Clicks")
 
-	levelsB_PN := []string{"Off", "Low", "Medium", "High"}
+	levelsB_PN := []string{"Off", "Minimal", "Low", "Medium", "High"}
 	brownNoiseDropDown := tview.NewDropDown().SetLabel("Brown Noise").SetOptions(levelsB_PN, nil)
 	pinkNoiseDropDown := tview.NewDropDown().SetLabel("Pink Noise").SetOptions(levelsB_PN, nil)
 

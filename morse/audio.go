@@ -279,10 +279,12 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 	var brownVol float32 = 0.0
 	switch config.User.BrownNoiseLevel {
 	case 1:
-		brownVol = 0.15 // ~ -40dB
+		brownVol = 0.47 // ~ -50dB
 	case 2:
-		brownVol = 0.30 // ~ -30dB
+		brownVol = 0.15 // ~ -40dB
 	case 3:
+		brownVol = 0.30 // ~ -30dB
+	case 4:
 		brownVol = 0.50 // ~ -20dB
 	}
 
@@ -290,10 +292,12 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 	var pinkVol float32 = 0.0
 	switch config.User.PinkNoiseLevel {
 	case 1:
-		pinkVol = 0.15 // ~ -40dB
+		pinkVol = 0.047 // new minimal volume assumming I didn't make too low
 	case 2:
-		pinkVol = 0.30 // ~ -30dB
+		pinkVol = 0.15 // ~ -40dB
 	case 3:
+		pinkVol = 0.30 // ~ -30dB
+	case 4:
 		pinkVol = 0.50 // ~ -20dB
 	}
 	
@@ -372,8 +376,8 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 
 			// The Paul Kellet 3-pole approximation
 			pink0 = (0.99765 * pink0) + (white * 0.0990460)
-			pink1 = (0.96300 * pink1) + (white * 0.2965164)
-			pink2 = (0.57000 * pink2) + (white * 1.0526913) // FIX: Multiply by pink2!
+			pink1 = (0.96300 * pink2) + (white * 0.2965164)
+			pink2 = (0.57000 * pink2) + (white * 1.0526913) 
 
 			// FIX: Add the touch of raw white noise back in for the high-frequency "rain" sound
 			pink := pink0 + pink1 + pink2 + (white * 0.1848)
