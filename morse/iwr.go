@@ -147,42 +147,6 @@ func (m *IWRManager) LoadIWRFile() (bool, error) {
 	return isFirstRun, nil
 }
 
-/* WDL
-func checkIWRFiles() string {
-	localPath := ResolvePath("./yamaIWR.txt")
-
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		configDir = "."
-	}
-
-	// The Foundation: The exact path to the YAMA folder
-	yamaDir := filepath.Join(configDir, "YAMA")
-	fallbackPath := ResolvePath(filepath.Join(yamaDir, "yamaIWR.txt"))
-
-	// 1. GUARANTEE THE DIRECTORY EXISTS (Safe to run every time)
-	os.MkdirAll(yamaDir, 0755)
-
-	// 2. Check local path
-	if _, err := os.Stat(localPath); err == nil {
-		return localPath
-	}
-
-	// 3. Check fallback path
-	if _, err := os.Stat(fallbackPath); err == nil {
-		return fallbackPath
-	}
-
-	// 4. If neither exists, use the correct builder from the morse package
-	// Note: Make sure it is capitalized in your morse package so main can see it!
-	if createErr := CreateDefaultIWRFile(fallbackPath); createErr != nil {
-		log.Printf("Failed to create default IWR file: %v", createErr)
-	}
-
-	return fallbackPath
-}
-*/
-
 func ResolvePath(inputPath string) string {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {

@@ -39,7 +39,7 @@ func ExportWAVBatch(fullText string, targetDir string, baseName string, maxWords
 		return nil, fmt.Errorf("no text to export")
 	}
 
-	if config.User.RandomOrder {
+	if config.User.WordOrder {
 		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		r.Shuffle(len(words), func(i, j int) {
 			words[i], words[j] = words[j], words[i]
@@ -174,7 +174,7 @@ func buildPlaylistFromWords(words []string) []PlayContext {
 		var finalWord = w
 		var isIwrMatchFound bool
 
-		if config.User.RandomWords && len(w) > 1 && !isProsign {
+		if config.User.RandomizeWords && len(w) > 1 && !isProsign {
 			finalWord = shuffleWord(w, r)
 			isIwrMatchFound = false
 		} else {

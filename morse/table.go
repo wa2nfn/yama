@@ -36,9 +36,9 @@ var basicMap = map[rune]string{
 	'?': "..--..",
 	'/': "-..-.",
 	// ProSign Equivalents (MUST be in basic to prevent discarding)
-	'=': "-...-",  // <BT>
-	'+': ".-.-.",  // <AR>
-	'-': "-....-", // <DU>
+	'=':      "-...-",  // <BT>
+	'+':      ".-.-.",  // <AR>
+	'-':      "-....-", // <DU>
 	'\u2013': "-....-", // en dash <DU>
 	'\u2014': "-....-", // em dash <DU>
 }
@@ -141,10 +141,10 @@ func RebuildMorseTable(useExtended bool, useEuropeanChars bool, useSkip bool, sk
 
 func ProcessMorseString(input string) string {
 	// 1. Force Upper
-	work := strings.ToUpper(input)
+	//work := strings.ToUpper(input)
 
 	// 2. Initial clean: Keep the original regex as a safety net for weird unicode
-	work = MorseRegex.ReplaceAllString(work, "")
+	work := MorseRegex.ReplaceAllString(input, "")
 
 	// 3. Break into words first to naturally preserve our spaces
 	words := strings.Fields(work)

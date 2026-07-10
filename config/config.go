@@ -57,14 +57,18 @@ type UserSettings struct {
 	EuropeanSkipList       string `json:"european_skip_list"`
 	UseSkip                bool   `json:"use_skip"`
 	SkipList               string `json:"skip_list"`
-	RandomOrder            bool   `json:"random_order"`
-	RandomWords            bool   `json:"random_words"`
+	WordOrder            bool   `json:"word_order"`
+	RandomizeWords            bool   `json:"randomize_words"`
 	WordBuilder            bool   `json:"word_builder"`
 	RequireReturnAfterWord            bool `json:"require_return_after_word"`
 	WordSeparator          string `json:"word_separator"`
 	TextBuilder            bool   `json:"text_builder"`
+	WordBuilderSort       bool   `json:"word_builder_sort"`
+	TextBuilderSort       bool   `json:"text_builder_sort"`
 	TextSeparator          string `json:"text_separator"`
 	TextWordCount		int	`json:"text_word_count"`
+	Flashcard	bool	`json:"flashcard"`
+	FlashcardWordCount	int	`json:"flashcard_word_count"`
 
 	// Messaging & Flow Control
 	StartMsg     bool   `json:"start_msg"`
@@ -149,14 +153,19 @@ func LoadConfig() {
 		User.IWRSpeed = 30
 		User.IWRTone = 600
 		User.WordBuilder = false
+		User.WordBuilderSort = false
+		User.TextBuilderSort = false
 		User.TextBuilder = false
-		User.RandomWords = false
-		User.RandomOrder = false
+		User.RandomizeWords = false
+		User.WordOrder = false
 		User.RepeatLimit = 3
 		User.TextWordCount = 2
 		User.StartDelay = 0
 		User.RequireReturnAfterWord  = true     //WDL
+		User.Flashcard = false
+		User.FlashcardWordCount = 1
 		User.BrownNoiseLevel = 0   
+		User.StartDelay = 0
 		User.PinkNoiseLevel = 0   
 
 		// 2. Save immediately. This creates the directory AND a valid JSON file.

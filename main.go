@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 	"yama/config"
 	"yama/morse"
 
@@ -20,7 +21,7 @@ type AppState int
 const (
 	AppBackgroundColor = "#000000" // black
 	playPauseDelay     = 200
-	Ver                = "1.3.2"
+	Ver                = "1.4"
 
 	StateIdle AppState = iota
 	StatePlaying
@@ -42,15 +43,16 @@ var (
 	actualText     string
 	fullTextToPlay string
 
-	statsIWRWords   int
-	statsIWRList    []string
-	statsIWRMap     = make(map[string]int)
-	isBlocked       bool
-	finalPlayTime   time.Duration
+	statsIWRWords int
+	statsIWRList  []string
+	statsIWRMap   = make(map[string]int)
+	isBlocked     bool
+	finalPlayTime time.Duration
 
 	colorTagRegex = regexp.MustCompile(`\[.*?\]`)
 
 	isProgrammaticUpdate bool
+	lastFlashcardGroup   []string
 )
 
 func checkIWRFiles() (targetPath string) {
@@ -94,7 +96,7 @@ func main() {
 	// EXPLICIT TCELL COLORS (Fixes the Hex-to-Green bug)
 	// ==========================================
 	tview.Styles.PrimitiveBackgroundColor = tcell.ColorBlack
-	tview.Styles.ContrastBackgroundColor = tcell.ColorNavy // <--- FIXED!
+	tview.Styles.ContrastBackgroundColor = tcell.ColorNavy
 	tview.Styles.BorderColor = tcell.ColorGray
 	tview.Styles.GraphicsColor = tcell.ColorGray
 	tview.Styles.PrimaryTextColor = tcell.ColorWhite
@@ -158,25 +160,62 @@ func main() {
 
 	inputArea = tview.NewTextArea()
 	inputArea.SetBackgroundColor(tcell.ColorBlack)
-	inputArea.SetBorder(true).SetTitle(" Text Input ")
+	inputArea.SetBorder(true).SetTitle(" Text Input/Output ")
 	inputArea.SetPlaceholder("Enter text (or Ctrl-F select a file), then Ctrl-P to Play;\nor use function key F1 for full Help.")
+
+	inputArea.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyRune {
+			r := event.Rune()
+
+			//compress space
+			if r == ' ' {
+				current := inputArea.GetText()
+				if len(current) > 0 && current[len(current)-1] == ' ' {
+					// swallow
+					return nil
+				}
+			}
+			//WDL
+			upper := unicode.ToUpper(r)
+			if upper != r {
+				// Replace the event with an uppercase version
+				return tcell.NewEventKey(tcell.KeyRune, upper, event.Modifiers())
+			}
+		}
+		return event
+	})
 
 	// Explicitly map the placeholder to Gray to stop PowerShell from guessing Green
 	inputArea.SetPlaceholderStyle(tcell.StyleDefault.Foreground(tcell.ColorGray).Background(tcell.ColorBlack))
 
 	inputArea.SetChangedFunc(func() {
-		if isProgrammaticUpdate {
-			return
-		}
-		if currentState == StateStopped || currentState == StatePaused {
-			currentState = StateIdle
-		}
-
-		isResized = false
-		preResizeSnapshot = ""
-		refreshUI(currentState)
+		// do nothing
 	})
+	/*
+			if isProgrammaticUpdate {
+				return
+			}
 
+			txt := inputArea.GetText()
+
+			// ONLY uppercase here — no space compression
+			upper := strings.ToUpper(txt)
+
+			isProgrammaticUpdate = true
+			inputArea.SetText(upper, false)
+			isProgrammaticUpdate = false
+
+			if currentState == StateStopped || currentState == StatePaused {
+				currentState = StateIdle
+			}
+
+			isResized = false
+			preResizeSnapshot = ""
+			refreshUI(currentState)
+		})
+	*/
+
+	morse.OnClearFlashcardScreen = clearFlashcardScreen
 	morse.OnWordChange = func(char string, index int) {
 		if char == "" || index == -1 {
 			return
@@ -211,7 +250,7 @@ func main() {
 			statsIWRWords++
 			statsIWRMap[word]++
 		}
-		updateBlueLine()// for word cnt
+		updateBlueLine() // for word cnt
 	}
 
 	morse.OnStatusUpdate = func(msg string) {
@@ -225,6 +264,10 @@ func main() {
 		})
 	}
 
+	morse.OnGroupCompleted = func(words []string) {
+		// Store the exact logical words of the last group
+		lastFlashcardGroup = append([]string{}, words...)
+	}
 	morse.OnFatalError = EmergencyQuit
 
 	pages = tview.NewPages()
@@ -286,8 +329,16 @@ func main() {
 		case tcell.KeyCtrlH, tcell.KeyBackspace, tcell.KeyBackspace2:
 			if currentState == StatePlaying {
 				if currentState == StatePlaying {
+					/* WDL
 					if morse.IsWaitingForUserKey() {
 						morse.SignalUserKey('B')
+					}
+					*/
+					if morse.IsWaitingForUserKey() {
+						morse.SignalUserKey('B')
+
+						// NEW: erase last group from UI
+						eraseLastGroupFromScreen()
 					}
 				}
 				return nil
@@ -326,7 +377,7 @@ func main() {
 			return event
 		case tcell.KeyCtrlF, tcell.KeyF3:
 			if currentState != StatePlaying {
-				showFile()
+				showFile(app, pages, inputArea)
 				clearStats()
 			}
 			return nil
@@ -446,8 +497,8 @@ func EmergencyQuit(errorMessage string) {
 }
 
 func getModifierWarning() string {
-	isModified := config.User.RandomWords ||
-		config.User.RandomOrder ||
+	isModified := config.User.RandomizeWords ||
+		config.User.WordOrder ||
 		config.User.UseSkip ||
 		config.User.WordBuilder ||
 		config.User.Playprosigns
@@ -473,4 +524,45 @@ func lockPlayTime() {
 		config.User.LifetimePlaySeconds += int(finalPlayTime.Seconds())
 		config.SaveConfig()
 	}
+}
+
+// used by Flashcard only
+func eraseLastGroupFromScreen() {
+	if len(lastFlashcardGroup) == 0 {
+		return
+	}
+
+	// Use the same buffer the user actually sees
+	words := strings.Fields(actualText)
+
+	// Remove EXACT logical words from the end
+	for i := len(lastFlashcardGroup) - 1; i >= 0; i-- {
+		if len(words) == 0 {
+			break
+		}
+		if words[len(words)-1] == lastFlashcardGroup[i] {
+			words = words[:len(words)-1]
+		}
+	}
+
+	actualText = strings.Join(words, " ")
+	inputArea.SetText(actualText, false)
+}
+
+func clearFlashcardScreen() {
+	actualText = ""
+	inputArea.SetText("", false)
+}
+
+func normalizeSpaces(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if unicode.IsSpace(r) {
+			b.WriteRune(' ')
+		} else {
+			b.WriteRune(r)
+		}
+	}
+	parts := strings.Fields(b.String())
+	return strings.Join(parts, " ")
 }

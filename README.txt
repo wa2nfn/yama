@@ -43,7 +43,7 @@ IWR words. Also in the Help menu (function key F1) there is more on IWR.
 You can now see how is straight forward to hear input whether typed in, or read from
 a file(Ctrl-F), but there are many Options (Ctrl-O menu) that modifiy input or
 change plain play into headcopy features (Random Words, Word Builder, Text Builder,
-Word-At-A-Time (aka flashcard).
+Flashcard.
 
 Use Numwords (Ctrl-N) after you have loaded text in the Input Text screen, if you
 want to increas/decrease the amount of text to practice. You can also preform edits

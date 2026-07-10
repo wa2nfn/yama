@@ -1,16 +1,19 @@
 package main
 
 import (
+	"cmp"
 	"fmt"
 	"log"
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 	"yama/config"
 	"yama/morse"
 	"yama/parser"
@@ -330,7 +333,7 @@ func showHelp() {
 	helpText := ` [white::-]
 Whether you are looking for routine practice, some headcopy tools, or want to test your copying limits against simulated audio impairments, YAMA is built to help you.
 
-YAMA has some standard input processing, for example: discarding non-morseable characters, space compression, input case agnostic, as well as some non-traditional ones: selectable ProSign support, selected character filtering, expansion of contractions (e.g. won't to will not), European & Esparanto support, graduating speed, and dynamic wave shaping for QRQ. Changes to speed/tone and audio impairments can be made during play.
+YAMA has some standard input processing, for example: discarding non-morseable characters, space compression, input case agnostic, as well as some non-traditional ones: selectable ProSign support, selected character filtering, expansion of contractions (e.g. won't to will not), European & Esparanto support, graduating speed, dynamic wave shaping for QRQ, and more. Changes to speed/tone and audio impairments can be made during play.
 
 YAMA uses a Terminal User Interface (TUI), navigation and selections will be by key combinations, mostly the Control Key and one letter, a few Function keys are supported as alternatives. Help is available with the standard F1 function key. Note: In the menu screens: Timing, Options, and Audio; the back-tab is often quicker to navigate to a field, than several forward tabs.
 
@@ -395,7 +398,7 @@ Start Delay           | Adds a countdown timer (in seconds) before playback begi
 Repeat Limit          | Caps consecutive repeating characters to prevent 
                       | runaway use of a character (e.g. underline titles). Default 3.
 Random Order          | Shuffles the playback order of the entire document's words.
-Random Words          | Scrambles the letters within individual words (e.g. code group).
+Randomize Words          | Scrambles the letters within individual words (e.g. code group).
                       | Mutually exclusive with the IWR function.
 Word Builder          | Plays words progressively (e.g., T, TH, THE) for building head
                       | buffer comprehension. Mutually exclusive with IWR. IWR speed is 
@@ -406,14 +409,16 @@ Word Separator        | If it exists, one character or ProSign in this option se
                       | one more full word is played at IWR speed.
 Text Builder          | Plays input words progressively (e.g., 11 22 33 44 plays as:  
                       | 11 11 22 11 22 33 11 22 33 44).
-                      | Mutually exclusive with Word Builder and Random Words.
+                      | Mutually exclusive with Word Builder and Randomize Words.
 Word Count            | Limits the count of words used by Text Builder (2-25).
 Text Separator        | If its exists, one character or ProSign in this option 
                       | separates output iterations. e.g. aa bb cc play as: 
                       | aa aa bb aa bb cc <BT>, if <BT> was in the Text Separator field.
-Word-At-A-Time        | For live play except Word Builder, play a word at current speed and waits
+Flashcard             | For live play except Word Builder, play a word(s) at current speed and waits
                       | for the user to recognize and hit Enter to get the next word.
-                      | Backspace will replay the current word for another listen.
+                      | Backspace will replay the current word(s) for another listen.
+WordCount             | Number of words per flash (1-10, default 1)
+
 Use Start Msg         | Toggles injecting a custom message at the beginning of the text.
 Start Msg Text        | Specific text to play at the start (e.g., VVV <KA>).
 Use End Msg           | Toggles injecting a custom message at the end of text.
@@ -443,7 +448,7 @@ Pink Noise            | Not an impairment. Can increase learning (some clinical 
 [white]YAMA exports 16-bit Mono audio. The wave screen lets you select a target directory for the created wave files, if the path does not exist, it will create it. The approximate play time for the chosen speed and the corresponding size is shown. You can also specify (actually limit) the number of files. If your input is a large novel you can certainly limit output to a handful of practice files. If you are emailing the completed files to yourself so that you can play them on cell phone, then capping the file size near 10Mb should be reasonable.
 
 [green::b]IWR - Instant Word Recognition Feature[::-]
-[white]This a a head-copy related feature. I looks to match words (actually any space separated string of supported characters (e.g. the qsl 73 cul) in the input, and override the chosen timing mode (standard, Farnsworth, Wordsworth and the associated speed/tone) and play the matched word at a increased speed with standard timing. To do this you must create an [blue]yamaIWR.txt[-] file. A sample file has been created in the in your OS's standard configuration file directory ($HOME\AppData\Roaming\YAMA for Windows). The file will be editable (cursor keys, home/end, pg up/down, backspace, delete/insert) from the Timing screen ([yellow]Ctrl-T[-], or you may create a local one in the same directory that Yama is launched from, this one will take priority but you will have to edit it with notepad, vi, emacs or your favorite text editor is (not a word processor, unless it has a save as txt option). The file should list one word per line (any case, any order); a [yellow]'#'[-] at the start of line tells YAMA to ignore that line. If you choose to also match the word if its immediately follow by [yellow], . ? : [-] as well as the bare word, this is indicated by a trailing asterisk (e.g. qsl* matches: qsl qsl? qsl. qsl: qsl, Note this is the only supported use of asterisk in the app). The IWR feature as described is ignored if you have choosen either Word Builder or Random Word in the Options menu since you would never get a match. A small purposeful interaction with IWR speed is as follows: if you chose Word Builder and have IWR enabled, when Word Builder has completed constructing the word (as in: t te tes test) you will have one more sounding of the final word, but now at IWR speed.
+[white]This a a head-copy related feature. I looks to match words (actually any space separated string of supported characters (e.g. the qsl 73 cul) in the input, and override the chosen timing mode (standard, Farnsworth, Wordsworth and the associated speed/tone) and play the matched word at a increased speed with standard timing. To do this you must create an [blue]yamaIWR.txt[-] file. A sample file has been created in the in your OS's standard configuration file directory ($HOME\AppData\Roaming\YAMA for Windows). The file will be editable (cursor keys, home/end, pg up/down, backspace, delete/insert) from the Timing screen ([yellow]Ctrl-T[-], or you may create a local one in the same directory that Yama is launched from, this one will take priority but you will have to edit it with notepad, vi, emacs or your favorite text editor is (not a word processor, unless it has a save as txt option). The file should list one word per line (any case, any order); a [yellow]'#'[-] at the start of line tells YAMA to ignore that line. If you choose to also match the word if its immediately follow by [yellow], . ? : [-] as well as the bare word, this is indicated by a trailing asterisk (e.g. qsl* matches: qsl qsl? qsl. qsl: qsl, Note this is the only supported use of asterisk in the app). The IWR feature as described is ignored if you have choosen either Word Builder or Randomize Word in the Options menu since you would never get a match. A small purposeful interaction with IWR speed is as follows: if you chose Word Builder and have IWR enabled, when Word Builder has completed constructing the word (as in: t te tes test) you will have one more sounding of the final word, but now at IWR speed.
 
 [#FFFF55]Note: Using the high end of the 2K Tone limit may impact the audio profile for QRQ speeds, let your ears guide your choice, rather than the app limit you.[-]
 
@@ -577,7 +582,7 @@ func showAbout() {
 		`
 Created by: Bill Lanahan, WA2NFN
 
-Positive feedback accepted at cw.or.bust@gmail.com.
+Send feedback to wa2nfn@gmail.com.
 
 License & Terms of Use
 This software is shared with the community under the Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0) license.
@@ -609,11 +614,13 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMA
 	app.SetFocus(tv)
 }
 
-func showFile() {
+func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextArea) {
 	list := tview.NewList().ShowSecondaryText(false)
-	list.SetBackgroundColor(tcell.GetColor(AppBackgroundColor)).SetBorder(true).SetTitle(" Input Files (cursor & Enter) ")
+	list.SetBackgroundColor(tcell.GetColor(AppBackgroundColor)).
+		SetBorder(true).SetTitle(" Input Files (cursor & Enter) ")
 
 	currentDir, _ := os.Getwd()
+
 	populate := func(dir string) {
 		list.Clear()
 		files, err := os.ReadDir(dir)
@@ -634,8 +641,8 @@ func showFile() {
 			}
 		}
 
-		for _, f := range dirs {
-			list.AddItem("[#00BFFF]"+f.Name()+"/", "", 0, nil)
+		for _, d := range dirs {
+			list.AddItem("[#00BFFF]"+d.Name()+"/", "", 0, nil)
 		}
 
 		if len(dirs) == 0 && len(txts) == 0 {
@@ -644,10 +651,11 @@ func showFile() {
 			list.AddItem("[gray](No sub-directories found)[-]", "", 0, nil)
 		}
 
-		for _, f := range txts {
-			list.AddItem(f.Name(), "", 0, nil)
+		for _, t := range txts {
+			list.AddItem(t.Name(), "", 0, nil)
 		}
 	}
+
 	populate(currentDir)
 
 	list.SetSelectedFunc(func(i int, main string, sec string, r rune) {
@@ -658,7 +666,9 @@ func showFile() {
 			populate(currentDir)
 			return
 		}
-		if name == "[gray](No sub-directories found)[-]" || name == "[gray](Directory is empty)[-]" {
+
+		if name == "[gray](No sub-directories found)[-]" ||
+			name == "[gray](Directory is empty)[-]" {
 			return
 		}
 
@@ -666,84 +676,87 @@ func showFile() {
 
 		info, err := os.Stat(full)
 		if err != nil {
-			inputArea.SetText("Error finding file: "+full+"\n"+err.Error(), false)
+			inputArea.SetText("Error finding file: "+full+"\n"+err.Error(), true)
 			pages.RemovePage("file")
 			app.SetFocus(inputArea)
-			app.Draw()
 			return
 		}
 
 		if info.IsDir() {
 			currentDir = full
 			populate(currentDir)
+			return
+		}
 
-		} else {
-			currentInputFile = name
-			currentFileDir = currentDir
+		// FILE SELECTED
+		currentInputFile = name
+		currentFileDir = currentDir
 
-			go func(targetFile string) {
-				stopAudio()
+		go func(targetFile string) {
+			stopAudio()
+			time.Sleep(150 * time.Millisecond)
 
-				// ==========================================
-				// 🚦 GHOST THREAD ASSASSIN 🚦
-				// ==========================================
-				// Wait for any playing thread to fully die before we
-				// wipe the UI text buffer to load the new file!
-				time.Sleep(150 * time.Millisecond)
-
-				data, err := os.ReadFile(targetFile)
-				if err != nil {
-					app.QueueUpdateDraw(func() {
-						inputArea.SetText("Error reading file: "+err.Error(), false)
-						app.SetFocus(inputArea)
-						pages.RemovePage("file")
-					})
-					return
-				}
-
-				txt := parser.NormalizeText(string(data))
-
-				if config.User.UseSkip {
-					parser.SetSkipList(config.User.SkipList, morse.ProSignTable)
-					txt = parser.ApplySkip(txt)
-				}
-
-				actualText := parser.FilterValidMorse(txt, morse.MorseTable)
-
+			data, err := os.ReadFile(targetFile)
+			if err != nil {
 				app.QueueUpdateDraw(func() {
-					inputArea.SetChangedFunc(nil)
+					inputArea.SetText("Error reading file: "+err.Error(), true)
 					pages.RemovePage("file")
 					app.SetFocus(inputArea)
+				})
+				return
+			}
+
+			// Your parser pipeline
+			txt := parser.NormalizeText(string(data))
+
+			if config.User.UseSkip {
+				parser.SetSkipList(config.User.SkipList, morse.ProSignTable)
+				txt = parser.ApplySkip(txt)
+			}
+
+			actualText := parser.FilterValidMorse(txt, morse.MorseTable)
+
+			// Normalize file content (UC + space compression)
+			normalized := strings.Join(strings.Fields(actualText), " ")
+			normalized = strings.ToUpper(normalized)
+
+			app.QueueUpdateDraw(func() {
+				// Disable ChangedFunc temporarily
+				inputArea.SetChangedFunc(nil)
+
+				isProgrammaticUpdate = true
+				isResized = false
+				preResizeSnapshot = ""
+				inputArea.SetText(normalized, false) // final load
+				isProgrammaticUpdate = false
+
+				// Restore your REAL ChangedFunc
+				inputArea.SetChangedFunc(func() {
+					if isProgrammaticUpdate {
+						return
+					}
+
+					txt := inputArea.GetText()
+					upper := strings.ToUpper(txt)
 
 					isProgrammaticUpdate = true
-					isResized = false
-					preResizeSnapshot = ""
-					inputArea.SetText(actualText, false)
+					inputArea.SetText(upper, false)
 					isProgrammaticUpdate = false
-
-					inputArea.SetChangedFunc(func() {
-						if isProgrammaticUpdate {
-							return
-						}
-						if currentState == StateStopped || currentState == StatePaused {
-							currentState = StateIdle
-						}
-
-						// Make sure loading a file also wipes any manual edits properly
-						isResized = false
-						preResizeSnapshot = ""
-
-						refreshUI(currentState)
-					})
 
 					if currentState == StateStopped || currentState == StatePaused {
 						currentState = StateIdle
 					}
+
+					isResized = false
+					preResizeSnapshot = ""
 					refreshUI(currentState)
 				})
-			}(full)
-		}
 
+				pages.RemovePage("file")
+				app.SetFocus(inputArea)
+				refreshUI(currentState)
+			})
+		}(full)
 	})
 
 	pages.AddPage("file", createModal(list, 40, 20), true, true)
@@ -836,267 +849,17 @@ func showEuropeanCharSelector(parentContainer tview.Primitive, activeEuroSkip *s
 	app.SetFocus(container)
 }
 
-// OPTIONS_MENU
-func showOptions() {
-	form := tview.NewForm()
-	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	form.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
-	form.SetItemPadding(0)
-
-	useProsignsCb := tview.NewCheckbox().SetLabel("Play ProSigns")
-	extendedPuncCb := tview.NewCheckbox().SetLabel("Extended Punctuation")
-	europeanCharsCb := tview.NewCheckbox().SetLabel("European & Esparanto Chars")
-	useSkipCb := tview.NewCheckbox().SetLabel("Use Skip")
-
-	skipListInput := tview.NewInputField().SetLabel("    Skip List").SetFieldWidth(35)
-	skipListInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
-	skipListInput.SetPlaceholder(" e.g. XYZ789<SK>").SetPlaceholderTextColor(tcell.ColorYellow)
-
-	delayOptions := []string{"0", "1", "2", "3", "4", "5"}
-	delayDropDown := tview.NewDropDown().SetLabel("Start Delay (sec)").SetOptions(delayOptions, nil)
-
-	repeatOptions := []string{"2", "3", "4", "5", "6", "7", "8", "9"}
-	repeatDropDown := tview.NewDropDown().SetLabel("Repeat Limit").SetOptions(repeatOptions, nil)
-
-	randomOrderCb := tview.NewCheckbox().SetLabel("Random Order")
-	randomWordsCb := tview.NewCheckbox().SetLabel("Random Words")
-
-	wordBuilderCb := tview.NewCheckbox().SetLabel("Word Builder")
-	wordSeparatorInput := tview.NewInputField().SetLabel("    Word Separator").SetFieldWidth(35)
-	wordSeparatorInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
-	wordSeparatorInput.SetPlaceholder("e.g. <BT>.,+").SetPlaceholderTextColor(tcell.ColorYellow) //WRONG
-
-	textBuilderCb := tview.NewCheckbox().SetLabel("Text Builder")
-
-	textSeparatorInput := tview.NewInputField().SetLabel("    Text Separator").SetFieldWidth(35)
-	textSeparatorInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
-	textSeparatorInput.SetPlaceholder("e.g. <BT>.,+").SetPlaceholderTextColor(tcell.ColorYellow) // CORRECT
-
-	textWordCnt := tview.NewInputField().
-		SetLabel("    Word Count (2-25) ").
-		SetFieldWidth(5).
-		SetText("2"). // <-- Sets the default to 2
-		SetAcceptanceFunc(tview.InputFieldInteger)
-	textWordCnt.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
-
-	wordAtATimeCb := tview.NewCheckbox().SetLabel("Word-At-A-Time")
-
-	startMsgCb := tview.NewCheckbox().SetLabel("Use Start Msg")
-	startMsgInput := tview.NewInputField().SetLabel("    Start Msg Text").SetFieldWidth(30)
-	startMsgInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
-	startMsgInput.SetPlaceholder("VVV <KA>").SetPlaceholderTextColor(tcell.ColorYellow)
-
-	endMsgCb := tview.NewCheckbox().SetLabel("Use End Msg")
-	endMsgInput := tview.NewInputField().SetLabel("    End Msg Text").SetFieldWidth(30)
-	endMsgInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
-	endMsgInput.SetPlaceholder("<AR>").SetPlaceholderTextColor(tcell.ColorYellow)
-
-	euroSkipList := config.User.EuropeanSkipList
-
-	resetState := func() {
-		startMsgCb.SetChecked(config.User.StartMsg)
-
-		if config.User.StartMsgText == "" {
-			startMsgInput.SetText("VVV <KA>")
-		} else {
-			startMsgInput.SetText(config.User.StartMsgText)
-		}
-
-		endMsgCb.SetChecked(config.User.EndMsg)
-
-		if config.User.EndMsgText == "" {
-			endMsgInput.SetText("<AR>")
-		} else {
-			endMsgInput.SetText(config.User.EndMsgText)
-		}
-
-		useProsignsCb.SetChecked(config.User.Playprosigns)
-		extendedPuncCb.SetChecked(config.User.UseExtendedPunctuation)
-		europeanCharsCb.SetChecked(config.User.UseEuropeanChars)
-		useSkipCb.SetChecked(config.User.UseSkip)
-		skipListInput.SetText(config.User.SkipList)
-		randomOrderCb.SetChecked(config.User.RandomOrder)
-		randomWordsCb.SetChecked(config.User.RandomWords)
-
-		wordBuilderCb.SetChecked(config.User.WordBuilder)
-		wordSeparatorInput.SetText(config.User.WordSeparator)
-		// Trim spaces to ensure empty strings trigger the placeholder
-		wordSeparatorInput.SetText(strings.TrimSpace(config.User.WordSeparator))
-		textBuilderCb.SetChecked(config.User.TextBuilder)
-		textSeparatorInput.SetText(config.User.TextSeparator)
-		textWordCnt.SetText(fmt.Sprintf("%d", config.User.TextWordCount))
-		textSeparatorInput.SetText(strings.TrimSpace(config.User.TextSeparator))
-
-		textBuilderCb.SetChecked(config.User.TextBuilder)
-		wordAtATimeCb.SetChecked(config.User.RequireReturnAfterWord)
-
-		// Set the count field to the config value, but default to "2" if the config is 0 (unsaved)
-		if config.User.TextWordCount <= 0 {
-			textWordCnt.SetText("2")
-		} else {
-			textWordCnt.SetText(fmt.Sprintf("%d", config.User.TextWordCount))
-		}
-
-		dIdx := 0
-		for i, opt := range delayOptions {
-			if opt == fmt.Sprintf("%d", config.User.StartDelay) {
-				dIdx = i
-				break
+func forceUppercaseInputCapture() func(event *tcell.EventKey) *tcell.EventKey {
+	return func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyRune {
+			r := event.Rune()
+			upper := unicode.ToUpper(r)
+			if upper != r {
+				return tcell.NewEventKey(tcell.KeyRune, upper, event.Modifiers())
 			}
 		}
-		delayDropDown.SetCurrentOption(dIdx)
-
-		rIdx := 0
-		for i, opt := range repeatOptions {
-			if opt == fmt.Sprintf("%d", config.User.RepeatLimit) {
-				rIdx = i
-				break
-			}
-		}
-		repeatDropDown.SetCurrentOption(rIdx)
-		euroSkipList = config.User.EuropeanSkipList
+		return event
 	}
-
-	resetState()
-
-	form.AddFormItem(useProsignsCb)
-	form.AddFormItem(extendedPuncCb)
-	form.AddFormItem(europeanCharsCb)
-	form.AddFormItem(useSkipCb)
-	form.AddFormItem(skipListInput)
-	form.AddFormItem(delayDropDown)
-	form.AddFormItem(repeatDropDown)
-	form.AddFormItem(randomOrderCb)
-	form.AddFormItem(randomWordsCb)
-	form.AddFormItem(wordBuilderCb)
-	form.AddFormItem(wordSeparatorInput)
-	form.AddFormItem(textBuilderCb)
-	form.AddFormItem(textSeparatorInput)
-	form.AddFormItem(textWordCnt)
-	form.AddFormItem(wordAtATimeCb)
-	form.AddFormItem(startMsgCb)
-	form.AddFormItem(startMsgInput)
-	form.AddFormItem(endMsgCb)
-	form.AddFormItem(endMsgInput)
-
-	var optionsContainer *tview.Flex
-
-	onSave := func() {
-		isRandWords := randomWordsCb.IsChecked()
-		isWB := wordBuilderCb.IsChecked()
-		isTB := textBuilderCb.IsChecked()
-		isWAAT := wordAtATimeCb.IsChecked()
-		isSkip := useSkipCb.IsChecked()
-
-		var errors []string
-
-		// Mutual Exclusivity Checks
-		if isWB && isRandWords {
-			errors = append(errors, "Word Builder and Random Words cannot both be enabled. Random Words disabled.")
-			isRandWords = false
-		}
-		if isTB && isRandWords {
-			errors = append(errors, "Text Builder and Random Words cannot both be enabled. Random Words disabled.")
-			isRandWords = false
-		}
-		if isTB && isWB {
-			errors = append(errors, "Text Builder and Word Builder cannot both be enabled. Word Builder disabled.")
-			isWB = false
-		}
-		if isWAAT && isWB {
-			errors = append(errors, "Word-At-A-Time and Word Builder cannot both be enabled. Word Builder disabled.")
-			isWB = false
-		}
-
-		count, err := strconv.Atoi(textWordCnt.GetText())
-		if err != nil || count < 2 || count > 25 {
-			errors = append(errors, "Word Count must be a number between 2 and 25.")
-		}
-
-		rawSkipFields := strings.Fields(skipListInput.GetText())
-		skipMap := make(map[string]bool)
-		var cleanSkips []string
-		for _, w := range rawSkipFields {
-			lw := strings.ToLower(w)
-			if !skipMap[lw] {
-				skipMap[lw] = true
-				cleanSkips = append(cleanSkips, lw)
-			}
-		}
-		formattedSkipList := strings.Join(cleanSkips, " ")
-
-		apply := func() {
-			config.User.Playprosigns = useProsignsCb.IsChecked()
-			config.User.UseExtendedPunctuation = extendedPuncCb.IsChecked()
-			config.User.UseEuropeanChars = europeanCharsCb.IsChecked()
-			config.User.UseSkip = isSkip
-			config.User.SkipList = formattedSkipList
-			config.User.EuropeanSkipList = euroSkipList
-			config.User.RandomOrder = randomOrderCb.IsChecked()
-			config.User.RandomWords = isRandWords
-			config.User.WordBuilder = isWB
-			config.User.TextBuilder = isTB
-
-			config.User.WordSeparator = wordSeparatorInput.GetText()
-			config.User.TextSeparator = textSeparatorInput.GetText()
-			if count, err := strconv.Atoi(textWordCnt.GetText()); err == nil {
-				config.User.TextWordCount = count
-			}
-
-			config.User.RequireReturnAfterWord = isWAAT
-			config.User.StartMsg = startMsgCb.IsChecked()
-			config.User.StartMsgText = startMsgInput.GetText()
-			config.User.EndMsg = endMsgCb.IsChecked()
-			config.User.EndMsgText = endMsgInput.GetText()
-
-			dIdx, _ := delayDropDown.GetCurrentOption()
-			config.User.StartDelay, _ = strconv.Atoi(delayOptions[dIdx])
-
-			rIdx, _ := repeatDropDown.GetCurrentOption()
-			config.User.RepeatLimit, _ = strconv.Atoi(repeatOptions[rIdx])
-
-			config.SaveConfig()
-
-			morse.RebuildMorseTable(config.User.UseExtendedPunctuation, config.User.UseEuropeanChars, config.User.UseSkip, config.User.SkipList, config.User.EuropeanSkipList)
-
-			updateBlueLine()
-			pages.RemovePage("options")
-			app.SetFocus(inputArea)
-		}
-
-		if len(errors) > 0 {
-			showErrorModal(errors, func() { app.SetFocus(form) })
-		} else {
-			apply()
-		}
-	}
-
-	onReset := func() {
-		resetState()
-	}
-
-	form.AddButton("Save", onSave)
-	form.AddButton("Reset", onReset)
-	form.AddButton("European & Esparanto Chars Skip", func() {
-		showEuropeanCharSelector(optionsContainer, &euroSkipList, onSave)
-	})
-
-	applyFocusStyles(form)
-	form.SetBorder(false)
-
-	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
-	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("\n[yellow]ESC to Close[-]\n")
-
-	optionsContainer = tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(form, 0, 1, true).
-		AddItem(footerView, 2, 1, false)
-
-	optionsContainer.SetBorder(true).SetTitle(" Options ")
-	optionsContainer.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-
-	pages.AddPage("options", createModal(optionsContainer, 70, 29), true, true)
-	app.SetFocus(optionsContainer)
 }
 
 func showIWREditModal(parentContainer tview.Primitive) {
@@ -1176,19 +939,29 @@ func showIWREditModal(parentContainer tview.Primitive) {
 	})
 
 	textArea.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyTab {
+		// 1. Navigation / control keys
+		switch event.Key() {
+		case tcell.KeyTab:
 			app.SetFocus(form)
 			return nil
-		}
-		if event.Key() == tcell.KeyCtrlW {
+		case tcell.KeyCtrlW:
 			onSave()
 			return nil
-		}
-		if event.Key() == tcell.KeyEsc {
+		case tcell.KeyEsc:
 			pages.RemovePage("iwredit")
 			app.SetFocus(parentContainer)
 			return nil
 		}
+
+		// 2. Force uppercase for typed runes
+		if event.Key() == tcell.KeyRune {
+			r := event.Rune()
+			upper := unicode.ToUpper(r)
+			if upper != r {
+				return tcell.NewEventKey(tcell.KeyRune, upper, event.Modifiers())
+			}
+		}
+
 		return event
 	})
 
@@ -1223,7 +996,7 @@ func showToneSpeed() {
 
 	modeDropDown := tview.NewDropDown().SetLabel("Mode").SetOptions([]string{"Standard", "Farnsworth", "Wordsworth"}, nil)
 
-	charInput := tview.NewInputField().SetLabel("Char Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
+	charInput := tview.NewInputField().SetLabel("Character Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
 	charInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	endSpeedInput := tview.NewInputField().SetLabel("      End Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
@@ -1969,36 +1742,30 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 	parsedText := parser.FilterValidMorse(fullTextToPlay, morse.MorseTable)
 	parsedText = parser.CompressSpace(parsedText)
 
-	if config.User.StartMsg && strings.TrimSpace(config.User.StartMsgText) == "" {
-		config.User.StartMsgText = "VVV <KA>"
-	}
-	if config.User.EndMsg && strings.TrimSpace(config.User.EndMsgText) == "" {
-		config.User.EndMsgText = "<AR>"
+	if (config.User.WordBuilder && config.User.WordBuilderSort) || (config.User.TextBuilder && config.User.TextBuilderSort) {
+		parsedText = SortByWordLength(parsedText)
 	}
 
-	var finalBuilder strings.Builder
-
-	if config.User.StartMsg && config.User.StartMsgText != "" {
-		normStart := parser.NormalizeText(config.User.StartMsgText)
-		cleanStart := strings.TrimSpace(parser.FilterValidMorse(normStart, morse.MorseTable))
-		if cleanStart != "" && !strings.HasPrefix(parsedText, cleanStart) {
-			finalBuilder.WriteString(cleanStart)
-			finalBuilder.WriteString(" ")
+	// Normalize StartMsg and EndMsg to full uppercase
+	if config.User.StartMsg {
+		txt := strings.TrimSpace(config.User.StartMsgText)
+		if txt == "" {
+			txt = "VVV <KA>"
 		}
+		config.User.StartMsgText = strings.ToUpper(txt)
 	}
 
-	finalBuilder.WriteString(parsedText)
-
-	if config.User.EndMsg && config.User.EndMsgText != "" {
-		normEnd := parser.NormalizeText(config.User.EndMsgText)
-		cleanEnd := strings.TrimSpace(parser.FilterValidMorse(normEnd, morse.MorseTable))
-		if cleanEnd != "" && !strings.HasSuffix(parsedText, cleanEnd) {
-			finalBuilder.WriteString(" ")
-			finalBuilder.WriteString(cleanEnd)
+	if config.User.EndMsg {
+		txt := strings.TrimSpace(config.User.EndMsgText)
+		if txt == "" {
+			txt = "<AR>"
 		}
+		config.User.EndMsgText = strings.ToUpper(txt)
 	}
 
-	parsedText = parser.CompressSpace(finalBuilder.String())
+	// DO NOT inject StartMsg/EndMsg here.
+	// RunIWR will prepend/append them safely and keep them out of RandomOrder.
+	parsedText = parser.CompressSpace(parsedText)
 
 	if config.User.StartDelay > 0 {
 		go func() {
@@ -2056,4 +1823,17 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 		morse.StartTime = time.Now()
 		go runEngine(parsedText, iwrMan)
 	}
+}
+
+func SortByWordLength(text string) string {
+	// Split into words (Fields handles multiple spaces)
+	words := strings.Fields(text)
+
+	// Sort shortest → longest
+	slices.SortFunc(words, func(a, b string) int {
+		return cmp.Compare(len(a), len(b))
+	})
+
+	// Return as a single space-separated string
+	return strings.Join(words, " ")
 }

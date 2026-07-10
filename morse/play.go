@@ -13,6 +13,8 @@ import (
 // Add IsPaused so the engine can halt in place without losing its index
 var IsPaused bool
 var OnWordPlayed func(word string, isIWR bool)
+var OnGroupCompleted func([]string)
+var OnClearFlashcardScreen func()
 
 // OnWordChange is now triggered inside audio.go's Flush loop
 var OnWordChange func(char string, index int)
@@ -182,29 +184,19 @@ func RunIWR(text string, iwrMan *IWRManager) {
 	}
 
 	words := strings.Fields(text)
-	var inputWordCnt = len(words)
 
-	// --- 1. BRUTE-FORCE EXTRACTION ---
 	var startMsgWords []string
 	if config.User.StartMsg && config.User.StartMsgText != "" {
-		numStartTokens := len(strings.Fields(config.User.StartMsgText))
-		if len(words) >= numStartTokens {
-			startMsgWords = words[:numStartTokens]
-			words = words[numStartTokens:]
-		}
+		startMsgWords = strings.Fields(config.User.StartMsgText)
 	}
 
 	var endMsgWords []string
 	if config.User.EndMsg && config.User.EndMsgText != "" {
-		numEndTokens := len(strings.Fields(config.User.EndMsgText))
-		if len(words) >= numEndTokens {
-			endMsgWords = words[len(words)-numEndTokens:]
-			words = words[:len(words)-numEndTokens]
-		}
+		endMsgWords = strings.Fields(config.User.EndMsgText)
 	}
 
 	// Now shuffle ONLY the core text
-	if config.User.RandomOrder {
+	if config.User.WordOrder {
 		r.Shuffle(len(words), func(i, j int) {
 			words[i], words[j] = words[j], words[i]
 		})
@@ -239,7 +231,6 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 			// Append TextSeparator after the chunk, if it's not the very last chunk
 			if sep != "" && end < len(words) {
-				// Split by spaces just in case the user entered multiple separated prosigns like "<BT> <AR>"
 				sepTokens := strings.Fields(sep)
 				textBuilderWords = append(textBuilderWords, sepTokens...)
 			}
@@ -318,7 +309,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		var finalWord = w
 		var isIwrMatchFound bool
 
-		if config.User.RandomWords && len(w) > 1 && !isProsign {
+		if config.User.RandomizeWords && len(w) > 1 && !isProsign {
 			finalWord = shuffleWord(w, r)
 			isIwrMatchFound = false
 		} else {
@@ -347,8 +338,6 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			}
 		}
 
-		// If the text file itself provided a separator, AND the last item was already a separator,
-		// drop this word entirely to prevent "3 delimiters in a row".
 		if isCurrentSep && lastIsSep {
 			continue
 		}
@@ -357,42 +346,35 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		// 🚦 FIXED WORD BUILDER APPEND LOGIC 🚦
 		// ==========================================
 		if config.User.WordBuilder && len(w) > 1 && !isProsign {
-			// 1. The buildup -> T, TH
 			for i := 1; i < len(w); i++ {
 				playlist = append(playlist, PlayContext{
 					Word:     w[:i],
 					IsIWR:    false,
-					HideText: false, // Visible
+					HideText: false,
 				})
 			}
 
-			// 2. The first full standard play -> THE
 			playlist = append(playlist, PlayContext{
 				Word:     finalWord,
 				IsIWR:    false,
-				HideText: false, // Visible
+				HideText: false,
 			})
 
-			// 3. The standard full repeat -> THE
-			// Word Builder ALWAYS plays the final word twice at normal speed.
 			playlist = append(playlist, PlayContext{
 				Word:     finalWord,
 				IsIWR:    false,
-				HideText: false, // Visible
+				HideText: false,
 			})
 
-			// 4. ONE extra full word at IWR speed -> THE
-			// Special interaction: if IWR is enabled, tack on one more play really fast.
 			if config.User.IWREnabled {
 				playlist = append(playlist, PlayContext{
 					Word:     finalWord,
-					IsIWR:    true,  // Fast!
-					HideText: false, // Visible
+					IsIWR:    true,
+					HideText: false,
 				})
 			}
 
 		} else {
-			// Standard isolated append (when WordBuilder is OFF)
 			playlist = append(playlist, PlayContext{
 				Word:     finalWord,
 				IsIWR:    isIwrMatchFound,
@@ -404,7 +386,6 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		// 🚦 DYNAMIC SEPARATOR APPEND LOGIC 🚦
 		// ==========================================
 		if config.User.WordBuilder && len(validSeparators) > 0 {
-			// Re-verify the last item in the playlist just in case the word we just appended WAS a separator.
 			lastItem := playlist[len(playlist)-1].Word
 			lastIsSep = false
 			for _, sep := range validSeparators {
@@ -415,11 +396,11 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			}
 
 			if !lastIsSep {
-				selectedSep := validSeparators[r.Intn(len(validSeparators))] // Using perfectly seeded 'r'
+				selectedSep := validSeparators[r.Intn(len(validSeparators))]
 				playlist = append(playlist, PlayContext{
 					Word:     selectedSep,
 					IsIWR:    false,
-					HideText: false, // Visible
+					HideText: false,
 				})
 			}
 		}
@@ -433,6 +414,8 @@ func RunIWR(text string, iwrMan *IWRManager) {
 	// ==========================================
 	// 🚦 PHASE 2: AUDIO PLAYBACK ROUTING 🚦
 	// ==========================================
+	lastGroup := []string{} // for Flashcard
+
 	if config.User.UseWave {
 		if OnStatusUpdate != nil {
 			OnStatusUpdate(" [yellow]Generating .wav file...")
@@ -463,8 +446,17 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		return
 	}
 
-	// Start the standard audio loop
-	for i, ctx := range playlist {
+	// ==========================================
+	// 🚦 PHASE 3: LIVE AUDIO LOOP WITH GROUPING 🚦
+	// ==========================================
+	pauseCounter := 0
+	groupSize := config.User.FlashcardWordCount
+	if groupSize <= 0 {
+		groupSize = 1
+	}
+
+	for i := 0; i < len(playlist); i++ {
+		ctx := playlist[i]
 
 		for IsPaused && !IsStopping {
 			time.Sleep(100 * time.Millisecond)
@@ -497,73 +489,90 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			p = baseProfile
 		}
 
-		for {
-			buildWordBuffer(ctx, p)
+		// Play this word once
+		buildWordBuffer(ctx, p)
 
-			wordSpaceSamples := int(p.WordSpace * float64(SampleRate))
-			QueuePCM(SilencePCM(wordSpaceSamples).Samples, " ", -1)
-			log.Println(p)
+		wordSpaceSamples := int(p.WordSpace * float64(SampleRate))
+		QueuePCM(SilencePCM(wordSpaceSamples).Samples, " ", -1)
+		log.Println(p)
 
-			Flush()
+		Flush()
 
-			if OnWordPlayed != nil {
-				isIWRMatch := iwrMan.Match(ctx.Word)
-				OnWordPlayed(ctx.Word, isIWRMatch)
+		if OnWordPlayed != nil {
+			isIWRMatch := iwrMan.Match(ctx.Word)
+			OnWordPlayed(ctx.Word, isIWRMatch)
+		}
+
+		// Track logical words for flashcard group
+		pauseCounter++
+
+		if pauseCounter == 1 {
+			lastGroup = []string{}
+		}
+
+		lastGroup = append(lastGroup, ctx.Word)
+
+		// Grouping / flashcard logic
+		if config.User.RequireReturnAfterWord && (pauseCounter >= groupSize || i == len(playlist)-1) {
+
+			// GROUP COMPLETE (even short final group)
+			if OnGroupCompleted != nil {
+				OnGroupCompleted(lastGroup)
 			}
 
-			// ==========================================
-			// 🚦 WAIT FOR USER RETURN / REPEAT LOGIC 🚦
-			// ==========================================
-			if config.User.RequireReturnAfterWord {
-				if inputWordCnt == config.StatsTotalWords {
-					break // done no need to wait
-				}
+			// drain stale actions
+			select {
+			case <-waitActionChan:
+			default:
+			}
 
-				// 1. Drain the channel to ignore premature keystrokes
-				// (Assuming you rename it to waitActionChan and make it chan string)
+			waitMutex.Lock()
+			isWaitingForKey = true
+			OnStatusUpdate(" [yellow]Flashcard: ENTER to continue, BACKSPACE to repeat group")
+			waitMutex.Unlock()
+
+			var action rune
+
+		WaitLoop:
+			for !IsStopping && !IsPaused {
 				select {
-				case <-waitActionChan:
-				default:
+				case action = <-waitActionChan:
+					break WaitLoop
+				case <-time.After(50 * time.Millisecond):
+				}
+			}
+
+			waitMutex.Lock()
+			isWaitingForKey = false
+			OnStatusUpdate(" [green]Playing")
+			waitMutex.Unlock()
+
+			// NOW reset pauseCounter — AFTER the wait
+			pauseCounter = 0
+
+			if action == 'B' {
+				// Rewind to the START of the CURRENT group
+				rewindLen := len(lastGroup)     // how many words in this group
+				startIndex := i - rewindLen + 1 // index of first word in this group
+
+				if startIndex < 0 {
+					startIndex = 0
 				}
 
-				// 2. Safely flag that we are waiting
-				waitMutex.Lock()
-				isWaitingForKey = true
-				OnStatusUpdate(" [yellow]Word-At-A-Time: ENTER to continue, BACKSPACE to repeat")
-				waitMutex.Unlock()
-
-				var action rune
-
-				// 3. Block and wait for SignalUserAction(key) to be called
-			WaitLoop:
-				for !IsStopping && !IsPaused {
-					select {
-					case action = <-waitActionChan:
-						if action == 'B' { //backspace
-						} else if action == 'E' {
-						}
-						break WaitLoop
-					case <-time.After(50 * time.Millisecond):
-					}
-				}
-
-				// 4. Reset state
-				waitMutex.Lock()
-				isWaitingForKey = false
-				OnStatusUpdate(" [green]Playing")
-				waitMutex.Unlock()
-
-				// 5. Evaluate the user's action
-				if action == 'B' {
-					// Clears any lingering state if necessary, then repeats the inner loop
-					continue
-				}
-				// Break the inner retry loop (advances to the next word in your outer loop)
-				break
+				// for-loop will i++ next, so set to one before startIndex
+				i = startIndex - 1
 			} else {
+				if OnClearFlashcardScreen != nil {
+					OnClearFlashcardScreen()
+				}
+			}
+
+			// If final word and ENTER pressed, exit
+			if i == len(playlist)-1 && action != 'B' {
 				break
 			}
 		}
+
 	}
 
 	IsPaused = false

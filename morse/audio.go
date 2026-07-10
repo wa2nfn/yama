@@ -23,10 +23,10 @@ var (
 	activeCrashSamples   int     // Tracks remaining samples in a lightning crash
 	activeCrashIntensity float32 // Tracks the volume of the current crash
 	lastBrown            float32 // Tracks the brown noise filter state across gapless elements
-	pink0 float32
-	pink1 float32
-	pink2 float32
-	
+	pink0                float32
+	pink1                float32
+	pink2                float32
+
 	// Inside your morse package
 	OnFatalError func(errorMessage string)
 )
@@ -300,7 +300,7 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 	case 4:
 		pinkVol = 0.50 // ~ -20dB
 	}
-	
+
 	buf := make([]byte, duration*2)
 
 	// 1. Calculate ideal max ramp (5ms)
@@ -377,7 +377,7 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 			// The Paul Kellet 3-pole approximation
 			pink0 = (0.99765 * pink0) + (white * 0.0990460)
 			pink1 = (0.96300 * pink2) + (white * 0.2965164)
-			pink2 = (0.57000 * pink2) + (white * 1.0526913) 
+			pink2 = (0.57000 * pink2) + (white * 1.0526913)
 
 			// FIX: Add the touch of raw white noise back in for the high-frequency "rain" sound
 			pink := pink0 + pink1 + pink2 + (white * 0.1848)
