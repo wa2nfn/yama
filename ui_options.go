@@ -156,7 +156,6 @@ func showOptions() {
 			}
 		}
 		flashWordCountDrop.SetCurrentOption(fIdx)
-		flashWordCountDrop.SetCurrentOption(fIdx)
 
 		euroSkipList = config.User.EuropeanSkipList
 	}

@@ -175,10 +175,10 @@ func main() {
 					return nil
 				}
 			}
-			//WDL
+
 			upper := unicode.ToUpper(r)
 			if upper != r {
-				// Replace the event with an uppercase version
+			// Replace the event with an uppercase version
 				return tcell.NewEventKey(tcell.KeyRune, upper, event.Modifiers())
 			}
 		}
@@ -191,29 +191,6 @@ func main() {
 	inputArea.SetChangedFunc(func() {
 		// do nothing
 	})
-	/*
-			if isProgrammaticUpdate {
-				return
-			}
-
-			txt := inputArea.GetText()
-
-			// ONLY uppercase here — no space compression
-			upper := strings.ToUpper(txt)
-
-			isProgrammaticUpdate = true
-			inputArea.SetText(upper, false)
-			isProgrammaticUpdate = false
-
-			if currentState == StateStopped || currentState == StatePaused {
-				currentState = StateIdle
-			}
-
-			isResized = false
-			preResizeSnapshot = ""
-			refreshUI(currentState)
-		})
-	*/
 
 	morse.OnClearFlashcardScreen = clearFlashcardScreen
 	morse.OnWordChange = func(char string, index int) {
@@ -329,11 +306,6 @@ func main() {
 		case tcell.KeyCtrlH, tcell.KeyBackspace, tcell.KeyBackspace2:
 			if currentState == StatePlaying {
 				if currentState == StatePlaying {
-					/* WDL
-					if morse.IsWaitingForUserKey() {
-						morse.SignalUserKey('B')
-					}
-					*/
 					if morse.IsWaitingForUserKey() {
 						morse.SignalUserKey('B')
 
@@ -444,7 +416,7 @@ func main() {
 			}
 
 			if event.Key() == tcell.KeyBackspace || event.Key() == tcell.KeyBackspace2 {
-				fmt.Printf("got it: %v", event.Key())
+		//WDL		fmt.Printf("got it: %v", event.Key())
 				if morse.IsWaitingForUserKey() {
 					morse.SignalUserKey('B')
 					return nil

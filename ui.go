@@ -219,6 +219,7 @@ func updateVisibility() {
 	}
 
 	isProgrammaticUpdate = false
+	updateBlueLine()
 }
 
 func updateBlueLine() {
@@ -239,7 +240,7 @@ func updateBlueLine() {
 	}
 
 	// Calculate and append the dynamic word count
-	wordCount := len(strings.Fields(inputArea.GetText()))
+	wordCount := len(strings.Fields(actualText))
 	info += fmt.Sprintf("| Word Cnt: %d ", wordCount)
 
 	blueLine.SetText(info + getModifierWarning())
