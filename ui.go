@@ -399,7 +399,7 @@ Start Delay           | Adds a countdown timer (in seconds) before playback begi
 Repeat Limit          | Caps consecutive repeating characters to prevent 
                       | runaway use of a character (e.g. underline titles). Default 3.
 Random Order          | Shuffles the playback order of the entire document's words.
-Randomize Words          | Scrambles the letters within individual words (e.g. code group).
+Randomize Words       | Scrambles the letters within individual words (e.g. code group).
                       | Mutually exclusive with the IWR function.
 Word Builder          | Plays words progressively (e.g., T, TH, THE) for building head
                       | buffer comprehension. Mutually exclusive with IWR. IWR speed is 
@@ -415,11 +415,10 @@ Word Count            | Limits the count of words used by Text Builder (2-25).
 Text Separator        | If its exists, one character or ProSign in this option 
                       | separates output iterations. e.g. aa bb cc play as: 
                       | aa aa bb aa bb cc <BT>, if <BT> was in the Text Separator field.
-Flashcard             | For live play except Word Builder, play a word(s) at current speed and waits
-                      | for the user to recognize and hit Enter to get the next word.
-                      | Backspace will replay the current word(s) for another listen.
+Flashcard             | For live play except Word Builder, play a word(s) at current speed and 
+                      | waits for the user to recognize and hit Enter to get the next word.
+                      | Backspace will replay the current word(s).
 WordCount             | Number of words per flash (1-10, default 1)
-
 Use Start Msg         | Toggles injecting a custom message at the beginning of the text.
 Start Msg Text        | Specific text to play at the start (e.g., VVV <KA>).
 Use End Msg           | Toggles injecting a custom message at the end of text.
