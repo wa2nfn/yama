@@ -67,6 +67,7 @@ type UserSettings struct {
 	TextBuilderSort       bool   `json:"text_builder_sort"`
 	TextSeparator          string `json:"text_separator"`
 	TextWordCount		int	`json:"text_word_count"`
+	SylableExpansion 	bool `json:"sylable_expansion"`
 	Flashcard	bool	`json:"flashcard"`
 	FlashcardWordCount	int	`json:"flashcard_word_count"`
 
@@ -162,6 +163,7 @@ func LoadConfig() {
 		User.TextWordCount = 2
 		User.StartDelay = 0
 		User.RequireReturnAfterWord  = true     //WDL
+		User.SylableExpansion = false
 		User.Flashcard = false
 		User.FlashcardWordCount = 1
 		User.BrownNoiseLevel = 0   

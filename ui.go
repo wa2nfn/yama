@@ -408,6 +408,10 @@ Word Separator        | If it exists, one character or ProSign in this option se
                       | e.g. A AM AM I IT IT could play as: A AM AM <BT> I IT IT ?. 
                       | If <BT> and ? were in the Word Separator field. If IWR is enabled,
                       | one more full word is played at IWR speed.
+Sylablize Words       | Play multi-sylable words by sylable instead of by letter. A haed buffer
+                      | feature midway between normal play and Word Builder. Approx. 1000 
+		      | common words will ne syalbalized if not attached to punctuation.
+		      | E.g. "THIS TEXT IS COMPLICATED" plays as "
 Text Builder          | Plays input words progressively (e.g., 11 22 33 44 plays as:  
                       | 11 11 22 11 22 33 11 22 33 44).
                       | Mutually exclusive with Word Builder and Randomize Words.
@@ -719,6 +723,7 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 			// Normalize file content (UC + space compression)
 			normalized := strings.Join(strings.Fields(actualText), " ")
 			normalized = strings.ToUpper(normalized)
+			inputArea.SetText(normalized, false)
 
 			app.QueueUpdateDraw(func() {
 				// Disable ChangedFunc temporarily

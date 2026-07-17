@@ -83,7 +83,7 @@ func main() {
 	config.LoadConfig()
 
 	logPath := morse.ResolvePath("yama.log")
-	logFile, _ := os.OpenFile(logPath, os.O_RDWR|os.O_TRUNC, 0666)
+	logFile, _ := os.OpenFile(logPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
 	log.SetOutput(logFile)
 
 	if err := morse.InitAudio(); err != nil {
@@ -164,24 +164,39 @@ func main() {
 	inputArea.SetPlaceholder("Enter text (or Ctrl-F select a file), then Ctrl-P to Play;\nor use function key F1 for full Help.")
 
 	inputArea.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+
+		// ---- DELETE FIX ----
+		if event.Key() == tcell.KeyDelete {
+			txt := inputArea.GetText()
+			_, col, _, _ := inputArea.GetCursor() // your version supports GetCursor()
+
+			if col < len(txt) {
+				// delete rune AFTER cursor
+				newTxt := txt[:col] + txt[col+1:]
+				inputArea.SetText(newTxt, false)
+			}
+			return nil // swallow DELETE completely
+		}
+
+		// ---- YOUR EXISTING LOGIC ----
 		if event.Key() == tcell.KeyRune {
 			r := event.Rune()
 
-			//compress space
+			// compress space
 			if r == ' ' {
 				current := inputArea.GetText()
 				if len(current) > 0 && current[len(current)-1] == ' ' {
-					// swallow
 					return nil
 				}
 			}
 
+			// uppercase conversion
 			upper := unicode.ToUpper(r)
 			if upper != r {
-			// Replace the event with an uppercase version
 				return tcell.NewEventKey(tcell.KeyRune, upper, event.Modifiers())
 			}
 		}
+
 		return event
 	})
 
@@ -416,7 +431,6 @@ func main() {
 			}
 
 			if event.Key() == tcell.KeyBackspace || event.Key() == tcell.KeyBackspace2 {
-		//WDL		fmt.Printf("got it: %v", event.Key())
 				if morse.IsWaitingForUserKey() {
 					morse.SignalUserKey('B')
 					return nil
@@ -526,6 +540,7 @@ func clearFlashcardScreen() {
 	inputArea.SetText("", false)
 }
 
+/*
 func normalizeSpaces(s string) string {
 	var b strings.Builder
 	for _, r := range s {
@@ -538,3 +553,4 @@ func normalizeSpaces(s string) string {
 	parts := strings.Fields(b.String())
 	return strings.Join(parts, " ")
 }
+*/

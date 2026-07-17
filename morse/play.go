@@ -2,7 +2,6 @@ package morse
 
 import (
 	"fmt"
-	"log"
 	"math/rand"
 	"strings"
 	"sync"
@@ -306,6 +305,27 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 		isProsign := strings.HasPrefix(w, "<") && strings.HasSuffix(w, ">")
 
+		// ==========================
+		// 🚦 (SYLLABLE EXPANSION) 🚦
+		// ==========================
+		// exclusive with WordBuilder & RandomizeWords
+		
+		if config.User.SylableExpansion && !isProsign {
+			
+			if expanded, exists := sylables[w]; exists {
+				
+				expandedParts := strings.Fields(expanded)
+				for _, part := range expandedParts {
+					playlist = append(playlist, PlayContext{
+						Word:     part,
+						IsIWR:    isIWRMatch(part), 
+						HideText: false,
+					})
+				}
+				continue 
+			} 
+		}		
+				
 		var finalWord = w
 		var isIwrMatchFound bool
 
@@ -494,7 +514,6 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 		wordSpaceSamples := int(p.WordSpace * float64(SampleRate))
 		QueuePCM(SilencePCM(wordSpaceSamples).Samples, " ", -1)
-		log.Println(p)
 
 		Flush()
 

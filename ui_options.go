@@ -40,9 +40,10 @@ func showOptions() {
 	wordBuilderCb := tview.NewCheckbox().SetLabel("Word Builder")
 	wordSeparatorInput := tview.NewInputField().SetLabel("    Word Separator").SetFieldWidth(35)
 	wordSeparatorInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
-	wordSeparatorInput.SetPlaceholder("e.g. <BT>.,+").SetPlaceholderTextColor(tcell.ColorYellow) //WRONG
+	wordSeparatorInput.SetPlaceholder("e.g. <BT>.,+").SetPlaceholderTextColor(tcell.ColorYellow)
 	wordSeparatorInput.SetInputCapture(forceUppercaseInputCapture())
 	wordBuilderSortCb := tview.NewCheckbox().SetLabel("    Sort")
+	SylableExpansionCb := tview.NewCheckbox().SetLabel("Sylablize Words")
 
 	textBuilderCb := tview.NewCheckbox().SetLabel("Text Builder")
 	textSeparatorInput := tview.NewInputField().SetLabel("    Text Separator").SetFieldWidth(35)
@@ -65,7 +66,6 @@ func showOptions() {
 		}
 	})
 
-	//WDL
 	flashcardCb := tview.NewCheckbox().SetLabel("Flashcard")
 	flashOptions := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}
 	flashWordCountDrop := tview.NewDropDown().SetLabel("    Word Count (1-10)").SetOptions(flashOptions, nil)
@@ -121,6 +121,7 @@ func showOptions() {
 		textBuilderCb.SetChecked(config.User.TextBuilder)
 		textBuilderSortCb.SetChecked(config.User.TextBuilderSort)
 		flashcardCb.SetChecked(config.User.Flashcard)
+		SylableExpansionCb.SetChecked(config.User.SylableExpansion)
 
 		// Set the count field to the config value, but default to "2" if the config is 0 (unsaved)
 		if config.User.TextWordCount <= 0 {
@@ -178,6 +179,7 @@ func showOptions() {
 	form.AddFormItem(textSeparatorInput)
 	form.AddFormItem(textWordCnt)
 	form.AddFormItem(textBuilderSortCb)
+	form.AddFormItem(SylableExpansionCb)
 	form.AddFormItem(flashcardCb)
 	form.AddFormItem(flashWordCountDrop)
 	form.AddFormItem(startMsgCb)
@@ -202,15 +204,20 @@ func showOptions() {
 		isTBS := textBuilderSortCb.IsChecked()
 		isFC := flashcardCb.IsChecked()
 		isSkip := useSkipCb.IsChecked()
+		isSyl := SylableExpansionCb.IsChecked()
 
 		count, err := strconv.Atoi(textWordCnt.GetText())
 		if err != nil || count < 2 || count > 25 {
-			errors = append(errors, "    Word Count must be a number between 2 and 25.")
+			errors = append(errors, "    Text Builder Word Count must be a number between 2 and 25.")
 		}
 
 		// Mutual Exclusivity Checks
 		if isRandomizeWords && (isWB || isTB || isFC) {
 			errors = append(errors, "Randomize Word is not compatiable with Word Builder, Text Builder or Flashcard.")
+		}
+
+		if (isRandomizeWords || isWB) && isSyl {
+			errors = append(errors, "SylableExpansion is not compatiable with Word Builder, or Ramdomize Words.")
 		}
 
 		if isWordOrder && ((isWB && isWBS) || (isTB && isTBS)) {
@@ -251,6 +258,7 @@ func showOptions() {
 			config.User.WordOrder = wordOrderCb.IsChecked()
 			config.User.RandomizeWords = isRandomizeWords
 			config.User.WordBuilder = isWB
+			config.User.SylableExpansion = isSyl
 			config.User.TextBuilder = isTB
 			config.User.TextBuilderSort = isTB
 
@@ -316,6 +324,6 @@ func showOptions() {
 	optionsContainer.SetBorder(true).SetTitle(" Options ")
 	optionsContainer.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	pages.AddPage("options", createModal(optionsContainer, 70, 30), true, true)
+	pages.AddPage("options", createModal(optionsContainer, 70, 31), true, true)
 	app.SetFocus(optionsContainer)
 }
