@@ -26,11 +26,11 @@ import (
 const MaxExportWords = 5000
 
 // --- Logic Helpers ---
-
 var currentInputFile string
 var currentFileDir string
 var playPauseMu sync.Mutex
 var isCountingDown bool
+var currentGroupStats morse.EchoStats
 
 // Memory for the Ctrl-N Text Resizer Revert feature
 var preResizeSnapshot string
@@ -66,6 +66,7 @@ func handlePlayPause(iwrMan *morse.IWRManager) {
 		}
 
 		startAudioSequence(iwrMan)
+		clearStats()
 
 	} else if currentState == StatePlaying {
 		currentState = StatePaused
@@ -86,9 +87,11 @@ func clearStats() {
 	statsIWRWords = 0
 	statsIWRMap = make(map[string]int)
 	statsIWRList = []string{}
-
 	morse.TotalPaused = 0
 	finalPlayTime = 0
+
+	morse.SessionStats = morse.EchoStats{}
+	currentGroupStats = morse.EchoStats{}
 }
 
 func runEngine(parsedText string, iwrMan *morse.IWRManager) {
@@ -209,6 +212,7 @@ func showStats() {
 	app.SetFocus(tv)
 }
 
+// SPACEBAR hide screen
 func updateVisibility() {
 	isProgrammaticUpdate = true
 
@@ -242,6 +246,11 @@ func updateBlueLine() {
 	// Calculate and append the dynamic word count
 	wordCount := len(strings.Fields(actualText))
 	info += fmt.Sprintf("| Word Cnt: %d ", wordCount)
+
+	if echoActive {
+		tol := fmt.Sprintf(" Tolerance %d %% ", config.User.EchoTolerance)
+		info = info + tol
+	}
 
 	blueLine.SetText(info + getModifierWarning())
 }
@@ -279,10 +288,20 @@ func refreshUI(state AppState) {
 
 	case StatePlaying:
 		statusLine.SetText(" [#FFFF55]Playing")
-		menu = "[#FFFF55]P[white]ause  [#FFFF55]S[white]top [#FFFF55]A[white]udio"
+
+		if config.User.Echo {
+			menu = "[#FFFF55]P[white]ause  [#FFFF55]S[white]top [#FFFF55]A[white]udio  [#FFFF55]D[white]ataStats"
+		} else {
+			menu = "[#FFFF55]P[white]ause  [#FFFF55]S[white]top [#FFFF55]A[white]udio"
+		}
 	case StatePaused:
 		statusLine.SetText(" [#FFFF55]Paused")
-		menu = "[#FFFF55]R[white]esume  [#FFFF55]S[white]top  [#FFFF55]T[white]iming  [#FFFF55]A[white]udio  [#FFFF55]Q[white]uit "
+
+		if config.User.Echo {
+			menu = "[#FFFF55]R[white]esume  [#FFFF55]S[white]top  [#FFFF55]T[white]iming  [#FFFF55]A[white]udio  [#FFFF55]D[white]ataStats  [#FFFF55]Q[white]uit "
+		} else {
+			menu = "[#FFFF55]R[white]esume  [#FFFF55]S[white]top  [#FFFF55]T[white]iming  [#FFFF55]A[white]udio  [#FFFF55]Q[white]uit "
+		}
 	}
 	header.SetText("[#55FFFF::b] YAMA - Yet Another Morse App[white::-]\n\n" + menu)
 }
@@ -408,6 +427,7 @@ Word Separator        | If it exists, one character or ProSign in this option se
                       | e.g. A AM AM I IT IT could play as: A AM AM <BT> I IT IT ?. 
                       | If <BT> and ? were in the Word Separator field. If IWR is enabled,
                       | one more full word is played at IWR speed.
+Sort                  | With Text Builder or Word Builder, soerts input words in shprt to long order,
 Sylablize Words       | Play multi-sylable words by sylable instead of by letter. A haed buffer
                       | feature midway between normal play and Word Builder. Approx. 1000 
 		      | common words will ne syalbalized if not attached to punctuation.
@@ -423,6 +443,9 @@ Flashcard             | For live play except Word Builder, play a word(s) at cur
                       | waits for the user to recognize and hit Enter to get the next word.
                       | Backspace will replay the current word(s).
 WordCount             | Number of words per flash (1-10, default 1)
+Random		      | Words per flash, range from 1 to WordCount value.
+Echo Tolerance(%)     | % of the correct timing an element (dit, dah, space, etc.) ian vary and still
+                      | be acceptable (range vales 10-30).
 Use Start Msg         | Toggles injecting a custom message at the beginning of the text.
 Start Msg Text        | Specific text to play at the start (e.g., VVV <KA>).
 Use End Msg           | Toggles injecting a custom message at the end of text.
@@ -1454,7 +1477,7 @@ func showNumWordsModal() {
 
 	// Only show the Revert button if we actually have a snapshot memory saved
 	if isResized {
-		form.AddButton("Revert", func() {
+		form.AddButton("Undo", func() {
 			isProgrammaticUpdate = true
 			inputArea.SetText(preResizeSnapshot, false)
 			actualText = inputArea.GetText()
@@ -1841,4 +1864,106 @@ func SortByWordLength(text string) string {
 
 	// Return as a single space-separated string
 	return strings.Join(words, " ")
+}
+
+// ⚡ Two variables for the two columns
+var echoStatsTextView *tview.TextView
+var sessionStatsTextView *tview.TextView
+var currentSessionStats morse.EchoStats
+
+func showStatsEcho() *tview.Flex {
+	footer := tview.NewTextView().
+		SetText(" [yellow]ESC to Close ").
+		SetDynamicColors(true).
+		SetTextAlign(tview.AlignCenter)
+
+	container := tview.NewFlex().SetDirection(tview.FlexRow)
+
+	// ⚡ Borders and titles are back!
+	var title = fmt.Sprintf(" DataStats - Keying Tolerance %d%% ", config.User.EchoTolerance)
+	container.SetBorder(true).
+		SetTitle(title).
+		SetTitleColor(tcell.ColorYellow)
+
+	echoStatsTextView = tview.NewTextView().
+		SetDynamicColors(true).
+		SetTextAlign(tview.AlignLeft)
+
+		currentProfile := morse.GetTiming(false, config.User)
+	echoStatsTextView.SetText(buildEchoStatsText(currentGroupStats, currentSessionStats, currentProfile))
+
+	container.AddItem(echoStatsTextView, 0, 1, true)
+
+	// Add the footer to the bottom of your container (fixed height 1, no expansion, no focus)
+	container.AddItem(footer, 1, 0, false)
+
+	container.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			// 1. Remove this specific container from the main layout
+			mainFlex.RemoveItem(container)
+
+			// 2. Clear the global tracker so Ctrl+D can open it again later
+			currentEchoView = nil
+
+			// 3. Send focus back to the main text entry area
+			app.SetFocus(inputArea)
+
+			return nil
+		}
+		return event
+	})
+	return container
+}
+
+
+func buildEchoStatsText(grp morse.EchoStats, ses morse.EchoStats, tp morse.TimingProfile) string {
+	var sb strings.Builder
+
+	// 1. Safe calculation helper for Averages
+	calcAvg := func(sumMs float64, short, perfect, long int) int {
+		totalCount := short + perfect + long
+		if totalCount > 0 {
+			fmt.Println("Dit Total: ", totalCount,"Sum ms:", sumMs) //WDL
+			return int(math.Round(sumMs / float64(totalCount)))
+		}
+		return 0
+	}
+
+	// 2. Calculate Targets in ms
+	tgtDit := int(math.Round(tp.DotDuration * 1000))
+	tgtDah := int(math.Round(tp.DashDuration * 1000))
+	tgtEle := int(math.Round(tp.InterElement * 1000))
+	tgtChr := int(math.Round(tp.CharSpace * 1000))
+	tgtWrd := int(math.Round(tp.WordSpace * 1000))
+
+	// 3. Calculate Session Actual Averages
+	avgDit := calcAvg(ses.SumDitMs, ses.ShortDits, ses.PerfectDits, ses.LongDits)
+	avgDah := calcAvg(ses.SumDahMs, ses.ShortDahs, ses.PerfectDahs, ses.LongDahs)
+	avgEle := calcAvg(ses.SumElementGapsMs, ses.ShortElementGaps, ses.PerfectElementGaps, ses.LongElementGaps)
+	avgChr := calcAvg(ses.SumCharGapsMs, ses.ShortCharGaps, ses.PerfectCharGaps, ses.LongCharGaps)
+	avgWrd := calcAvg(ses.SumWordGapsMs, ses.ShortWordGaps, ses.PerfectWordGaps, ses.LongWordGaps)
+
+	// Yellow headers, kept!
+	sb.WriteString("\n                     [yellow::b]CURRENT GROUP[-:-:-]                            [yellow::b]SESSION TOTALS[-:-:-]\n\n")
+
+	// Added Target and Avg Headers aligned to the right
+	sb.WriteString("  [cyan]Elements[-]                                                                              [cyan::b]Target(ms)    Avg(ms)[-:-:-]\n")
+	sb.WriteString(fmt.Sprintf("    Dits:        [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long      [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long       [white]%4d[-]       [white]%4d[-]\n",
+		grp.ShortDits, grp.PerfectDits, grp.LongDits, ses.ShortDits, ses.PerfectDits, ses.LongDits, tgtDit, avgDit))
+	sb.WriteString(fmt.Sprintf("    Dahs:        [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long      [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long       [white]%4d[-]       [white]%4d[-]\n",
+		grp.ShortDahs, grp.PerfectDahs, grp.LongDahs, ses.ShortDahs, ses.PerfectDahs, ses.LongDahs, tgtDah, avgDah))
+
+	sb.WriteString("  [cyan]Spacing[-]\n")
+	sb.WriteString(fmt.Sprintf("    Intra-Char:  [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long      [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long       [white]%4d[-]       [white]%4d[-]\n",
+		grp.ShortElementGaps, grp.PerfectElementGaps, grp.LongElementGaps, ses.ShortElementGaps, ses.PerfectElementGaps, ses.LongElementGaps, tgtEle, avgEle))
+	sb.WriteString(fmt.Sprintf("    Char Gap:    [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long      [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long       [white]%4d[-]       [white]%4d[-]\n",
+		grp.ShortCharGaps, grp.PerfectCharGaps, grp.LongCharGaps, ses.ShortCharGaps, ses.PerfectCharGaps, ses.LongCharGaps, tgtChr, avgChr))
+	sb.WriteString(fmt.Sprintf("    Word Gap:    [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long      [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long       [white]%4d[-]       [white]%4d[-]\n",
+		grp.ShortWordGaps, grp.PerfectWordGaps, grp.LongWordGaps, ses.ShortWordGaps, ses.PerfectWordGaps, ses.LongWordGaps, tgtWrd, avgWrd))
+
+	sb.WriteString("  [cyan]Accuracy[-]\n")
+	sb.WriteString(fmt.Sprintf("  Invalid (*):         [red]%3d[-]                                     [red]%3d[-]\n", grp.InvalidSymbols, ses.InvalidSymbols))
+	sb.WriteString(fmt.Sprintf("  Group Retries:       [yellow]%3d[-]                                     [yellow]%3d[-]\n", grp.Retries, ses.Retries))
+
+	return sb.String()
 }

@@ -18,9 +18,15 @@ var Contractions = map[string]string{
 	"AREN'T": "ARE NOT", "COULDN'T": "COULD NOT", "DIDN'T": "DID NOT",
 }
 
-// UserSettings holds all user-adjustable features for the YAMA morse code generator.
+// UserSettings holds all user-adjustable features
 type UserSettings struct {
-	LifetimePlaySeconds int `json:"Lifetime_play_seconds"`
+	EchoWordSpaceDitCnt int    `json:"echoWordSpaceDitCnt"`
+	KeyerPortSpeed      int    `json:"keyer_port_speed"`
+	KeyerPort           string `json:"keyer_port"`
+	LifetimePlaySeconds int    `json:"Lifetime_play_seconds"`
+	ResponseMS          int    `json:"response_MS"`
+	GroupSendMS         int    `json:"group_send_MS"`
+
 	// Timing Modes
 	UseStandard   bool `json:"use_standard"`
 	UseFarnsworth bool `json:"use_farnsworth"`
@@ -38,17 +44,16 @@ type UserSettings struct {
 	IWRTone    int     `json:"iwr_tone"`
 
 	// Audio Impairments
-
 	NoiseStaticLevel     int  `json:"noise_static_level"`
 	NoiseFadingLevel     int  `json:"noise_fading_level"`
 	BrownNoiseLevel      int  `json:"brown_noise_level"`
-	PinkNoiseLevel      int  `json:"pink_noise_level"`
+	PinkNoiseLevel       int  `json:"pink_noise_level"`
 	NoiseToneDriftLevel  int  `json:"noise_tone_drift_level"`
 	NoiseSpeedDriftLevel int  `json:"noise_speed_drift_level"`
 	NoiseKeyClick        bool `json:"noise_key_click"`
 
 	// Output Options
-	UseWave bool `json:"UseWave"` // Note: Matches the exact capitalization from your JSON
+	UseWave bool `json:"UseWave"`
 
 	// Character & Content Options
 	Playprosigns           bool   `json:"play_prosigns"`
@@ -57,19 +62,21 @@ type UserSettings struct {
 	EuropeanSkipList       string `json:"european_skip_list"`
 	UseSkip                bool   `json:"use_skip"`
 	SkipList               string `json:"skip_list"`
-	WordOrder            bool   `json:"word_order"`
-	RandomizeWords            bool   `json:"randomize_words"`
+	WordOrder              bool   `json:"word_order"`
+	RandomizeWords         bool   `json:"randomize_words"`
 	WordBuilder            bool   `json:"word_builder"`
-	RequireReturnAfterWord            bool `json:"require_return_after_word"`
 	WordSeparator          string `json:"word_separator"`
 	TextBuilder            bool   `json:"text_builder"`
-	WordBuilderSort       bool   `json:"word_builder_sort"`
-	TextBuilderSort       bool   `json:"text_builder_sort"`
+	WordBuilderSort        bool   `json:"word_builder_sort"`
+	TextBuilderSort        bool   `json:"text_builder_sort"`
 	TextSeparator          string `json:"text_separator"`
-	TextWordCount		int	`json:"text_word_count"`
-	SylableExpansion 	bool `json:"sylable_expansion"`
-	Flashcard	bool	`json:"flashcard"`
-	FlashcardWordCount	int	`json:"flashcard_word_count"`
+	TextWordCount          int    `json:"text_word_count"`
+	SyllableExpansion      bool   `json:"syllable_expansion"`
+	Flashcard              bool   `json:"flashcard"`
+	FlashWordCount         int    `json:"flash_word_count"`
+	FlashRandomCount       bool   `jason:"flash_random_count"`
+	EchoTolerance          int    `json:"echo_tolerance"`
+	Echo                   bool   `json:"echo"`
 
 	// Messaging & Flow Control
 	StartMsg     bool   `json:"start_msg"`
@@ -139,6 +146,8 @@ func LoadConfig() {
 		User.CharacterSpeed = 20
 		User.EffectiveSpeed = 15
 		User.Tone = 600
+		User.ResponseMS = 5000
+		User.GroupSendMS = 9000
 
 		// Exactly ONE of these must be true!
 		User.UseFarnsworth = false
@@ -162,13 +171,17 @@ func LoadConfig() {
 		User.RepeatLimit = 3
 		User.TextWordCount = 2
 		User.StartDelay = 0
-		User.RequireReturnAfterWord  = true     //WDL
-		User.SylableExpansion = false
+		User.SyllableExpansion = false
 		User.Flashcard = false
-		User.FlashcardWordCount = 1
-		User.BrownNoiseLevel = 0   
+		User.FlashWordCount = 1
+		User.EchoTolerance = 45
+		User.FlashRandomCount = false
 		User.StartDelay = 0
-		User.PinkNoiseLevel = 0   
+		User.BrownNoiseLevel = 0
+		User.PinkNoiseLevel = 0
+		User.KeyerPortSpeed = 9600
+		User.KeyerPort = "COM3"
+		User.EchoWordSpaceDitCnt = 7
 
 		// 2. Save immediately. This creates the directory AND a valid JSON file.
 		SaveConfig()
@@ -181,6 +194,14 @@ func LoadConfig() {
 
 	if User.IWRTone == 0 {
 		User.IWRTone = 600
+		SaveConfig()
+	}
+	if User.KeyerPortSpeed == 0 {
+		User.KeyerPortSpeed = 9600
+		SaveConfig()
+	}
+	if User.KeyerPort == "" {
+		User.KeyerPort = "COM3"
 		SaveConfig()
 	}
 }

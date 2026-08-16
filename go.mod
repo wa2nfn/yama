@@ -6,6 +6,7 @@ require (
 	github.com/ebitengine/oto/v3 v3.4.0
 	github.com/gdamore/tcell/v2 v2.13.8
 	github.com/rivo/tview v0.42.0
+	go.bug.st/serial v1.8.0
 )
 
 require (

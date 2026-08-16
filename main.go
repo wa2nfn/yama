@@ -53,6 +53,8 @@ var (
 
 	isProgrammaticUpdate bool
 	lastFlashcardGroup   []string
+	echoActive           bool
+	currentEchoView      tview.Primitive
 )
 
 func checkIWRFiles() (targetPath string) {
@@ -80,6 +82,7 @@ func checkIWRFiles() (targetPath string) {
 }
 
 func main() {
+
 	config.LoadConfig()
 
 	logPath := morse.ResolvePath("yama.log")
@@ -110,11 +113,6 @@ func main() {
 	}()
 
 	app.SetBeforeDrawFunc(func(s tcell.Screen) bool {
-		// ==========================================
-		// THE SLEDGEHAMMER (Fixes the PowerShell Navy Bleed)
-		// We force the entire double-buffer to clear to pure black
-		// every single frame before tview draws the widgets.
-		// ==========================================
 		s.SetStyle(tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorWhite))
 		s.Clear()
 		s.SetCursorStyle(tcell.CursorStyleBlinkingBlock)
@@ -164,11 +162,9 @@ func main() {
 	inputArea.SetPlaceholder("Enter text (or Ctrl-F select a file), then Ctrl-P to Play;\nor use function key F1 for full Help.")
 
 	inputArea.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-
-		// ---- DELETE FIX ----
 		if event.Key() == tcell.KeyDelete {
 			txt := inputArea.GetText()
-			_, col, _, _ := inputArea.GetCursor() // your version supports GetCursor()
+			_, col, _, _ := inputArea.GetCursor()
 
 			if col < len(txt) {
 				// delete rune AFTER cursor
@@ -178,7 +174,6 @@ func main() {
 			return nil // swallow DELETE completely
 		}
 
-		// ---- YOUR EXISTING LOGIC ----
 		if event.Key() == tcell.KeyRune {
 			r := event.Rune()
 
@@ -190,7 +185,6 @@ func main() {
 				}
 			}
 
-			// uppercase conversion
 			upper := unicode.ToUpper(r)
 			if upper != r {
 				return tcell.NewEventKey(tcell.KeyRune, upper, event.Modifiers())
@@ -245,15 +239,70 @@ func main() {
 		updateBlueLine() // for word cnt
 	}
 
+	morse.ShowBlueLineTolerance = func() { updateBlueLine() }
+	morse.OnEchoStart = func() { echoActive = true }
+	morse.OnEchoEnd = func() { echoActive = false }
+
 	morse.OnStatusUpdate = func(msg string) {
+		// ONE queue to lock the main UI thread for all the updates inside
 		app.QueueUpdateDraw(func() {
+
+			if echoActive {
+				if strings.HasPrefix(msg, "ECHO:") {
+					statusLine.SetText(msg[5:])
+				}
+				app.SetFocus(inputArea)
+				return // Exits early so the rest of the block doesn't run
+			}
+
 			if msg == "STOP" {
 				stopAudio()
 				statusLine.SetText(" [#00FF00]Playback Complete")
 			} else {
 				statusLine.SetText(msg)
 			}
+
+			// We are still safely inside the first QueueUpdateDraw,
+			// so we can just set the focus directly here at the end.
+			app.SetFocus(inputArea)
 		})
+	}
+
+	morse.OnEchoCharDecoded = func(char string) {
+		app.QueueUpdateDraw(func() {
+			// Grab the current text from your 2nd line TextView, append the char, and set it back.
+			text := inputArea.GetText()
+			lines := strings.Split(text, "\n")
+
+			for len(lines) < 2 {
+				lines = append(lines, "")
+			}
+
+			if len(lines) >= 2 {
+				lines[1] += char
+				inputArea.SetText(strings.Join(lines, "\n"), true)
+			}
+
+		})
+	}
+
+	morse.OnEchoStatsUpdated = func(group morse.EchoStats, session morse.EchoStats) {
+		currentGroupStats = group
+		currentSessionStats = session
+
+		// ⚡ We only check and update the SINGLE wide text view now
+		if echoStatsTextView != nil {
+			app.QueueUpdateDraw(func() {
+				// 1. Get the exact timing targets dynamically
+				currentProfile := morse.GetTiming(false, config.User)
+
+				// 2. Build the text (passing the profile in so the math works!)
+				statsText := buildEchoStatsText(currentGroupStats, currentSessionStats, currentProfile)
+
+				// 3. Update your single tview text view
+				echoStatsTextView.SetText(statsText)
+			})
+		}
 	}
 
 	morse.OnGroupCompleted = func(words []string) {
@@ -262,6 +311,7 @@ func main() {
 	}
 	morse.OnFatalError = EmergencyQuit
 
+	// Inside your main setup, where you handle the UI callbacks:
 	pages = tview.NewPages()
 	pages.SetBackgroundColor(tcell.ColorBlack)
 	refreshUI(StateIdle)
@@ -277,6 +327,7 @@ func main() {
 	pages.AddPage("main", mainFlex, true, true)
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+
 		if event.Key() == tcell.KeyCtrlC {
 			return event
 		}
@@ -297,6 +348,10 @@ func main() {
 					app.SetFocus(newFrontPrim)
 				}
 				return nil
+			}
+
+			if frontName == "stats" {
+				app.SetFocus(inputArea)
 			}
 
 			if currentState == StatePlaying {
@@ -323,8 +378,6 @@ func main() {
 				if currentState == StatePlaying {
 					if morse.IsWaitingForUserKey() {
 						morse.SignalUserKey('B')
-
-						// NEW: erase last group from UI
 						eraseLastGroupFromScreen()
 					}
 				}
@@ -387,8 +440,26 @@ func main() {
 			showImpairments()
 			return nil
 		case tcell.KeyCtrlD:
-			if config.StatsTotalWords > 0 && (currentState == StateIdle || currentState == StateStopped) {
-				showStats()
+			isEchoMode := config.User.Echo
+
+			if isEchoMode {
+				if currentState == StateIdle || currentState == StateStopped || currentState == StatePlaying {
+
+					if currentEchoView != nil {
+						app.SetFocus(currentEchoView)
+						return nil
+					}
+
+					currentEchoView = showStatsEcho()
+					mainFlex.AddItem(currentEchoView, 16, 1, true)
+					app.SetFocus(currentEchoView)
+				}
+			} else {
+				if config.StatsTotalWords > 0 {
+					if currentState == StateIdle || currentState == StateStopped {
+						showStats()
+					}
+				}
 			}
 			return nil
 		case tcell.KeyCtrlE, tcell.KeyCtrlL:
@@ -424,15 +495,26 @@ func main() {
 			}
 
 			if event.Key() == tcell.KeyEnter {
+
 				if morse.IsWaitingForUserKey() {
 					morse.SignalUserKey('E')
+					return nil
+				}
+				if config.User.Echo {
+					morse.ForceEchoFinish = true
+					morse.AutoNextAction = 'E'
 					return nil
 				}
 			}
 
 			if event.Key() == tcell.KeyBackspace || event.Key() == tcell.KeyBackspace2 {
+
 				if morse.IsWaitingForUserKey() {
 					morse.SignalUserKey('B')
+					return nil
+				}
+				if config.User.Echo {
+					morse.ForceEchoRetry = true
 					return nil
 				}
 			}
@@ -539,18 +621,3 @@ func clearFlashcardScreen() {
 	actualText = ""
 	inputArea.SetText("", false)
 }
-
-/*
-func normalizeSpaces(s string) string {
-	var b strings.Builder
-	for _, r := range s {
-		if unicode.IsSpace(r) {
-			b.WriteRune(' ')
-		} else {
-			b.WriteRune(r)
-		}
-	}
-	parts := strings.Fields(b.String())
-	return strings.Join(parts, " ")
-}
-*/

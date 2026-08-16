@@ -17,7 +17,7 @@ var ProSignTable = make(map[string]string)
 // ProSignTable remains static
 var baseProSignMap = map[string]string{
 	"AR": ".-.-.", "AS": ".-...", "BT": "-...-", "KA": "-.-.-",
-	"SK": "...-.-", "VA": "...-.-", "VE": "...-.-", "SN": "...-.-",
+	"SK": "...-.-", "VA": "...-.-", "VE": "...-.", "SN": "...-.",
 	"BK": "-... -.-", "HH": "........", "DU": "-....-",
 	"SOS": "...---...", "CH": "----",
 }
@@ -36,8 +36,8 @@ var basicMap = map[rune]string{
 	'?': "..--..",
 	'/': "-..-.",
 	// ProSign Equivalents (MUST be in basic to prevent discarding)
-	'=':      "-...-",  // <BT>
-	'+':      ".-.-.",  // <AR>
+	//'=':      "-...-",  // <BT>
+	//'+':      ".-.-.",  // <AR>
 	'-':      "-....-", // <DU>
 	'\u2013': "-....-", // en dash <DU>
 	'\u2014': "-....-", // em dash <DU>
@@ -89,7 +89,7 @@ func RebuildMorseTable(useExtended bool, useEuropeanChars bool, useSkip bool, sk
 		MorseTable[k] = v
 	}
 	if useExtended {
-		 for k, v := range extendedPunctuationMap {
+		for k, v := range extendedPunctuationMap {
 			MorseTable[k] = v
 		}
 	}
@@ -183,7 +183,7 @@ func ProcessMorseString(input string) string {
 	return strings.Join(cleanWords, " ")
 }
 
-var sylables = map[string]string{
+var syllables = map[string]string{
 	"ABOUT": "A BOUT", "ABOVE": "A BOVE", "AFTER": "AF TER", "AGAIN": "A GAIN",
 	"AGAINST": "A GAINST", "ALMOST": "AL MOST", "ALONE": "A LONE",
 	"ALONG": "A LONG", "ALREADY": "AL READ Y", "ALSO": "AL SO",
@@ -320,3 +320,91 @@ var sylables = map[string]string{
 	"WOMEN": "WOM EN", "WONDER": "WON DER", "WORKER": "WORK ER",
 	"WRITTEN": "WRIT TEN", "YELLOW": "YEL LOW",
 }
+
+var EchoMapBase = map[string]string{
+	".-":   "A",
+	"-...": "B",
+	"-.-.": "C",
+	"-..":  "D",
+	".":    "E",
+	"..-.": "F",
+	"--.":  "G",
+	"....": "H",
+	"..":   "I",
+	".---": "J",
+	"-.-":  "K",
+	".-..": "L",
+	"--":   "M",
+	"-.":   "N",
+	"---":  "O",
+	".--.": "P",
+	"--.-": "Q",
+	".-.":  "R",
+	"...":  "S",
+	"-":    "T",
+	"..-":  "U",
+	"...-": "V",
+	".--":  "W",
+	"-..-": "X",
+	"-.--": "Y",
+	"--..": "Z",
+
+	"-----": "0",
+	".----": "1",
+	"..---": "2",
+	"...--": "3",
+	"....-": "4",
+	".....": "5",
+	"-....": "6",
+	"--...": "7",
+	"---..": "8",
+	"----.": "9",
+
+	".-.-.-": ".",
+	"--..--": ",",
+	"..--..": "?",
+	"-..-.":  "/",
+}
+
+var EchoMapExtended = map[string]string{
+	"---...":  ":",
+	"-.-.-.":  ";",
+	".-..-.":  "\"",
+	".--.-.":  "@",
+	".----.":  "'",
+	"..--.":   "!",
+	"...-..-": "$",
+	"-.--.":   "(",
+	"-.--.-":  ")",
+}
+
+var EchoMapProsigns = map[string]string{
+
+	// --- Prosigns ---
+	".-...":     "<AS>",
+	"-...-":     "<BT>",
+	".-.-.":     "<AR>",
+	"-....-":    "<DU>",
+	"-.-.-":     "<KA>",
+	"...-.-":    "<SK>", // also VA
+	"........":  "<HH>",
+	"...---...": "<SOS>",
+	"----":      "<CH>",
+	"...-.":     "<VE>", // also <SN>
+
+	// BK — optional shorthand (modern ham usage)
+	"-...-.-": "<BK>",
+}
+
+var EchoMapEuropean = map[string]string{
+	".-.-":  "Ä",
+	"---.":  "Ö",
+	"..--":  "Ü",
+	"..-..": "É",
+	".--.-": "Á", // also Å, À
+	"-.-..": "Ç",
+	"--.--": "Ñ",
+	".-..-": "È",
+}
+
+var EchoMap map[string]string // to be populated

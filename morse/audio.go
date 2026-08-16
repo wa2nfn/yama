@@ -17,11 +17,11 @@ var (
 	otoCtx               *oto.Context
 	once                 sync.Once
 	audioReady           bool
-	queue                []audioBlock
 	AudioHardwareDead    bool
 	SimTime              float64
 	activeCrashSamples   int     // Tracks remaining samples in a lightning crash
 	activeCrashIntensity float32 // Tracks the volume of the current crash
+	queue                []audioBlock
 	lastBrown            float32 // Tracks the brown noise filter state across gapless elements
 	pink0                float32
 	pink1                float32
@@ -80,24 +80,26 @@ func (g *gaplessReader) Read(p []byte) (n int, err error) {
 
 func Flush() {
 	if !audioReady || otoCtx == nil || len(queue) == 0 {
-		queue = nil
 		return
 	}
 
+	// Take a snapshot of the current queue and clear the global
+	blocks := queue
+
 	// 1. Calculate the exact mathematical duration of the ENTIRE word
 	totalSamples := 0
-	for i := 0; i < len(queue); i++ {
-		totalSamples += len(queue[i].samples) / 2
+	for i := 0; i < len(blocks); i++ {
+		totalSamples += len(blocks[i].samples) / 2
 	}
 	expectedDuration := time.Duration(totalSamples) * time.Second / time.Duration(SampleRate)
 	timeout := time.Now().Add(expectedDuration + 5*time.Second)
 
-	// 2. Wrap our queue in the new Gapless Streamer for perfect audio
-	reader := &gaplessReader{blocks: queue}
+	// 2. Wrap our snapshot in the gapless streamer
+	reader := &gaplessReader{blocks: blocks}
 	p := otoCtx.NewPlayer(reader)
 	p.Play()
 
-	// 3. THE UI WATCHDOG: Decouple the screen from the hardware buffer!
+	// 3. UI watchdog uses the same snapshot
 	go func(uiQueue []audioBlock) {
 		startTime := time.Now()
 		var elapsed time.Duration
@@ -107,73 +109,42 @@ func Flush() {
 				break
 			}
 
-			// Trigger the UI to draw the character
 			if block.char != "" && OnWordChange != nil {
 				OnWordChange(block.char, block.index)
 			}
 
-			// Calculate the absolute time this block should mathematically finish
 			sampleCount := len(block.samples) / 2
 			elapsed += time.Duration(sampleCount) * time.Second / time.Duration(SampleRate)
 			targetTime := startTime.Add(elapsed)
 
-			// Sleep precisely until that absolute moment in time
 			sleepDur := time.Until(targetTime)
 			if sleepDur > 0 {
 				time.Sleep(sleepDur)
 			}
 		}
-	}(queue) // Pass a snapshot of the current queue
+	}(blocks)
 
-	// 4. THE HARDWARE WATCHDOG
+	// 4. Hardware watchdog
 	for p.IsPlaying() {
 		if IsStopping {
 			break
 		}
 
 		if time.Now().After(timeout) {
-			// Call the function variable instead of the hardcoded main function
 			if OnFatalError != nil {
 				OnFatalError("Audio hardware dead! The OS audio bridge stopped responding.")
 			} else {
-				// Absolute fallback if the UI hasn't hooked up the callback yet
 				os.Exit(1)
 			}
 		}
 
-		// Since the OS handles the audio, we can relax the polling
 		time.Sleep(5 * time.Millisecond)
 	}
 
 	if time.Now().Before(timeout) {
 		p.Close()
 	}
-
 	queue = nil
-}
-
-func InitAudio() error {
-	var err error
-	once.Do(func() {
-		err = startAudioEngine()
-	})
-	return err
-}
-
-func startAudioEngine() error {
-	op := &oto.NewContextOptions{
-		SampleRate:   SampleRate,
-		ChannelCount: 1,
-		Format:       oto.FormatSignedInt16LE,
-	}
-	ctx, ready, e := oto.NewContext(op)
-	if e != nil {
-		return e
-	}
-	<-ready
-	otoCtx = ctx
-	audioReady = true
-	return nil
 }
 
 // ==========================================
@@ -499,4 +470,93 @@ func SilencePCM(duration int) PCMData {
 
 	SimTime += float64(duration) / float64(SampleRate)
 	return PCMData{Samples: buf}
+}
+
+// ==========================================
+// LIVE OSCILLATOR (For Interactive Keying)
+// ==========================================
+
+// LiveOscillator generates a continuous tone. Volume is controlled by the oto Player!
+type LiveOscillator struct {
+	Freq       float64
+	SampleRate float64
+	phase      float64
+	debugCount int
+}
+
+func (o *LiveOscillator) Read(p []byte) (n int, err error) {
+	if o.debugCount == 0 {
+		o.debugCount++
+	}
+
+	samples := len(p) / 2
+
+	for i := 0; i < samples; i++ {
+		// ALWAYS generate the full sine wave.
+		s := math.Sin(o.phase * 2.0 * math.Pi)
+		val := int16(s * 0.5 * 32767)
+
+		binary.LittleEndian.PutUint16(p[i*2:], uint16(val))
+
+		o.phase += o.Freq / o.SampleRate
+		if o.phase > 1.0 {
+			o.phase -= 1.0
+		}
+	}
+
+	return len(p), nil
+}
+
+func StartOscillator(freq float64) (*LiveOscillator, *oto.Player) {
+
+	if !audioReady || otoCtx == nil {
+		return nil, nil
+	}
+
+	osc := &LiveOscillator{
+		Freq:       freq,
+		SampleRate: float64(SampleRate),
+	}
+
+	player := otoCtx.NewPlayer(osc)
+
+	// THE MAGIC: Start the engine, but instantly MUTE it at the mixer level
+	player.SetVolume(0)
+	player.Play()
+
+	return osc, player
+}
+
+// ==========================================
+// AUDIO ENGINE INITIALIZATION
+// ==========================================
+
+func InitAudio() error {
+	var err error
+	once.Do(func() {
+		err = startAudioEngine()
+	})
+	return err
+}
+
+func startAudioEngine() error {
+	// We lock it at 5ms globally. Modern PCs can handle this easily!
+	op := &oto.NewContextOptions{
+		SampleRate:   SampleRate,
+		ChannelCount: 1,
+		Format:       oto.FormatSignedInt16LE,
+		BufferSize:   time.Millisecond * 5,
+	}
+
+	var readyChan chan struct{}
+	var err error
+
+	otoCtx, readyChan, err = oto.NewContext(op)
+	if err != nil {
+		return err
+	}
+	<-readyChan
+
+	audioReady = true
+	return nil
 }
