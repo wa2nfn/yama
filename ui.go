@@ -208,16 +208,39 @@ func showStats() {
 		SetBorder(true).
 		SetTitle(" DataStats ")
 
+	tv.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			pages.RemovePage("stats")
+			app.SetFocus(inputArea)
+			return nil
+		}
+		return event
+	})
+
 	pages.AddPage("stats", createModal(tv, 38, 22), true, true)
 	app.SetFocus(tv)
 }
 
-// SPACEBAR hide screen
+// Safely converts text to asterisks but preserves all layout spacing
+func maskText(text string) string {
+	var sb strings.Builder
+	sb.Grow(len(text))
+	for _, ch := range text {
+		// Keep structural characters intact
+		if ch == ' ' || ch == '\n' || ch == '\r' || ch == '\t' {
+			sb.WriteRune(ch)
+		} else {
+			sb.WriteRune('*')
+		}
+	}
+	return sb.String()
+}
+
 func updateVisibility() {
 	isProgrammaticUpdate = true
 
 	if isBlocked {
-		inputArea.SetText(strings.Repeat("*", len(actualText)), false)
+		inputArea.SetText(maskText(actualText), false)
 	} else {
 		inputArea.SetText(actualText, false)
 	}
@@ -243,7 +266,6 @@ func updateBlueLine() {
 		info = fmt.Sprintf(" [black]Mode: %s | Char Speed: %g wpm | Effective Speed: %g wpm | IWR: %s (%g wpm) ", mode, config.User.CharacterSpeed, config.User.EffectiveSpeed, iwrStatus, config.User.IWRSpeed)
 	}
 
-	// Calculate and append the dynamic word count
 	wordCount := len(strings.Fields(actualText))
 	info += fmt.Sprintf("| Word Cnt: %d ", wordCount)
 
@@ -303,7 +325,7 @@ func refreshUI(state AppState) {
 			menu = "[#FFFF55]R[white]esume  [#FFFF55]S[white]top  [#FFFF55]T[white]iming  [#FFFF55]A[white]udio  [#FFFF55]Q[white]uit "
 		}
 	}
-	header.SetText("[#55FFFF::b] YAMA - Yet Another Morse App[white::-]\n\n" + menu)
+	header.SetText("[#55FFFF::b] YAMA - Yet Another Morse-Code App[white::-]\n\n" + menu)
 }
 
 // --- UI Components & Modals ---
@@ -604,7 +626,7 @@ WA2NFN
 }
 
 func showAbout() {
-	aboutText := `About [#55FFFF]YAMA - Yet Another Morse App[-]
+	aboutText := `About [#55FFFF]YAMA - Yet Another Morse-Code App[-]
 ` + "Version " + Ver +
 		`
 Created by: Bill Lanahan, WA2NFN
@@ -1871,6 +1893,13 @@ var echoStatsTextView *tview.TextView
 var sessionStatsTextView *tview.TextView
 var currentSessionStats morse.EchoStats
 
+func closeEchoStatsWindow() {
+	if currentEchoView != nil {
+		mainFlex.RemoveItem(currentEchoView)
+		currentEchoView = nil
+	}
+}
+
 func showStatsEcho() *tview.Flex {
 	footer := tview.NewTextView().
 		SetText(" [yellow]ESC to Close ").
@@ -1880,7 +1909,7 @@ func showStatsEcho() *tview.Flex {
 	container := tview.NewFlex().SetDirection(tview.FlexRow)
 
 	// ⚡ Borders and titles are back!
-	var title = fmt.Sprintf(" DataStats - Keying Tolerance %d%% ", config.User.EchoTolerance)
+	var title = fmt.Sprintf(" DataStats - Keying Tolerance %2d%% ", config.User.EchoTolerance)
 	container.SetBorder(true).
 		SetTitle(title).
 		SetTitleColor(tcell.ColorYellow)
@@ -1889,32 +1918,23 @@ func showStatsEcho() *tview.Flex {
 		SetDynamicColors(true).
 		SetTextAlign(tview.AlignLeft)
 
-		currentProfile := morse.GetTiming(false, config.User)
+	currentProfile := morse.GetTiming(false, config.User)
 	echoStatsTextView.SetText(buildEchoStatsText(currentGroupStats, currentSessionStats, currentProfile))
 
 	container.AddItem(echoStatsTextView, 0, 1, true)
-
-	// Add the footer to the bottom of your container (fixed height 1, no expansion, no focus)
 	container.AddItem(footer, 1, 0, false)
 
 	container.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
-			// 1. Remove this specific container from the main layout
-			mainFlex.RemoveItem(container)
-
-			// 2. Clear the global tracker so Ctrl+D can open it again later
-			currentEchoView = nil
-
-			// 3. Send focus back to the main text entry area
+			closeEchoStatsWindow() // Use the new helper!
 			app.SetFocus(inputArea)
-
 			return nil
 		}
 		return event
 	})
+
 	return container
 }
-
 
 func buildEchoStatsText(grp morse.EchoStats, ses morse.EchoStats, tp morse.TimingProfile) string {
 	var sb strings.Builder
@@ -1923,7 +1943,6 @@ func buildEchoStatsText(grp morse.EchoStats, ses morse.EchoStats, tp morse.Timin
 	calcAvg := func(sumMs float64, short, perfect, long int) int {
 		totalCount := short + perfect + long
 		if totalCount > 0 {
-			fmt.Println("Dit Total: ", totalCount,"Sum ms:", sumMs) //WDL
 			return int(math.Round(sumMs / float64(totalCount)))
 		}
 		return 0

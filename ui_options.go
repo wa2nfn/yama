@@ -52,42 +52,34 @@ func showOptions() {
 	textSeparatorInput.SetInputCapture(forceUppercaseInputCapture())
 	textBuilderSortCb := tview.NewCheckbox().SetLabel("    Sort")
 
-	textWordCnt := tview.NewInputField().
-		SetLabel("    Word Count (2-25) ").
-		SetFieldWidth(5).
-		SetText("2").
-		SetAcceptanceFunc(tview.InputFieldInteger)
-	textWordCnt.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
-
-	// ONLY THIS: restore default when leaving the field empty
-	textWordCnt.SetDoneFunc(func(key tcell.Key) {
-		if strings.TrimSpace(textWordCnt.GetText()) == "" {
-			textWordCnt.SetText("2")
-		}
-	})
+	// WDL: Replaced text box with foolproof dropdown
+	textWordCountList := []string{"2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25"}
+	textWordCntDrop := tview.NewDropDown().SetLabel("    Word Count (2-25)").SetOptions(textWordCountList, nil)
 
 	flashcardCb := tview.NewCheckbox().SetLabel("Flashcard")
-	flashWordCountList := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}
+	flashWordCountList := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"}
 	flashWordCountDrop := tview.NewDropDown().SetLabel("    Word Count (1-20)").SetOptions(flashWordCountList, nil)
 	flashRandomCountCb := tview.NewCheckbox().SetLabel("    Random Value")
 	echoList := []string{"0", "15", "25", "35", "45"}
 	echoDrop := tview.NewDropDown().SetLabel("    Echo Tolerance(%) (0,15,25,35,45)").SetOptions(echoList, nil)
 
 	startMsgCb := tview.NewCheckbox().SetLabel("Use Start Msg")
-	startMsgInput := tview.NewInputField().SetLabel("    Start Msg Text").SetFieldWidth(30)
+	startMsgInput := tview.NewInputField().SetLabel("    Start Msg Text").SetFieldWidth(35)
 	startMsgInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	startMsgInput.SetPlaceholder("VVV <KA>").SetPlaceholderTextColor(tcell.ColorYellow)
 	startMsgInput.SetInputCapture(forceUppercaseInputCapture())
 
 	endMsgCb := tview.NewCheckbox().SetLabel("Use End Msg")
-	endMsgInput := tview.NewInputField().SetLabel("    End Msg Text").SetFieldWidth(30)
+	endMsgInput := tview.NewInputField().SetLabel("    End Msg Text").SetFieldWidth(35)
 	endMsgInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	endMsgInput.SetPlaceholder("<AR>").SetPlaceholderTextColor(tcell.ColorYellow)
 
 	endMsgInput.SetInputCapture(forceUppercaseInputCapture())
 	euroSkipList := config.User.EuropeanSkipList
 
+	//
 	// RESET
+	//
 	resetState := func() {
 		startMsgCb.SetChecked(config.User.StartMsg)
 
@@ -115,11 +107,10 @@ func showOptions() {
 		wordBuilderCb.SetChecked(config.User.WordBuilder)
 		wordBuilderSortCb.SetChecked(config.User.WordBuilderSort)
 		wordSeparatorInput.SetText(config.User.WordSeparator)
-		// Trim spaces to ensure empty strings trigger the placeholder
+
 		wordSeparatorInput.SetText(strings.TrimSpace(config.User.WordSeparator))
 		textBuilderCb.SetChecked(config.User.TextBuilder)
 		textSeparatorInput.SetText(config.User.TextSeparator)
-		textWordCnt.SetText(fmt.Sprintf("%d", config.User.TextWordCount))
 		textSeparatorInput.SetText(strings.TrimSpace(config.User.TextSeparator))
 		textBuilderCb.SetChecked(config.User.TextBuilder)
 		syllableExpansionCb.SetChecked(config.User.SyllableExpansion)
@@ -127,12 +118,15 @@ func showOptions() {
 		flashcardCb.SetChecked(config.User.Flashcard)
 		flashRandomCountCb.SetChecked(config.User.FlashRandomCount)
 
-		// Set the count field to the config value, but default to "2" if the config is 0 (unsaved)
-		if config.User.TextWordCount <= 0 {
-			textWordCnt.SetText("1")
-		} else {
-			textWordCnt.SetText(fmt.Sprintf("%d", config.User.TextWordCount))
+		// Set the Text Builder dropdown cleanly
+		twIdx := 0
+		for i, opt := range textWordCountList {
+			if opt == fmt.Sprintf("%d", config.User.TextWordCount) {
+				twIdx = i
+				break
+			}
 		}
+		textWordCntDrop.SetCurrentOption(twIdx)
 
 		dIdx := 0
 		for i, opt := range delayOptions {
@@ -190,7 +184,7 @@ func showOptions() {
 	form.AddFormItem(wordBuilderSortCb)
 	form.AddFormItem(textBuilderCb)
 	form.AddFormItem(textSeparatorInput)
-	form.AddFormItem(textWordCnt)
+	form.AddFormItem(textWordCntDrop) // Swapped the text field for the dropdown
 	form.AddFormItem(textBuilderSortCb)
 	form.AddFormItem(flashcardCb)
 	form.AddFormItem(flashWordCountDrop)
@@ -204,10 +198,6 @@ func showOptions() {
 	var optionsContainer *tview.Flex
 
 	onSave := func() {
-		if strings.TrimSpace(textWordCnt.GetText()) == "" {
-			textWordCnt.SetText("2")
-		}
-
 		var errors []string
 		isSyl := syllableExpansionCb.IsChecked()
 		isRandomizeWords := randomizeWordsCb.IsChecked()
@@ -215,11 +205,6 @@ func showOptions() {
 		isTB := textBuilderCb.IsChecked()
 		isFC := flashcardCb.IsChecked()
 		isSkip := useSkipCb.IsChecked()
-
-		count, err := strconv.Atoi(textWordCnt.GetText())
-		if err != nil || count < 2 || count > 25 {
-			errors = append(errors, "    Text Builder Word Count must be a number between 2 and 25.")
-		}
 
 		// Mutual Exclusivity Checks
 		if isRandomizeWords && (isWB || isTB || isFC || isSyl) {
@@ -248,20 +233,16 @@ func showOptions() {
 		}
 		formattedSkipList := strings.Join(cleanSkips, " ")
 
-		_, wc := flashWordCountDrop.GetCurrentOption()
-		val, _ := strconv.Atoi(wc)
-		if isFC && val < 1 {
+		// Flashcard Validation
+		_, fcStr := flashWordCountDrop.GetCurrentOption()
+		fcVal, _ := strconv.Atoi(fcStr)
+		if isFC && fcVal < 1 {
 			errors = append(errors, "Flashcard Word Count must be 1-20.")
 		}
-		config.User.FlashWordCount, _ = strconv.Atoi(wc)
 
-		_, wc = echoDrop.GetCurrentOption()
-		config.User.EchoTolerance, _ = strconv.Atoi(wc)
-		if isFC && val < 1 {
-			errors = append(errors, "Echo Tolerance must be: \"5,15,25,35,45\"" )
-		}
-		config.User.EchoTolerance, _ = strconv.Atoi(wc)
-
+		//
+		// APPLY
+		//
 		apply := func() {
 			config.User.Playprosigns = useProsignsCb.IsChecked()
 			config.User.UseExtendedPunctuation = extendedPuncCb.IsChecked()
@@ -273,13 +254,15 @@ func showOptions() {
 			config.User.RandomizeWords = isRandomizeWords
 			config.User.WordBuilder = isWB
 			config.User.TextBuilder = isTB
-			config.User.TextBuilderSort = isTB
+			config.User.WordBuilderSort = wordBuilderSortCb.IsChecked()
+			config.User.TextBuilderSort = textBuilderSortCb.IsChecked()
 
 			config.User.WordSeparator = wordSeparatorInput.GetText()
 			config.User.TextSeparator = textSeparatorInput.GetText()
-			if count, err := strconv.Atoi(textWordCnt.GetText()); err == nil {
-				config.User.TextWordCount = count
-			}
+
+			// Extract integer straight from the dropdown
+			_, twStr := textWordCntDrop.GetCurrentOption()
+			config.User.TextWordCount, _ = strconv.Atoi(twStr)
 
 			config.User.StartMsg = startMsgCb.IsChecked()
 			config.User.StartMsgText = startMsgInput.GetText()
@@ -292,22 +275,27 @@ func showOptions() {
 
 			rIdx, _ := repeatDropDown.GetCurrentOption()
 			config.User.RepeatLimit, _ = strconv.Atoi(repeatOptions[rIdx])
-			fIdx, _ := flashWordCountDrop.GetCurrentOption()
-			eIdx, _ := echoDrop.GetCurrentOption()
-
 			config.User.Flashcard = flashcardCb.IsChecked()
+			fIdx, _ := flashWordCountDrop.GetCurrentOption()
 			config.User.FlashWordCount, _ = strconv.Atoi(flashWordCountList[fIdx])
 			config.User.FlashRandomCount = flashRandomCountCb.IsChecked()
 
-			config.User.WordBuilderSort = wordBuilderCb.IsChecked()
+			config.User.WordBuilderSort = wordBuilderSortCb.IsChecked()
+
+			_, echoValStr := echoDrop.GetCurrentOption()
+			config.User.EchoTolerance, _ = strconv.Atoi(echoValStr)
+
 			if isFC && config.User.EchoTolerance > 0 {
 				config.User.Echo = true
-				config.User.EchoTolerance = eIdx
 			} else {
 				config.User.Echo = false
-				config.User.EchoTolerance = eIdx
 			}
-					
+
+			// Inside your Options Menu Save function:
+			if !config.User.Echo {
+				closeEchoStatsWindow()
+			}
+
 			config.SaveConfig()
 
 			morse.RebuildMorseTable(config.User.UseExtendedPunctuation, config.User.UseEuropeanChars, config.User.UseSkip, config.User.SkipList, config.User.EuropeanSkipList)
@@ -344,6 +332,6 @@ func showOptions() {
 	optionsContainer.SetBorder(true).SetTitle(" Options ")
 	optionsContainer.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	pages.AddPage("options", createModal(optionsContainer, 70, 31), true, true)
+	pages.AddPage("options", createModal(optionsContainer, 80, 31), true, true)
 	app.SetFocus(optionsContainer)
 }

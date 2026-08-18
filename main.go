@@ -444,12 +444,15 @@ func main() {
 
 			if isEchoMode {
 				if currentState == StateIdle || currentState == StateStopped || currentState == StatePlaying {
-
 					if currentEchoView != nil {
-						app.SetFocus(currentEchoView)
+						// ECHO TOGGLE: It's already open, so destroy it!
+						mainFlex.RemoveItem(currentEchoView)
+						currentEchoView = nil
+						app.SetFocus(inputArea)
 						return nil
 					}
 
+					// It's closed, so open it!
 					currentEchoView = showStatsEcho()
 					mainFlex.AddItem(currentEchoView, 16, 1, true)
 					app.SetFocus(currentEchoView)
@@ -457,7 +460,14 @@ func main() {
 			} else {
 				if config.StatsTotalWords > 0 {
 					if currentState == StateIdle || currentState == StateStopped {
-						showStats()
+						if pages.HasPage("stats") {
+							// STANDARD TOGGLE: It's open, so destroy it!
+							pages.RemovePage("stats")
+							app.SetFocus(inputArea)
+						} else {
+							// It's closed, so open it!
+							showStats()
+						}
 					}
 				}
 			}
