@@ -52,7 +52,6 @@ func showOptions() {
 	textSeparatorInput.SetInputCapture(forceUppercaseInputCapture())
 	textBuilderSortCb := tview.NewCheckbox().SetLabel("    Sort")
 
-	// WDL: Replaced text box with foolproof dropdown
 	textWordCountList := []string{"2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25"}
 	textWordCntDrop := tview.NewDropDown().SetLabel("    Word Count (2-25)").SetOptions(textWordCountList, nil)
 
@@ -60,8 +59,7 @@ func showOptions() {
 	flashWordCountList := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"}
 	flashWordCountDrop := tview.NewDropDown().SetLabel("    Word Count (1-20)").SetOptions(flashWordCountList, nil)
 	flashRandomCountCb := tview.NewCheckbox().SetLabel("    Random Value")
-	echoList := []string{"0", "15", "25", "35", "45"}
-	echoDrop := tview.NewDropDown().SetLabel("    Echo Tolerance(%) (0,15,25,35,45)").SetOptions(echoList, nil)
+	echoCb := tview.NewCheckbox().SetLabel("KeyEcho")
 
 	startMsgCb := tview.NewCheckbox().SetLabel("Use Start Msg")
 	startMsgInput := tview.NewInputField().SetLabel("    Start Msg Text").SetFieldWidth(35)
@@ -117,6 +115,7 @@ func showOptions() {
 		textBuilderSortCb.SetChecked(config.User.TextBuilderSort)
 		flashcardCb.SetChecked(config.User.Flashcard)
 		flashRandomCountCb.SetChecked(config.User.FlashRandomCount)
+		echoCb.SetChecked(config.User.Echo)
 
 		// Set the Text Builder dropdown cleanly
 		twIdx := 0
@@ -155,7 +154,7 @@ func showOptions() {
 		}
 		flashWordCountDrop.SetCurrentOption(fIdx)
 
-		eIdx := 0
+		/*eIdx := 0
 		for i, opt := range echoList {
 			if opt == fmt.Sprintf("%d", config.User.EchoTolerance) {
 				eIdx = i
@@ -163,6 +162,7 @@ func showOptions() {
 			}
 		}
 		echoDrop.SetCurrentOption(eIdx)
+		*/
 
 		euroSkipList = config.User.EuropeanSkipList
 	}
@@ -189,7 +189,7 @@ func showOptions() {
 	form.AddFormItem(flashcardCb)
 	form.AddFormItem(flashWordCountDrop)
 	form.AddFormItem(flashRandomCountCb)
-	form.AddFormItem(echoDrop)
+	form.AddFormItem(echoCb)
 	form.AddFormItem(startMsgCb)
 	form.AddFormItem(startMsgInput)
 	form.AddFormItem(endMsgCb)
@@ -215,10 +215,13 @@ func showOptions() {
 			errors = append(errors, "Text Builder and Word Builder are mutually exclusive.")
 		}
 		if isFC && isWB {
-			errors = append(errors, "Flashcard and Word Builder are mutually exclusive")
+			errors = append(errors, "Flashcard and Word Builder are mutually exclusive.")
 		}
 		if isFC && isTB {
-			errors = append(errors, "Flashcard and Text Builder are mutually exclusive")
+			errors = append(errors, "Flashcard and Text Builder are mutually exclusive.")
+		}
+		if isFC && echoCb.IsChecked() {
+			errors = append(errors, "Flashcard and KeyEcho are mutually exclusive.")
 		}
 
 		rawSkipFields := strings.Fields(skipListInput.GetText())
@@ -237,7 +240,7 @@ func showOptions() {
 		_, fcStr := flashWordCountDrop.GetCurrentOption()
 		fcVal, _ := strconv.Atoi(fcStr)
 		if isFC && fcVal < 1 {
-			errors = append(errors, "Flashcard Word Count must be 1-20.")
+			errors = append(errors, "Flashcard Word Count must be 1-25.")
 		}
 
 		//
@@ -281,21 +284,7 @@ func showOptions() {
 			config.User.FlashRandomCount = flashRandomCountCb.IsChecked()
 
 			config.User.WordBuilderSort = wordBuilderSortCb.IsChecked()
-
-			_, echoValStr := echoDrop.GetCurrentOption()
-			config.User.EchoTolerance, _ = strconv.Atoi(echoValStr)
-
-			if isFC && config.User.EchoTolerance > 0 {
-				config.User.Echo = true
-			} else {
-				config.User.Echo = false
-			}
-
-			// Inside your Options Menu Save function:
-			if !config.User.Echo {
-				closeEchoStatsWindow()
-			}
-
+			config.User.Echo = echoCb.IsChecked()
 			config.SaveConfig()
 
 			morse.RebuildMorseTable(config.User.UseExtendedPunctuation, config.User.UseEuropeanChars, config.User.UseSkip, config.User.SkipList, config.User.EuropeanSkipList)
@@ -308,6 +297,9 @@ func showOptions() {
 		if len(errors) > 0 {
 			showErrorModal(errors, func() { app.SetFocus(form) })
 		} else {
+			if !echoCb.IsChecked() {
+				closeEchoStatsWindow()
+			}
 			apply()
 		}
 	}

@@ -21,7 +21,7 @@ type AppState int
 const (
 	AppBackgroundColor = "#000000" // black
 	playPauseDelay     = 200
-	Ver                = "1.4"
+	Ver                = "2.0"
 
 	StateIdle AppState = iota
 	StatePlaying
@@ -82,7 +82,7 @@ func checkIWRFiles() (targetPath string) {
 }
 
 func main() {
-
+	// handle cmdline
 	config.LoadConfig()
 
 	logPath := morse.ResolvePath("yama.log")
@@ -93,11 +93,22 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// CLEAR OPTIONS
+	if len(os.Args[1:]) == 1 && os.Args[1] == "SetDefaultOptions" {
+		path := config.GetConfigPath()
+		if _, err := os.Stat(path); err == nil {
+			os.Remove(path)
+			config.LoadConfig()
+		} else {
+			fmt.Printf("Failed to remove options file to get Default Options <%s>: %v\n", path, err)
+		}
+	}
+
 	morse.RebuildMorseTable(config.User.UseExtendedPunctuation, config.User.UseEuropeanChars, config.User.UseSkip, config.User.SkipList, config.User.EuropeanSkipList)
 
-	// ==========================================
-	// EXPLICIT TCELL COLORS (Fixes the Hex-to-Green bug)
-	// ==========================================
+	// ======================
+	// EXPLICIT TCELL COLORS
+	// =====================
 	tview.Styles.PrimitiveBackgroundColor = tcell.ColorBlack
 	tview.Styles.ContrastBackgroundColor = tcell.ColorNavy
 	tview.Styles.BorderColor = tcell.ColorGray
@@ -269,28 +280,30 @@ func main() {
 	}
 
 	morse.OnEchoCharDecoded = func(char string) {
-		app.QueueUpdateDraw(func() {
-			// Grab the current text from your 2nd line TextView, append the char, and set it back.
-			text := inputArea.GetText()
-			lines := strings.Split(text, "\n")
+		if config.User.VisualFeedback {
+			app.QueueUpdateDraw(func() {
+				// Grab the current text from your 2nd line TextView, append the char, and set it back.
+				text := inputArea.GetText()
+				lines := strings.Split(text, "\n")
 
-			for len(lines) < 2 {
-				lines = append(lines, "")
-			}
+				for len(lines) < 2 {
+					lines = append(lines, "")
+				}
 
-			if len(lines) >= 2 {
-				lines[1] += char
-				inputArea.SetText(strings.Join(lines, "\n"), true)
-			}
+				if len(lines) >= 2 {
+					lines[1] += char
+					inputArea.SetText(strings.Join(lines, "\n"), true)
+				}
 
-		})
+			})
+		}
 	}
 
 	morse.OnEchoStatsUpdated = func(group morse.EchoStats, session morse.EchoStats) {
 		currentGroupStats = group
 		currentSessionStats = session
 
-		// ⚡ We only check and update the SINGLE wide text view now
+		// We only check and update the SINGLE wide text view now
 		if echoStatsTextView != nil {
 			app.QueueUpdateDraw(func() {
 				// 1. Get the exact timing targets dynamically
@@ -339,6 +352,13 @@ func main() {
 				return event
 			}
 
+			// ⚡ If your echo stats window is front-most or open, close it cleanly
+			if frontName == "echoStats" || frontName == "stats" {
+				closeEchoStatsWindow()
+				app.SetFocus(inputArea)
+				return nil
+			}
+
 			if frontName != "main" && frontName != "" {
 				pages.RemovePage(frontName)
 				newFrontName, newFrontPrim := pages.GetFrontPage()
@@ -348,10 +368,6 @@ func main() {
 					app.SetFocus(newFrontPrim)
 				}
 				return nil
-			}
-
-			if frontName == "stats" {
-				app.SetFocus(inputArea)
 			}
 
 			if currentState == StatePlaying {
@@ -434,6 +450,11 @@ func main() {
 		case tcell.KeyCtrlO:
 			if currentState != StatePlaying && currentState != StatePaused {
 				showOptions()
+			}
+			return nil
+		case tcell.KeyCtrlK:
+			if currentState != StatePlaying && currentState != StatePaused {
+				showKeyEchoOptions()
 			}
 			return nil
 		case tcell.KeyCtrlA:
