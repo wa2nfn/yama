@@ -92,7 +92,7 @@ func showKeyEchoOptions() {
 		SetLabel("Visual Feedback")
 
 	// --- Key Line Mode ---
-	keyLineOptions := []string{"CTS-DTR", "DSR-DTR", "CD-DTR", "RI-DTR", "CTS-RTS", "DSR-RTS", "CD-RTS", "RI-RTS"}
+	keyLineOptions := []string{"CTS:8-DTR:4", "DSR:6-DTR:4", "CD:1-DTR:4", "RI:9-DTR:4", "CTS:8-RTS:7", "DSR:6-RTS:7", "CD:1-RTS:7", "RI:9-RTS:7"}
 	lineModeDrop := tview.NewDropDown().
 		SetLabel("   Key Line Interface").
 		SetOptions(keyLineOptions, nil).
@@ -258,7 +258,7 @@ func showKeyEchoOptions() {
 		if lmIdx >= 0 && lmIdx < len(keyLineOptions) {
 			config.User.KeyLineMode = keyLineOptions[lmIdx]
 		} else {
-			config.User.KeyLineMode = "CTS-DTR"
+			config.User.KeyLineMode = "CTS:8-DTR:4"
 		}
 
 		config.User.KeyParasiticPower = parasiticCb.IsChecked()

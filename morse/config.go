@@ -7,20 +7,20 @@ import (
 
 // TimingProfile contains the calculated durations for play.go
 type TimingProfile struct {
-	Tone         int
-	DotDuration  float64
-	DashDuration float64
-	InterElement float64
-	CharSpace    float64
-	WordSpace    float64
-	Tolerance    float64
-	WordSpaceMin float64
-	WordSpaceMax float64
-	DahLenMin    float64
-	DahLenMax    float64
-	DitLenMin    float64
-	DitLenMax    float64
-	EchoWordSpaceDitCnt int
+	Tone                int
+	DotDuration         float64
+	DashDuration        float64
+	InterElement        float64
+	CharSpace           float64
+	WordSpace           float64
+	Tolerance           float64
+	WordSpaceMin        float64
+	WordSpaceMax        float64
+	DahLenMin           float64
+	DahLenMax           float64
+	DitLenMin           float64
+	DitLenMax           float64
+	LastWordSpaceDitCnt int
 }
 
 func validateTimingSelection(useFarnsworth, useWordsworth, useStandard bool) {
@@ -75,19 +75,14 @@ func GetTiming(isIWR bool, user config.UserSettings) TimingProfile {
 
 	validateTimingSelection(user.UseFarnsworth, user.UseWordsworth, user.UseStandard)
 
-	EchoWordSpaceDitCnt := user.EchoWordSpaceDitCnt
-	if EchoWordSpaceDitCnt < 4 || EchoWordSpaceDitCnt > 7 {
-	    EchoWordSpaceDitCnt = 7
-	}
-
 	return TimingProfile{
-		Tone:         tone,
-		DotDuration:  charUnit,
-		DashDuration: charUnit * 3.0,
-		InterElement: charUnit,
-		CharSpace:    charSpace,
-		WordSpace:    wordUnit * 7.0,
-		Tolerance:    float64(user.EchoTolerance) / 100.0,
-		EchoWordSpaceDitCnt: EchoWordSpaceDitCnt,
+		Tone:                tone,
+		DotDuration:         charUnit,
+		DashDuration:        charUnit * 3.0,
+		InterElement:        charUnit,
+		CharSpace:           charSpace,
+		WordSpace:           wordUnit * 7.0,
+		Tolerance:           float64(user.EchoTolerance) / 100.0,
+		LastWordSpaceDitCnt: config.User.LastWordSpaceDitCnt,
 	}
 }

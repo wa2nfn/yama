@@ -192,7 +192,7 @@ func SilencePCM16Bit(duration int) PCMData {
 }
 
 // ==========================================
-// 🎧 LIVE PLAYBACK ENGINE WITH IMPAIRMENTS
+// LIVE PLAYBACK ENGINE WITH IMPAIRMENTS
 // ==========================================
 
 func TonePCM(freq float64, duration int, vol float64) PCMData {
