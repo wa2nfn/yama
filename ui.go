@@ -565,11 +565,28 @@ Tip for progression: As your keying practice improves, you can force yourself to
 [green::b]Hardware Requirements & Setup[::-]
 [white]KeyEcho requires an RS-232 COM port adapter. The physical wiring is radically simple: it requires exactly two wires. No jumpers, no common grounds, and no resistors are needed. You simply wire your CW key to bridge one output pin to one input pin, making a series loop from the DB9 source pin through your key device and back to the monitor pin.
 
-DB9 Solder-Side Pins (The only ones we care about):
+DB9 Solder-Side Pins:
 - Outputs (Power Sources): Pin 4 (DTR) or Pin 7 (RTS)
 - Inputs (Listeners): Pin 8 (CTS), Pin 6 (DSR), Pin 1 (CD), or Pin 9 (RI)
+(Pin numbers are listed in the KetEcho options page. Viewd from the solder side of a DB9, with the wide edge on top, the top row
+from LEFT to RIGHT is 1 2 3 4 5, the lower row is 6 7 8 9.)
 
 In YAMA's Key Interface options, select the pair you soldered (e.g., CTS-DTR). If your hardware requires an inverted open/closed state (rare), check the Inverted Polarity box. If your adapter requires both outputs to be asserted to supply enough voltage (rare: a harware specific comport cable), check Parasitic Power.
+
+[green::b]KeyEcho Quick Test[::-]
+1. Ctrl-T Timing screen: set a Character Speed, and Tone. Then SAVE
+2. Ctrl-K KeyEcho screen: set sidetone, set alert, set KeyLineMode for the wiring/pins you soldered on your
+DB9. Set Polarity to standard, uncheck Parasitic Power. SAVE
+3. Ctrl-O Options: Check KeyEcho. SAVE
+4. On Text Input (main screen), type a few words. 
+5. Of course insert your comport, with the key device connected.
+6. Ctrl-P to start Play. YAMA should sound and display an input word(s); when it stops the lower left side of
+the screen should have a green "key now" and you should have heard a brief alert tone. Attempt to key back to YAMA.
+
+If you heard some CW before you got a TIMED OUT message, you have verified minium setup.
+If you heard a long DAH, not in sync with you sending, then the Polarity option on the KeyEcho
+screen needs to be changed. If the status line says NO INPUT, you didn't key anything or connectivity issue.
+Default COM PORT is 3, your PC may have other see the drop down choices.
 
 You can see the app is not for complete beginners, nor does it attempt to complete with many excellent training apps such as: Precision CW Tutor & Fistcheck, 
 G4FON, LCWO.net, LICW.org, etc., but rather to bundle a number of practice features in a single app.

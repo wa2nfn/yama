@@ -20,12 +20,17 @@ var Contractions = map[string]string{
 
 // UserSettings holds all user-adjustable features
 type UserSettings struct {
-	EchoWordSpaceDitCnt int    `json:"echoWordSpaceDitCnt"`
+	LastWordSpaceDitCnt int    `json:"last_word_space_dit_cnt"`
 	KeyerPortSpeed      int    `json:"keyer_port_speed"`
 	KeyerPort           string `json:"keyer_port"`
-	LifetimePlaySeconds int    `json:"Lifetime_play_seconds"`
-	ResponseMS          int    `json:"response_MS"`
-	GroupSendMS         int    `json:"group_send_MS"`
+	KeyLineMode         string `json:"key_line_mode"`
+	KeyLineIdlePolarity bool   `json:"key_line_idle_polarity"`
+	KeyParasiticPower   bool   `json:"key_parastic_power"`
+	KeyTimePadding      int    `json:"key_time_padding"`
+
+	LifetimePlaySeconds int `json:"lifetime_play_seconds"`
+	ResponseMS          int `json:"response_MS"`
+	GroupSendMS         int `json:"group_send_MS"`
 
 	// Timing Modes
 	UseStandard   bool `json:"use_standard"`
@@ -37,6 +42,8 @@ type UserSettings struct {
 	EndSpeed       float64 `json:"end_speed"`
 	EffectiveSpeed float64 `json:"effective_speed"`
 	Tone           int     `json:"tone"`
+	AlertTone      int     `json:"alert_tone"`
+	Alert          int     `json:"alert"`
 
 	// Initial Word Recognition (IWR) Settings
 	IWREnabled bool    `json:"iwr_enabled"`
@@ -74,9 +81,13 @@ type UserSettings struct {
 	SyllableExpansion      bool   `json:"syllable_expansion"`
 	Flashcard              bool   `json:"flashcard"`
 	FlashWordCount         int    `json:"flash_word_count"`
-	FlashRandomCount       bool   `jason:"flash_random_count"`
+	FlashRandomCount       bool   `json:"flash_random_count"`
 	EchoTolerance          int    `json:"echo_tolerance"`
 	Echo                   bool   `json:"echo"`
+	EchoWordCount          int    `json:"echo_word_count"`
+	EchoRandomCount        bool   `json:"echo_random_count"`
+	SideTone               bool   `json:"sidetone"`
+	VisualFeedback         bool   `json:"visual_feedback"`
 
 	// Messaging & Flow Control
 	StartMsg     bool   `json:"start_msg"`
@@ -101,7 +112,7 @@ const (
 )
 
 // Helper to reliably get the full, OS-independent path to the JSON file
-func getConfigPath() string {
+func GetConfigPath() string {
 
 	configDir, err := os.UserConfigDir()
 	if err != nil {
@@ -115,7 +126,7 @@ func getConfigPath() string {
 
 // SaveConfig must be called whenever the UI updates settings
 func SaveConfig() error {
-	path := getConfigPath()
+	path := GetConfigPath()
 
 	// 1. THE MISSING PIECE: Force the OS to build AppData/YAMA if it's missing
 	dir := filepath.Dir(path)
@@ -136,7 +147,7 @@ func SaveConfig() error {
 }
 
 func LoadConfig() {
-	path := getConfigPath()
+	path := GetConfigPath()
 
 	data, err := os.ReadFile(path)
 
@@ -174,14 +185,24 @@ func LoadConfig() {
 		User.SyllableExpansion = false
 		User.Flashcard = false
 		User.FlashWordCount = 1
+		User.EchoWordCount = 1
 		User.EchoTolerance = 45
 		User.FlashRandomCount = false
+		User.EchoRandomCount = false
 		User.StartDelay = 0
 		User.BrownNoiseLevel = 0
 		User.PinkNoiseLevel = 0
 		User.KeyerPortSpeed = 9600
 		User.KeyerPort = "COM3"
-		User.EchoWordSpaceDitCnt = 7
+		User.KeyLineMode = "CTS:8-DTR:4"
+		User.KeyParasiticPower = false
+		User.KeyLineIdlePolarity = false
+		User.KeyTimePadding = 1
+		User.Alert = 0
+		User.AlertTone = 500
+		User.SideTone = true
+		User.LastWordSpaceDitCnt = 7
+		User.VisualFeedback = true
 
 		// 2. Save immediately. This creates the directory AND a valid JSON file.
 		SaveConfig()
@@ -202,6 +223,10 @@ func LoadConfig() {
 	}
 	if User.KeyerPort == "" {
 		User.KeyerPort = "COM3"
+		SaveConfig()
+	}
+	if User.KeyLineMode == "" {
+		User.KeyLineMode = "CTS:8-DTR:4"
 		SaveConfig()
 	}
 }

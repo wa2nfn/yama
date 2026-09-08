@@ -19,14 +19,14 @@ var OnClearFlashcardScreen func()
 var OnEchoStart func()
 var OnEchoEnd func()
 var OnStatusUpdate func(msg string)
-var ResponseMS int = 1000 // WDL MAGIC move to UI 
+var ResponseMS int = 2000
 var ShowBlueLineTolerance func()
-var OnVisibilityToggle func()
 var OnEchoCharDecoded func(char string)
 var OnWordChange func(char string, index int)
 var ActiveEchoPort serial.Port
 var SessionStats EchoStats
 var OnEchoStatsUpdated func(groupStats EchoStats, sessionStats EchoStats)
+var OnEchoRuntimeFailure func(reason string)
 
 func CloseHardwarePort() {
 	if ActiveEchoPort != nil {
@@ -165,13 +165,19 @@ func buildWordBuffer(ctx PlayContext, p TimingProfile) int {
 		}
 	}
 
-	totalDurationSec += p.WordSpace
+	// ECHO might want a shorter last space
+	if config.User.Echo {
+		totalDurationSec += (p.InterElement * float64(config.User.LastWordSpaceDitCnt))
+	} else {
+		totalDurationSec += p.WordSpace
+	}
 	return int(totalDurationSec * 1000.0)
 }
 
 func RunIWR(text string, iwrMan *IWRManager) {
 	defer CloseHardwarePort() // Safety net
-	var echoDoOnce bool
+	var idleInputState bool
+	var isFirstEchoGroup bool = true
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -180,11 +186,16 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		for k, v := range EchoMapBase {
 			EchoMap[k] = v
 		}
+
 		if config.User.UseEuropeanChars {
 			for k, v := range EchoMapEuropean {
+				//EuropeanSkipList  is a string runes
+				// if v is in the Map delete that key
+				// unless the VALUE is
 				EchoMap[k] = v
 			}
 		}
+
 		if config.User.Playprosigns {
 			for k, v := range EchoMapProsigns {
 				EchoMap[k] = v
@@ -193,6 +204,75 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		if config.User.UseExtendedPunctuation {
 			for k, v := range EchoMapExtended {
 				EchoMap[k] = v
+			}
+		}
+
+		//// PORT SETUP START
+		if config.User.KeyerPort == "" {
+			config.User.Echo = false
+			config.SaveConfig()
+			if OnStatusUpdate != nil {
+				OnStatusUpdate("[red] KeyEcho requires a connected device - KeyEcho now disabled.")
+			}
+			return
+		}
+		// 1. WAKE UP HARDWARE IMMEDIATELY BEFORE KEYING
+		if ActiveEchoPort != nil {
+			ActiveEchoPort.Close()
+		}
+
+		mode := &serial.Mode{
+			BaudRate: config.User.KeyerPortSpeed,
+			Parity:   serial.NoParity,
+			StopBits: serial.OneStopBit,
+			DataBits: 8,
+		}
+
+		var openErr error
+		ActiveEchoPort, openErr = serial.Open(config.User.KeyerPort, mode)
+
+		if openErr != nil {
+			if OnEchoRuntimeFailure != nil {
+				OnEchoRuntimeFailure("port-failure")
+			}
+			return
+		}
+
+		if openErr == nil {
+
+			// ROBUST BUFFER CLEARING
+			_ = ActiveEchoPort.ResetInputBuffer()
+			_ = ActiveEchoPort.ResetOutputBuffer()
+
+			// 1. Determine active output based on the 8-option dropdown
+			var useDTR, useRTS bool
+			switch config.User.KeyLineMode {
+			case "CTS:8-DTR:4", "DSR:6-DTR:4", "CD:1-DTR:4", "RI:9-DTR:4":
+				useDTR = true
+				useRTS = false
+			case "CTS:8-RTS:7", "DSR:6-RTS:7", "CD:1-RTS:7", "RI:9-RTS:7":
+				useDTR = false
+				useRTS = true
+			default: // Fallback safety
+				useDTR = true
+				useRTS = false
+			}
+
+			// 2. Apply Parasitic Power if checked
+			if config.User.KeyParasiticPower {
+				useDTR = true
+				useRTS = true
+			}
+
+			// 3. Set pins explicitly
+			_ = ActiveEchoPort.SetDTR(useDTR)
+			_ = ActiveEchoPort.SetRTS(useRTS)
+
+			time.Sleep(500 * time.Millisecond) // Let power stabilize
+
+		} else {
+			if OnStatusUpdate != nil {
+				OnStatusUpdate(fmt.Sprintf(" [red]Keyer Port Error: %v", openErr))
 			}
 		}
 	}
@@ -483,12 +563,19 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 	pauseCounter := 0
 
-	groupSize := config.User.FlashWordCount
-	if config.User.Flashcard && config.User.FlashRandomCount {
-		groupSize = rand.Intn(groupSize) + 1
-	}
-	if groupSize <= 0 {
-		groupSize = 1
+	groupSize := 1
+	if config.User.Flashcard {
+		if config.User.FlashRandomCount {
+			groupSize = rand.Intn(config.User.FlashWordCount) + 1
+		} else {
+			groupSize = config.User.FlashWordCount
+		}
+	} else if config.User.Echo {
+		if config.User.EchoRandomCount {
+			groupSize = rand.Intn(config.User.EchoWordCount) + 1
+		} else {
+			groupSize = config.User.EchoWordCount
+		}
 	}
 
 	var groupStats EchoStats
@@ -545,13 +632,6 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			OnWordPlayed(ctx.Word, isIWRMatch)
 		}
 
-		Flush()
-
-		if OnWordPlayed != nil {
-			isIWRMatch := iwrMan.Match(ctx.Word)
-			OnWordPlayed(ctx.Word, isIWRMatch)
-		}
-
 		pauseCounter++
 
 		if pauseCounter == 1 {
@@ -560,237 +640,211 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 		lastGroup = append(lastGroup, ctx.Word)
 
-		// FLASHCARD ECHO
-		if config.User.Flashcard && (pauseCounter >= groupSize || i == len(playlist)-1) {
+		// ECHO
+		if config.User.Echo && (pauseCounter >= groupSize || i == len(playlist)-1) {
 
-			if config.User.EchoTolerance > 0 {
-
-				// ⚡ 1. WAKE UP HARDWARE IMMEDIATELY BEFORE KEYING
-				if ActiveEchoPort != nil {
-					ActiveEchoPort.Close()
-				}
-
-				mode := &serial.Mode{
-					BaudRate: config.User.KeyerPortSpeed,
-					Parity:   serial.NoParity,
-					StopBits: serial.OneStopBit,
-					DataBits: 8,
-				}
-
-				var openErr error
-				var idleCTS bool
-				ActiveEchoPort, openErr = serial.Open(config.User.KeyerPort, mode)
-
-				if openErr == nil {
-					// ⚡ ROBUST BUFFER CLEARING
-					_ = ActiveEchoPort.ResetInputBuffer()
-					_ = ActiveEchoPort.ResetOutputBuffer()
-
-					_ = ActiveEchoPort.SetDTR(true)
-					_ = ActiveEchoPort.SetRTS(true)
-					time.Sleep(500 * time.Millisecond) // Let power stabilize
-					ms, err := ActiveEchoPort.GetModemStatusBits()
-					if err == nil {
-						idleCTS = ms.CTS
-					}
-				} else {
-					if OnStatusUpdate != nil {
-						OnStatusUpdate(fmt.Sprintf(" [red]Keyer Port Error: %v", openErr))
-					}
-				}
-
-				if OnEchoStart != nil {
-					OnEchoStart()
-					ShowBlueLineTolerance()
-				}
-
-				// ⚡ 2. RUN THE DECODER
-				var res EchoResult
-				var err error
-				if ActiveEchoPort != nil {
-					// test if blip wanted
-					if !echoDoOnce {
-						echoDoOnce = true
-
-						// Generate the blip bytes
-						blipBytes := generateDoneBlip(SampleRate, float64(p.DotDuration))
-
-						QueuePCM(SilencePCM(wordSpaceSamples).Samples, " ", -1)
-						QueuePCM(blipBytes, " ", -1)
-						Flush()
-					}
-					res, err = RunFlashEcho(
-						lastGroup,
-						messageDuration,
-						ResponseMS,
-						baseProfile,
-						ActiveEchoPort,
-						idleCTS,
-					)
-				} else {
-					err = fmt.Errorf("serial port not available")
-					res = EchoResult{Success: false, Error: "no keyer"}
-				}
-
-				// ⚡ 3. INSTANTLY CLOSE IT SO IT CAN'T ZOMBIE
-				if ActiveEchoPort != nil {
-					ActiveEchoPort.Close()
-					ActiveEchoPort = nil
-				}
-
-				if OnEchoEnd != nil {
-					OnEchoEnd()
-				}
-				messageDuration = 0
-
-				var action rune
-if err == nil && res.Success {
-					expectedRaw := strings.ToUpper(strings.Join(lastGroup, " "))
-					actualRaw := strings.ToUpper(strings.Join(res.Chars, ""))
-
-					expectedStr := strings.Join(strings.Fields(expectedRaw), " ")
-					actualStr := strings.Join(strings.Fields(actualRaw), " ")
-
-					// ⚡ MASSIVE DATA ACCUMULATOR
-					groupStats.ShortDits += res.Stats.ShortDits
-					groupStats.LongDits += res.Stats.LongDits
-					groupStats.PerfectDits += res.Stats.PerfectDits
-					groupStats.ShortDahs += res.Stats.ShortDahs
-					groupStats.LongDahs += res.Stats.LongDahs
-					groupStats.PerfectDahs += res.Stats.PerfectDahs
-					groupStats.ShortElementGaps += res.Stats.ShortElementGaps
-					groupStats.LongElementGaps += res.Stats.LongElementGaps
-					groupStats.PerfectElementGaps += res.Stats.PerfectElementGaps
-					groupStats.ShortCharGaps += res.Stats.ShortCharGaps
-					groupStats.LongCharGaps += res.Stats.LongCharGaps
-					groupStats.PerfectCharGaps += res.Stats.PerfectCharGaps
-					groupStats.ShortWordGaps += res.Stats.ShortWordGaps
-					groupStats.LongWordGaps += res.Stats.LongWordGaps
-					groupStats.PerfectWordGaps += res.Stats.PerfectWordGaps
-					groupStats.InvalidSymbols += res.Stats.InvalidSymbols
-                    
-					// ⚡ Add new timing duration sums
-					groupStats.SumDitMs += res.Stats.SumDitMs
-					groupStats.SumDahMs += res.Stats.SumDahMs
-					groupStats.SumElementGapsMs += res.Stats.SumElementGapsMs
-					groupStats.SumCharGapsMs += res.Stats.SumCharGapsMs
-					groupStats.SumWordGapsMs += res.Stats.SumWordGapsMs
-
-					SessionStats.ShortDits += res.Stats.ShortDits
-					SessionStats.LongDits += res.Stats.LongDits
-					SessionStats.PerfectDits += res.Stats.PerfectDits
-					SessionStats.ShortDahs += res.Stats.ShortDahs
-					SessionStats.LongDahs += res.Stats.LongDahs
-					SessionStats.PerfectDahs += res.Stats.PerfectDahs
-					SessionStats.ShortElementGaps += res.Stats.ShortElementGaps
-					SessionStats.LongElementGaps += res.Stats.LongElementGaps
-					SessionStats.PerfectElementGaps += res.Stats.PerfectElementGaps
-					SessionStats.ShortCharGaps += res.Stats.ShortCharGaps
-					SessionStats.LongCharGaps += res.Stats.LongCharGaps
-					SessionStats.PerfectCharGaps += res.Stats.PerfectCharGaps
-					SessionStats.ShortWordGaps += res.Stats.ShortWordGaps
-					SessionStats.LongWordGaps += res.Stats.LongWordGaps
-					SessionStats.PerfectWordGaps += res.Stats.PerfectWordGaps
-					SessionStats.InvalidSymbols += res.Stats.InvalidSymbols
-
-					// ⚡ Add new timing duration sums to Session
-					SessionStats.SumDitMs += res.Stats.SumDitMs
-					SessionStats.SumDahMs += res.Stats.SumDahMs
-					SessionStats.SumElementGapsMs += res.Stats.SumElementGapsMs
-					SessionStats.SumCharGapsMs += res.Stats.SumCharGapsMs
-					SessionStats.SumWordGapsMs += res.Stats.SumWordGapsMs
-
-					if OnEchoStatsUpdated != nil {
-						OnEchoStatsUpdated(groupStats, SessionStats)
-					}
-
-					if expectedStr != actualStr {
-						groupStats.Retries++
-						SessionStats.Retries++
-					}
-
-					if expectedStr == actualStr {
-						if OnClearFlashcardScreen != nil {
-							OnClearFlashcardScreen()
-						}
-						groupStats = EchoStats{} // Reset for the next group
-						pauseCounter = 0
-						lastGroup = lastGroup[:0]
-						continue
-					}
-
-					if OnStatusUpdate != nil {
-						OnStatusUpdate(" [red]Mismatch! [yellow]ENTER to continue, BACKSPACE to repeat.")
-					}
-
-				} else if res.Error == "no start" {
-					if OnStatusUpdate != nil {
-						OnStatusUpdate(" [red]No input detected. [yellow]ENTER to continue, BACKSPACE to repeat.")
-					}
-				} else if res.Error == "too slow" {
-					if OnStatusUpdate != nil {
-						OnStatusUpdate(" [red]Timeout! [yellow]ENTER to continue, BACKSPACE to repeat.")
-					}
-				} else if res.Error == "no keyer" {
-					if OnStatusUpdate != nil {
-						OnStatusUpdate(" [red]COM Port Locked! [yellow]ENTER/BACKSPACE to retry.")
-					}
-				} else {
-					if OnStatusUpdate != nil {
-						OnStatusUpdate(" [red]Error! [yellow]ENTER/BACKSPACE to retry.")
-					}
-
-				}
-
-				// 1. Grab the bypass flag if the hotkey set it
-				if AutoNextAction != 0 {
-					action = AutoNextAction
-					AutoNextAction = 0 // Reset it so it only fires once
-				}
-
-				// 2. ONLY enter the wait loop if we don't already have an action
-				if action != 'E' && action != 'B' {
-					waitMutex.Lock()
-					isWaitingForKey = true
-					waitMutex.Unlock()
-
-					select {
-					case <-waitActionChan:
-					default: // Drains the channel
-					}
-
-				FallbackWait:
-					for !IsStopping && !IsPaused {
-						select {
-						case action = <-waitActionChan:
-							break FallbackWait
-						case <-time.After(50 * time.Millisecond):
-							// UI Tick
-						}
-					}
-
-					waitMutex.Lock()
-					isWaitingForKey = false
-					waitMutex.Unlock()
-				}
-
-				if action == 'B' {
-					rewindLen := len(lastGroup)
-					startIndex := i - rewindLen + 1
-					if startIndex < 0 {
-						startIndex = 0
-					}
-					i = startIndex - 1
-				}
-
-				if OnClearFlashcardScreen != nil {
-					OnClearFlashcardScreen()
-				}
-
-				pauseCounter = 0
-				lastGroup = lastGroup[:0]
-				continue
+			if OnEchoStart != nil {
+				OnEchoStart()
+				ShowBlueLineTolerance()
 			}
+
+			// 2. RUN THE DECODER
+			var res EchoResult
+			var err error
+
+			idleInputState = config.User.KeyLineIdlePolarity
+
+			if ActiveEchoPort != nil {
+				// 1. GUARANTEE standard word spacing before listening, for ALL groups
+				QueuePCM(SilencePCM(wordSpaceSamples).Samples, " ", -1)
+
+				// 2. Conditionally queue the alert sound based on UI: First(0), None(1), All(2)
+				switch config.User.Alert {
+				case 0: // First Group Only
+					if isFirstEchoGroup {
+						alertBytes := generateDoneAlert(SampleRate, float64(p.DotDuration))
+						QueuePCM(alertBytes, " ", -1)
+						isFirstEchoGroup = false
+					}
+
+				case 1: // None
+					// Do nothing extra
+
+				case 2: // All Groups
+					alertBytes := generateDoneAlert(SampleRate, float64(p.DotDuration))
+					QueuePCM(alertBytes, " ", -1)
+				}
+
+				// 3. FLUSH universally so the padding (and any alert) actually plays before RunEcho starts!
+				Flush()
+
+				res, err = RunEcho(
+					lastGroup,
+					messageDuration,
+					ResponseMS,
+					baseProfile,
+					ActiveEchoPort,
+					idleInputState,
+				)
+
+			} else {
+				err = fmt.Errorf("serial port not available")
+				res = EchoResult{Success: false, Error: "no keyer"}
+			}
+
+			if OnEchoEnd != nil {
+				OnEchoEnd()
+			}
+			messageDuration = 0
+
+			var action rune
+			if err == nil && res.Success {
+				expectedRaw := strings.ToUpper(strings.Join(lastGroup, " "))
+				actualRaw := strings.ToUpper(strings.Join(res.Chars, ""))
+
+				expectedStr := strings.Join(strings.Fields(expectedRaw), " ")
+				actualStr := strings.Join(strings.Fields(actualRaw), " ")
+
+				// MASSIVE DATA ACCUMULATOR
+				groupStats.ShortDits += res.Stats.ShortDits
+				groupStats.LongDits += res.Stats.LongDits
+				groupStats.PerfectDits += res.Stats.PerfectDits
+				groupStats.ShortDahs += res.Stats.ShortDahs
+				groupStats.LongDahs += res.Stats.LongDahs
+				groupStats.PerfectDahs += res.Stats.PerfectDahs
+				groupStats.ShortElementGaps += res.Stats.ShortElementGaps
+				groupStats.LongElementGaps += res.Stats.LongElementGaps
+				groupStats.PerfectElementGaps += res.Stats.PerfectElementGaps
+				groupStats.ShortCharGaps += res.Stats.ShortCharGaps
+				groupStats.LongCharGaps += res.Stats.LongCharGaps
+				groupStats.PerfectCharGaps += res.Stats.PerfectCharGaps
+				groupStats.ShortWordGaps += res.Stats.ShortWordGaps
+				groupStats.LongWordGaps += res.Stats.LongWordGaps
+				groupStats.PerfectWordGaps += res.Stats.PerfectWordGaps
+				groupStats.InvalidSymbols += res.Stats.InvalidSymbols
+
+				groupStats.SumDitMs += res.Stats.SumDitMs
+				groupStats.SumDahMs += res.Stats.SumDahMs
+				groupStats.SumElementGapsMs += res.Stats.SumElementGapsMs
+				groupStats.SumCharGapsMs += res.Stats.SumCharGapsMs
+				groupStats.SumWordGapsMs += res.Stats.SumWordGapsMs
+
+				SessionStats.ShortDits += res.Stats.ShortDits
+				SessionStats.LongDits += res.Stats.LongDits
+				SessionStats.PerfectDits += res.Stats.PerfectDits
+				SessionStats.ShortDahs += res.Stats.ShortDahs
+				SessionStats.LongDahs += res.Stats.LongDahs
+				SessionStats.PerfectDahs += res.Stats.PerfectDahs
+				SessionStats.ShortElementGaps += res.Stats.ShortElementGaps
+				SessionStats.LongElementGaps += res.Stats.LongElementGaps
+				SessionStats.PerfectElementGaps += res.Stats.PerfectElementGaps
+				SessionStats.ShortCharGaps += res.Stats.ShortCharGaps
+				SessionStats.LongCharGaps += res.Stats.LongCharGaps
+				SessionStats.PerfectCharGaps += res.Stats.PerfectCharGaps
+				SessionStats.ShortWordGaps += res.Stats.ShortWordGaps
+				SessionStats.LongWordGaps += res.Stats.LongWordGaps
+				SessionStats.PerfectWordGaps += res.Stats.PerfectWordGaps
+				SessionStats.InvalidSymbols += res.Stats.InvalidSymbols
+
+				SessionStats.SumDitMs += res.Stats.SumDitMs
+				SessionStats.SumDahMs += res.Stats.SumDahMs
+				SessionStats.SumElementGapsMs += res.Stats.SumElementGapsMs
+				SessionStats.SumCharGapsMs += res.Stats.SumCharGapsMs
+				SessionStats.SumWordGapsMs += res.Stats.SumWordGapsMs
+
+				if OnEchoStatsUpdated != nil {
+					OnEchoStatsUpdated(groupStats, SessionStats)
+				}
+
+				if expectedStr != actualStr {
+					groupStats.Retries++
+					SessionStats.Retries++
+				}
+
+				if expectedStr == actualStr {
+					if OnClearFlashcardScreen != nil {
+						OnClearFlashcardScreen()
+					}
+					groupStats = EchoStats{} // Reset for the next group
+					pauseCounter = 0
+					lastGroup = lastGroup[:0]
+					continue
+				}
+
+				if OnStatusUpdate != nil {
+					OnStatusUpdate(" [red]MISMATCH!       [yellow]ENTER to continue, BACKSPACE to repeat.")
+				}
+
+			} else if res.Error == "no start" {
+				if OnStatusUpdate != nil {
+					OnStatusUpdate(" [red]NO INPUT DETECTED.       [yellow]ENTER to continue, BACKSPACE to repeat.")
+				}
+			} else if res.Error == "too slow" {
+				if OnStatusUpdate != nil {
+					OnStatusUpdate(" [red]TIMED OUT!        [yellow]ENTER to continue, BACKSPACE to repeat.")
+				}
+			} else if res.Error == "no keyer" {
+				if OnStatusUpdate != nil {
+					OnStatusUpdate(" [red]NO COM PORT CABLE DETECTED!       [yellow]ENTER/BACKSPACE to repeat.")
+				}
+			} else {
+				if OnStatusUpdate != nil {
+					OnStatusUpdate(" [red]ERROR!       [yellow]ENTER to continue, BACKSPACE to repeat.")
+				}
+			}
+
+			// 1. Grab the bypass flag if the hotkey set it
+			if AutoNextAction != 0 {
+				action = AutoNextAction
+				AutoNextAction = 0 // Reset it so it only fires once
+			}
+
+			// 2. ONLY enter the wait loop if we don't already have an action
+			if action != 'E' && action != 'B' {
+				waitMutex.Lock()
+				isWaitingForKey = true
+				waitMutex.Unlock()
+
+				select {
+				case <-waitActionChan:
+				default: // Drains the channel
+				}
+
+			FallbackWait:
+				for !IsStopping && !IsPaused {
+					select {
+					case action = <-waitActionChan:
+						break FallbackWait
+					case <-time.After(50 * time.Millisecond):
+						// UI Tick
+					}
+				}
+
+				waitMutex.Lock()
+				isWaitingForKey = false
+				waitMutex.Unlock()
+			}
+
+			if action == 'B' {
+				rewindLen := len(lastGroup)
+				startIndex := i - rewindLen + 1
+				if startIndex < 0 {
+					startIndex = 0
+				}
+				i = startIndex - 1
+			}
+
+			if OnClearFlashcardScreen != nil {
+				OnClearFlashcardScreen()
+			}
+
+			pauseCounter = 0
+			lastGroup = lastGroup[:0]
+			continue
+		}
+
+		// FLASHCARD
+		if config.User.Flashcard && (pauseCounter >= groupSize || i == len(playlist)-1) {
 
 			if OnGroupCompleted != nil {
 				OnGroupCompleted(lastGroup)
