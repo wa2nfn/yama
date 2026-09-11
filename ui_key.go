@@ -73,6 +73,10 @@ func showKeyEchoOptions() {
 		SetFieldWidth(6).
 		SetAcceptanceFunc(acceptDigits)
 
+	// --- ErrorTone ---
+	errorCb := tview.NewCheckbox().
+		SetLabel("   Error Tone")
+
 	// --- Last Word Space Dit Cnt ---
 	lwDrop := tview.NewDropDown().
 		SetLabel("Last Word Space Dit Count").
@@ -81,7 +85,8 @@ func showKeyEchoOptions() {
 	// --- Key Time Padding ---
 	paddingDrop := tview.NewDropDown().
 		SetLabel("Key Time Padding").
-		SetOptions([]string{"Strict", "Standard", "Relaxed", "Forgiving"}, nil)
+		SetOptions([]string{"Strict", "Standard", "Relaxed", "Forgiving"}, nil).
+		SetCurrentOption(1)
 
 	// --- SideTone ---
 	sideCb := tview.NewCheckbox().
@@ -149,6 +154,9 @@ func showKeyEchoOptions() {
 		}
 		alertFreqInput.SetText(fmt.Sprintf("%d", at))
 
+		// ErrorTone
+		errorCb.SetChecked(config.User.ErrorTone)
+
 		// Last Word Space Dit Count
 		lw := config.User.LastWordSpaceDitCnt
 		if lw < 5 || lw > 7 {
@@ -160,8 +168,7 @@ func showKeyEchoOptions() {
 		// Key Time Padding
 		padding := config.User.KeyTimePadding
 		if padding < 0 || padding > 3 {
-			padding = 1 // Default to "Standard"
-			config.User.KeyTimePadding = padding
+			padding = 1
 		}
 		paddingDrop.SetCurrentOption(padding)
 
@@ -210,6 +217,7 @@ func showKeyEchoOptions() {
 	form.AddFormItem(echoRandomCountCb)
 	form.AddFormItem(alertDrop)
 	form.AddFormItem(alertFreqInput)
+	form.AddFormItem(errorCb)
 	form.AddFormItem(lwDrop)
 	form.AddFormItem(paddingDrop)
 	form.AddFormItem(sideCb)
@@ -252,6 +260,7 @@ func showKeyEchoOptions() {
 		config.User.KeyTimePadding = paddingIdx
 
 		config.User.SideTone = sideCb.IsChecked()
+		config.User.ErrorTone = errorCb.IsChecked()
 		config.User.VisualFeedback = visualCb.IsChecked()
 
 		lmIdx, _ := lineModeDrop.GetCurrentOption()
@@ -320,6 +329,6 @@ func showKeyEchoOptions() {
 	})
 
 	// Increased modal height to 32 to accommodate the new inputs without clipping
-	pages.AddPage("keyEcho", createModal(container, 42, 32), true, true)
+	pages.AddPage("keyEcho", createModal(container, 42, 34), true, true)
 	app.SetFocus(container)
 }

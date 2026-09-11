@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -47,6 +46,7 @@ var (
 	statsIWRList  []string
 	statsIWRMap   = make(map[string]int)
 	isBlocked     bool
+	isEchoMode    bool
 	finalPlayTime time.Duration
 
 	colorTagRegex = regexp.MustCompile(`\[.*?\]`)
@@ -100,10 +100,11 @@ func main() {
 			os.Remove(path)
 			config.LoadConfig()
 		} else {
-			fmt.Printf("Failed to remove options file to get Default Options <%s>: %v\n", path, err)
+			log.Printf("Failed to remove options file to get Default Options <%s>: %v\n", path, err)
 		}
 	}
 
+	isEchoMode = config.User.Echo
 	morse.RebuildMorseTable(config.User.UseExtendedPunctuation, config.User.UseEuropeanChars, config.User.UseSkip, config.User.SkipList, config.User.EuropeanSkipList)
 
 	// ======================
@@ -118,8 +119,10 @@ func main() {
 	app = tview.NewApplication()
 	defer func() {
 		if r := recover(); r != nil {
-			app.Stop()
-			fmt.Printf("YAMA Crashed: %v\n", r)
+			if app != nil {
+				app.Stop()
+			}
+			log.Fatalf("YAMA Crashed: %v\n", r)
 		}
 	}()
 
@@ -458,26 +461,30 @@ func main() {
 			}
 			return nil
 		case tcell.KeyCtrlA:
+			if isEchoMode {
+				config.User.EchoAutoRetry = !config.User.EchoAutoRetry
+				updateBlueLine()
+				return nil
+			}
 			showImpairments()
 			return nil
 		case tcell.KeyCtrlD:
-			isEchoMode := config.User.Echo
 
 			if isEchoMode {
-				if currentState == StateIdle || currentState == StateStopped || currentState == StatePlaying {
-					if currentEchoView != nil {
-						// ECHO TOGGLE: It's already open, so destroy it!
-						mainFlex.RemoveItem(currentEchoView)
-						currentEchoView = nil
-						app.SetFocus(inputArea)
-						return nil
-					}
-
-					// It's closed, so open it!
-					currentEchoView = showStatsEcho()
-					mainFlex.AddItem(currentEchoView, 16, 1, true)
-					app.SetFocus(currentEchoView)
+				//if currentState == StateIdle || currentState == StateStopped || currentState == StatePlaying {
+				if currentEchoView != nil {
+					// ECHO TOGGLE: It's already open, so destroy it!
+					mainFlex.RemoveItem(currentEchoView)
+					currentEchoView = nil
+					app.SetFocus(inputArea)
+					return nil
 				}
+
+				// It's closed, so open it!
+				currentEchoView = showStatsEcho()
+				mainFlex.AddItem(currentEchoView, 16, 1, true)
+				app.SetFocus(currentEchoView)
+				//}
 			} else {
 				if config.StatsTotalWords > 0 {
 					if currentState == StateIdle || currentState == StateStopped {
@@ -514,7 +521,9 @@ func main() {
 			}
 			return nil
 		case tcell.KeyCtrlQ:
-			app.Stop()
+			if app != nil {
+				app.Stop()
+			}
 			return nil
 		}
 
@@ -566,7 +575,10 @@ func main() {
 	app.SetFocus(inputArea)
 
 	if err := app.Run(); err != nil {
-		log.Printf("Fatal UI Error: %v", err)
+		if app != nil {
+			app.Stop()
+		}
+		log.Fatalf("Fatal UI Error: %v", err)
 	}
 
 	logFile.Close()
@@ -576,23 +588,11 @@ func main() {
 }
 
 func EmergencyQuit(errorMessage string) {
-	log.Println("FATAL ERROR:", errorMessage)
-
-	logPath := morse.ResolvePath("yama.log")
-	if info, err := os.Stat(logPath); err == nil && info.Size() == 0 {
-		os.Remove(logPath)
-	}
-
 	if app != nil {
-		app.Suspend(func() {
-			fmt.Printf("\n[YAMA WATCHDOG] FATAL ERROR: %s\n", errorMessage)
-			fmt.Println("The application had to be forcefully terminated to prevent a deadlock.")
-			os.Exit(1)
-		})
-	} else {
-		fmt.Printf("\n[YAMA WATCHDOG] FATAL ERROR: %s\n", errorMessage)
-		os.Exit(1)
+		app.Stop()
 	}
+
+	log.Fatalf("\n[YAMA WATCHDOG] FATAL ERROR: %s\n", errorMessage)
 }
 
 func getModifierWarning() string {

@@ -54,10 +54,19 @@ func handlePlayPause(iwrMan *morse.IWRManager) {
 	// 2. SAFETY LOCK
 	if morse.AudioHardwareDead {
 		statusLine.SetText(" [#FFFF55::b]FATAL: Audio hardware lost. Restart app.[::-]")
+		app.Stop()
+		log.Fatalf("FATAL: Audio hardware lost. Restart app.")
 		return
 	}
 
 	if currentState == StateIdle || currentState == StateStopped {
+		currentText := strings.TrimSpace(inputArea.GetText())
+
+		if len(currentText) == 0 {
+			statusLine.SetText(" [yellow]Nothing to play. Please enter some text...[-]")
+			return
+		}
+
 		// Activate the shield if we have a delay.
 		if config.User.StartDelay > 0 {
 			isCountingDown = true
@@ -97,7 +106,8 @@ func clearStats() {
 func runEngine(parsedText string, iwrMan *morse.IWRManager) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("Panic Error: %v", r)
+			app.Stop()
+			log.Fatalf("Panic Error: %v", r)
 			app.QueueUpdateDraw(func() {
 				isBlocked = false
 				currentState = StateStopped
@@ -254,25 +264,36 @@ func updateBlueLine() {
 	if config.User.IWREnabled {
 		iwrStatus = "ON"
 	}
+	retryStatus := "OFF"
+	if config.User.EchoAutoRetry {
+		retryStatus = "ON"
+	}
 
 	var info string
-	if config.User.CharacterSpeed <= config.User.EffectiveSpeed {
-		info = fmt.Sprintf(" [black]Char Speed: %g wpm | IWR: %s (%g wpm) ", config.User.CharacterSpeed, iwrStatus, config.User.IWRSpeed)
+	if config.User.UseStandard || config.User.CharacterSpeed <= config.User.EffectiveSpeed {
+		info = fmt.Sprintf(" [black]Char Speed: %g wpm ", config.User.CharacterSpeed)
 	} else {
 		mode := "Farnsworth"
 		if config.User.UseWordsworth {
 			mode = "Wordsworth"
 		}
-		info = fmt.Sprintf(" [black]Mode: %s | Char Speed: %g wpm | Effective Speed: %g wpm | IWR: %s (%g wpm) ", mode, config.User.CharacterSpeed, config.User.EffectiveSpeed, iwrStatus, config.User.IWRSpeed)
+		//info = fmt.Sprintf(" [black]Mode: %s | Char Speed: %g wpm | Effective Speed: %g wpm | IWR: %s (%g wpm) ", mode, config.User.CharacterSpeed, config.User.EffectiveSpeed, iwrStatus, config.User.IWRSpeed)
+		info = fmt.Sprintf(" [black]Mode: %s | Char Speed: %g wpm | Effective Speed: %g wpm ", mode, config.User.CharacterSpeed, config.User.EffectiveSpeed)
+	}
+
+	// adjust for IWR
+	if config.User.IWREnabled && !config.User.Echo {
+		info += fmt.Sprintf("| IWR: %s (%g wpm) ", iwrStatus, config.User.IWRSpeed)
+	}
+
+	// adjust for auto retry
+	if config.User.Echo {
+		paddingName := []string{"Strict", "Standard", "Relaxed", "Forgiving"}
+		info += fmt.Sprintf("| Auto Retry: %s | Tolerance: %d %% | Key Time Padding: %s ", retryStatus, config.User.EchoTolerance, paddingName[config.User.KeyTimePadding])
 	}
 
 	wordCount := len(strings.Fields(actualText))
 	info += fmt.Sprintf("| Word Cnt: %d ", wordCount)
-
-	if echoActive {
-		tol := fmt.Sprintf(" Tolerance %d %% ", config.User.EchoTolerance)
-		info = info + tol
-	}
 
 	blueLine.SetText(info + getModifierWarning())
 }
@@ -312,15 +333,15 @@ func refreshUI(state AppState) {
 		statusLine.SetText(" [#FFFF55]Playing")
 
 		if config.User.Echo {
-			menu = "[#FFFF55]P[white]ause  [#FFFF55]S[white]top [#FFFF55]A[white]udio  [#FFFF55]D[white]ataStats"
+			menu = "[#FFFF55]P[white]ause  [#FFFF55]S[white]top  [#FFFF55]D[white]ataStats"
 		} else {
-			menu = "[#FFFF55]P[white]ause  [#FFFF55]S[white]top [#FFFF55]A[white]udio"
+			menu = "[#FFFF55]P[white]ause  [#FFFF55]S[white]top  [#FFFF55]A[white]udio"
 		}
 	case StatePaused:
 		statusLine.SetText(" [#FFFF55]Paused")
 
 		if config.User.Echo {
-			menu = "[#FFFF55]R[white]esume  [#FFFF55]S[white]top  [#FFFF55]T[white]iming  [#FFFF55]A[white]udio  [#FFFF55]D[white]ataStats  [#FFFF55]Q[white]uit "
+			menu = "[#FFFF55]R[white]esume  [#FFFF55]S[white]top  [#FFFF55]T[white]iming  [#FFFF55]D[white]ataStats  [#FFFF55]Q[white]uit "
 		} else {
 			menu = "[#FFFF55]R[white]esume  [#FFFF55]S[white]top  [#FFFF55]T[white]iming  [#FFFF55]A[white]udio  [#FFFF55]Q[white]uit "
 		}
@@ -498,6 +519,7 @@ Echo Word Count (1-20)  | Number of words played (default 1), and to key/echo ba
 Random Word Count       | Allows count from 1 to Echo Word Count.
 Key Now Alert Tone      | Plays a short audible prompt (~.5 dit) for you to begin keying.
 Alert Tone Frequency    | Allows the alert tone to differ from audible code.
+Error Tone              | Play Alert Tone Freq for about 0.5 Dah on keying error.
 Last Word Space Dit Cnt | All words are followed by a space. This allows the LAST word in a group
                         | to have 4-7 dit length wordspace for more rythmic keying. (default 7)
 Key Time Padding %      | Once you start to key, you have the same amount of time that YAMA took
@@ -583,7 +605,7 @@ DB9. Set Polarity to standard, uncheck Parasitic Power. SAVE
 6. Ctrl-P to start Play. YAMA should sound and display an input word(s); when it stops the lower left side of
 the screen should have a green "key now" and you should have heard a brief alert tone. Attempt to key back to YAMA.
 
-If you heard some CW before you got a TIMED OUT message, you have verified minium setup.
+If you heard some CW before you got a TIMED OUT message, you have verified minimum setup.
 If you heard a long DAH, not in sync with you sending, then the Polarity option on the KeyEcho
 screen needs to be changed. If the status line says NO INPUT, you didn't key anything or connectivity issue.
 Default COM PORT is 3, your PC may have other see the drop down choices.
@@ -1845,6 +1867,8 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 	// 1. SAFETY LOCK: Prevent playback if the audio engine is dead
 	if morse.AudioHardwareDead {
 		statusLine.SetText(" [#FFFF55::b]FATAL: Audio hardware lost. Restart app.[::-]")
+		app.Stop()
+		log.Fatalf("FATAL: Audio hardware lost. Restart app.")
 		return
 	}
 
@@ -1911,7 +1935,7 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 					playPauseMu.Unlock()
 
 					app.Stop()
-					fmt.Printf("\n[FATAL] YAMA Crashed in delayed engine start: %v\n", r)
+					log.Fatalf("\nFATAL YAMA Crashed in delayed engine start: %v\n", r)
 				}
 			}()
 
@@ -2034,8 +2058,8 @@ func buildEchoStatsText(grp morse.EchoStats, ses morse.EchoStats, tp morse.Timin
 	}
 
 	// 2. Calculate Targets in ms
-	tgtDit := int(math.Round(tp.DotDuration * 1000))
-	tgtDah := int(math.Round(tp.DashDuration * 1000))
+	tgtDit := int(math.Round(tp.DitDuration * 1000))
+	tgtDah := int(math.Round(tp.DahDuration * 1000))
 	tgtEle := int(math.Round(tp.InterElement * 1000))
 	tgtChr := int(math.Round(tp.CharSpace * 1000))
 	tgtWrd := int(math.Round(tp.WordSpace * 1000))
