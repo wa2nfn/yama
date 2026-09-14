@@ -46,7 +46,6 @@ var (
 	statsIWRList  []string
 	statsIWRMap   = make(map[string]int)
 	isBlocked     bool
-	isEchoMode    bool
 	finalPlayTime time.Duration
 
 	colorTagRegex = regexp.MustCompile(`\[.*?\]`)
@@ -104,7 +103,6 @@ func main() {
 		}
 	}
 
-	isEchoMode = config.User.Echo
 	morse.RebuildMorseTable(config.User.UseExtendedPunctuation, config.User.UseEuropeanChars, config.User.UseSkip, config.User.SkipList, config.User.EuropeanSkipList)
 
 	// ======================
@@ -461,7 +459,7 @@ func main() {
 			}
 			return nil
 		case tcell.KeyCtrlA:
-			if isEchoMode {
+			if config.User.Echo  {
 				config.User.EchoAutoRetry = !config.User.EchoAutoRetry
 				updateBlueLine()
 				return nil
@@ -469,9 +467,7 @@ func main() {
 			showImpairments()
 			return nil
 		case tcell.KeyCtrlD:
-
-			if isEchoMode {
-				//if currentState == StateIdle || currentState == StateStopped || currentState == StatePlaying {
+			if config.User.Echo {
 				if currentEchoView != nil {
 					// ECHO TOGGLE: It's already open, so destroy it!
 					mainFlex.RemoveItem(currentEchoView)
@@ -482,9 +478,8 @@ func main() {
 
 				// It's closed, so open it!
 				currentEchoView = showStatsEcho()
-				mainFlex.AddItem(currentEchoView, 16, 1, true)
+				mainFlex.AddItem(currentEchoView, 18, 1, true)
 				app.SetFocus(currentEchoView)
-				//}
 			} else {
 				if config.StatsTotalWords > 0 {
 					if currentState == StateIdle || currentState == StateStopped {

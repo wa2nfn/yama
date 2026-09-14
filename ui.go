@@ -289,7 +289,7 @@ func updateBlueLine() {
 	// adjust for auto retry
 	if config.User.Echo {
 		paddingName := []string{"Strict", "Standard", "Relaxed", "Forgiving"}
-		info += fmt.Sprintf("| Auto Retry: %s | Tolerance: %d %% | Key Time Padding: %s ", retryStatus, config.User.EchoTolerance, paddingName[config.User.KeyTimePadding])
+		info += fmt.Sprintf("| Auto Retry: %s | Tolerance: %d%% | Key Time Padding: %s ", retryStatus, config.User.EchoTolerance, paddingName[config.User.KeyTimePadding])
 	}
 
 	wordCount := len(strings.Fields(actualText))
@@ -2017,7 +2017,7 @@ func showStatsEcho() *tview.Flex {
 	container := tview.NewFlex().SetDirection(tview.FlexRow)
 
 	// Borders and titles are back!
-	var title = fmt.Sprintf(" DataStats - Keying Tolerance %2d%% ", config.User.EchoTolerance)
+	var title = " DataStats "
 	container.SetBorder(true).
 		SetTitle(title).
 		SetTitleColor(tcell.ColorYellow)
@@ -2090,8 +2090,10 @@ func buildEchoStatsText(grp morse.EchoStats, ses morse.EchoStats, tp morse.Timin
 		grp.ShortWordGaps, grp.PerfectWordGaps, grp.LongWordGaps, ses.ShortWordGaps, ses.PerfectWordGaps, ses.LongWordGaps, tgtWrd, avgWrd))
 
 	sb.WriteString("  [cyan]Accuracy[-]\n")
-	sb.WriteString(fmt.Sprintf("  Invalid (*):         [red]%3d[-]                                     [red]%3d[-]\n", grp.InvalidSymbols, ses.InvalidSymbols))
-	sb.WriteString(fmt.Sprintf("  Group Retries:       [yellow]%3d[-]                                     [yellow]%3d[-]\n", grp.Retries, ses.Retries))
+	sb.WriteString(fmt.Sprintf("  Invalid (*):   [red]%3d[-]                                  [red]%3d[-]\n", grp.InvalidSymbols, ses.InvalidSymbols))
+	sb.WriteString(fmt.Sprintf("  Group Retries: [yellow]%3d[-]                                  [yellow]%3d[-]\n", grp.Retries, ses.Retries))
+	sb.WriteString(fmt.Sprintf("  Chars:         [yellow]%3d[-]                                  [yellow]%3d[-]\n", grp.TotalChars, ses.TotalChars))
+	sb.WriteString(fmt.Sprintf("  Words:         [yellow]%3d[-]                                  [yellow]%3d[-]\n", grp.TotalWords, ses.TotalWords))
 
 	return sb.String()
 }
