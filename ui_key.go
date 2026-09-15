@@ -77,15 +77,10 @@ func showKeyEchoOptions() {
 	errorCb := tview.NewCheckbox().
 		SetLabel("   Error Tone")
 
-	// --- Last Word Space Dit Cnt ---
-	lwDrop := tview.NewDropDown().
-		SetLabel("Last Word Space Dit Count").
-		SetOptions([]string{"5", "6", "7"}, nil)
-
 	// --- Key Time Padding ---
 	paddingDrop := tview.NewDropDown().
 		SetLabel("Key Time Padding").
-		SetOptions([]string{"Strict", "Standard", "Relaxed", "Forgiving"}, nil).
+		SetOptions([]string{"Strict", "Normal", "Relaxed", "Forgiving"}, nil).
 		SetCurrentOption(1)
 
 	// --- SideTone ---
@@ -157,14 +152,6 @@ func showKeyEchoOptions() {
 		// ErrorTone
 		errorCb.SetChecked(config.User.ErrorTone)
 
-		// Last Word Space Dit Count
-		lw := config.User.LastWordSpaceDitCnt
-		if lw < 5 || lw > 7 {
-			lw = 7
-			config.User.LastWordSpaceDitCnt = lw
-		}
-		lwDrop.SetCurrentOption(lw - 5)
-
 		// Key Time Padding
 		padding := config.User.KeyTimePadding
 		if padding < 0 || padding > 3 {
@@ -218,7 +205,6 @@ func showKeyEchoOptions() {
 	form.AddFormItem(alertDrop)
 	form.AddFormItem(alertFreqInput)
 	form.AddFormItem(errorCb)
-	form.AddFormItem(lwDrop)
 	form.AddFormItem(paddingDrop)
 	form.AddFormItem(sideCb)
 	form.AddFormItem(visualCb)
@@ -252,9 +238,6 @@ func showKeyEchoOptions() {
 
 		alertIdx, _ := alertDrop.GetCurrentOption()
 		config.User.Alert = alertIdx
-
-		lwIdx, _ := lwDrop.GetCurrentOption()
-		config.User.LastWordSpaceDitCnt = lwIdx + 5
 
 		paddingIdx, _ := paddingDrop.GetCurrentOption()
 		config.User.KeyTimePadding = paddingIdx

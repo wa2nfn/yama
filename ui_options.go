@@ -154,16 +154,6 @@ func showOptions() {
 		}
 		flashWordCountDrop.SetCurrentOption(fIdx)
 
-		/*eIdx := 0
-		for i, opt := range echoList {
-			if opt == fmt.Sprintf("%d", config.User.EchoTolerance) {
-				eIdx = i
-				break
-			}
-		}
-		echoDrop.SetCurrentOption(eIdx)
-		*/
-
 		euroSkipList = config.User.EuropeanSkipList
 	}
 

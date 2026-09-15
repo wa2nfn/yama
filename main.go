@@ -459,7 +459,7 @@ func main() {
 			}
 			return nil
 		case tcell.KeyCtrlA:
-			if config.User.Echo  {
+			if config.User.Echo {
 				config.User.EchoAutoRetry = !config.User.EchoAutoRetry
 				updateBlueLine()
 				return nil
@@ -505,6 +505,10 @@ func main() {
 				refreshUI(currentState)
 				currentInputFile = ""
 			}
+			return nil
+		case tcell.KeyCtrlM:
+			config.User.Mute = !config.User.Mute
+			updateBlueLine()
 			return nil
 		case tcell.KeyCtrlW:
 			if currentState != StatePlaying && len(inputArea.GetText()) > 0 {
@@ -591,6 +595,10 @@ func EmergencyQuit(errorMessage string) {
 }
 
 func getModifierWarning() string {
+	if config.User.Echo {
+		return "" // no need, need space for other echo statis
+	}
+
 	isModified := config.User.RandomizeWords ||
 		config.User.WordOrder ||
 		config.User.UseSkip ||
