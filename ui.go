@@ -518,9 +518,9 @@ End Msg Text          | The specific text to play at the end (e.g., <AR>).
 (Options -> Skip List).
 [yellow]Important Apostrophe Rule:[-] If you add the apostrophe [yellow](')[-] to your skip list, YAMA will automatically expand 17 common English contractions before removing the remaining apostrophes (e.g., "DON'T" safely becomes "DO NOT").
 
-Note that the bottom of the screen has a [yellow]yellow[-] status line and below that a [blue]blue[-] reminder line about your current values from the Timing screen. It may also the phrase [yellow]Input Modified[-], this indicates that a least one option on the Options screen will modify the input in the text screen before it becomes audible CW, so you are not surprised when the first string is sounded that it maybe different than what was just displayed. The blue line shows different information when un KeyEcho mode, the two toggle options Ctrl-M mute, and Ctrl-A auto retry, are only shown here.
+Note that the bottom of the screen has a [yellow]yellow[-] status line and below that a [blue]blue[-] reminder line about your current vales from the Timing screen. It may also the phrase [yellow]Input Modified[-], this indicates that a least one option on the Options screen will modify the input in the text screen before it becomes audible CW, so you are not surprised when the first string is sounded that it maybe different than what was just displayed.
 
-Below is an overview of KeyEcho options, a narrative will follow to pull the ideas into a cohesive description. KeyEcho must use Standard or Wordsworth timing. Wordsworth here is NON-typical - Yama played code will sound like Standard timing (always) the Wordsworth here just gives you leeway in keying the word space timing.
+Below is an overview of KeyEcho options, a narrative will follow to pull the ideas into a cohesive description.
 
 [green::b]KeyEcho Screen (Ctrl-K) - Settings[::-]
 [white]Setting                 | Description

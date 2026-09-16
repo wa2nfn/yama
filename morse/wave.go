@@ -91,9 +91,9 @@ func RenderWAVToFile(playlist []PlayContext, outputPath string, sampleRate int) 
 			}
 
 			for k, symbol := range pattern {
-				dur := p.DotDuration
+				dur := p.DitDuration
 				if symbol == '-' {
-					dur = p.DashDuration
+					dur = p.DahDuration
 				}
 
 				// 1. USE 16-BIT TONE

@@ -108,9 +108,9 @@ func buildWordBuffer(ctx PlayContext, p TimingProfile) int {
 
 		isFirstElement := true
 		for j, symbol := range pattern {
-			dur := p.DotDuration
+			dur := p.DitDuration
 			if symbol == '-' {
-				dur = p.DashDuration
+				dur = p.DahDuration
 			}
 
 			label := ""
@@ -119,16 +119,52 @@ func buildWordBuffer(ctx PlayContext, p TimingProfile) int {
 				isFirstElement = false
 			}
 
-			QueuePCM(TonePCM(float64(p.Tone), int(dur*float64(SampleRate)), 0.5).Samples, label, i)
+			if config.User.Mute { // Your new UI checkbox flag
+				// INSTANT UI UPDATE: Send 1 sample of silence just to carry the text label to the UI instantly
+				if label != "" {
+					QueuePCM(SilencePCM(1).Samples, label, i)
+				}
+			} else {
+				// NORMAL YAMA AUDIO
+				QueuePCM(TonePCM(float64(p.Tone), int(dur*float64(SampleRate)), 0.5).Samples, label, i)
 
-			if j < len(pattern)-1 {
-				QueuePCM(SilencePCM(int(p.InterElement*float64(SampleRate))).Samples, "", i)
+				if j < len(pattern)-1 {
+					QueuePCM(SilencePCM(int(p.InterElement*float64(SampleRate))).Samples, "", i)
+				}
 			}
 		}
 
 		if i < len(tokens)-1 {
-			QueuePCM(SilencePCM(int(p.CharSpace*float64(SampleRate))).Samples, "", i)
+			if !config.User.Mute {
+				QueuePCM(SilencePCM(int(p.CharSpace*float64(SampleRate))).Samples, "", i)
+			}
 		}
+
+		/*
+			isFirstElement := true
+			for j, symbol := range pattern {
+				dur := p.DitDuration
+				if symbol == '-' {
+					dur = p.DahDuration
+				}
+
+				label := ""
+				if isFirstElement {
+					label = token
+					isFirstElement = false
+				}
+
+				QueuePCM(TonePCM(float64(p.Tone), int(dur*float64(SampleRate)), 0.5).Samples, label, i)
+
+				if j < len(pattern)-1 {
+					QueuePCM(SilencePCM(int(p.InterElement*float64(SampleRate))).Samples, "", i)
+				}
+			}
+
+			if i < len(tokens)-1 {
+				QueuePCM(SilencePCM(int(p.CharSpace*float64(SampleRate))).Samples, "", i)
+			}
+		*/
 	}
 
 	totalDurationSec := 0.0
@@ -149,9 +185,9 @@ func buildWordBuffer(ctx PlayContext, p TimingProfile) int {
 		}
 
 		for j, symbol := range pattern {
-			dur := p.DotDuration
+			dur := p.DitDuration
 			if symbol == '-' {
-				dur = p.DashDuration
+				dur = p.DahDuration
 			}
 			totalDurationSec += dur
 
@@ -165,12 +201,7 @@ func buildWordBuffer(ctx PlayContext, p TimingProfile) int {
 		}
 	}
 
-	// ECHO might want a shorter last space
-	if config.User.Echo {
-		totalDurationSec += (p.InterElement * float64(config.User.LastWordSpaceDitCnt))
-	} else {
-		totalDurationSec += p.WordSpace
-	}
+	totalDurationSec += p.WordSpace
 	return int(totalDurationSec * 1000.0)
 }
 
@@ -603,16 +634,30 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			tempConf.IWRSpeed = tempConf.IWRSpeed * multiplier
 		}
 
+		// 1. Get the actual user profiles (preserves Wordsworth and IWR)
 		baseProfile := GetTiming(false, tempConf)
 		iwrProfile := GetTiming(true, tempConf)
 
 		var p TimingProfile
-		if ctx.IsIWR {
-			p = iwrProfile
+
+		if config.User.Echo {
+			// ECHO MODE: Force Standard audio, ignore IWR
+			audioConf := tempConf
+			audioConf.UseFarnsworth = false
+			audioConf.UseWordsworth = false
+			audioConf.UseStandard = true
+
+			p = GetTiming(false, audioConf)
 		} else {
-			p = baseProfile
+			// NORMAL PLAYBACK: Respect the user's settings and IWR!
+			if ctx.IsIWR {
+				p = iwrProfile
+			} else {
+				p = baseProfile
+			}
 		}
 
+		// 3. Generate the audio (Snappy for Echo, Dynamic for Normal)
 		messageDuration += buildWordBuffer(ctx, p)
 
 		nextPauseCounter := pauseCounter + 1
@@ -640,9 +685,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 		lastGroup = append(lastGroup, ctx.Word)
 
-		// ECHO
 		if config.User.Echo && (pauseCounter >= groupSize || i == len(playlist)-1) {
-
 			if OnEchoStart != nil {
 				OnEchoStart()
 				ShowBlueLineTolerance()
@@ -662,7 +705,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 				switch config.User.Alert {
 				case 0: // First Group Only
 					if isFirstEchoGroup {
-						alertBytes := generateDoneAlert(SampleRate, float64(p.DotDuration))
+						alertBytes := generateDoneAlert(SampleRate, float64(p.DitDuration))
 						QueuePCM(alertBytes, " ", -1)
 						isFirstEchoGroup = false
 					}
@@ -671,22 +714,27 @@ func RunIWR(text string, iwrMan *IWRManager) {
 					// Do nothing extra
 
 				case 2: // All Groups
-					alertBytes := generateDoneAlert(SampleRate, float64(p.DotDuration))
+					alertBytes := generateDoneAlert(SampleRate, float64(p.DitDuration))
 					QueuePCM(alertBytes, " ", -1)
 				}
 
 				// 3. FLUSH universally so the padding (and any alert) actually plays before RunEcho starts!
 				Flush()
 
+				effectiveResponseMS := ResponseMS
+				if config.User.Mute {
+					effectiveResponseMS += messageDuration
+				}
+
+				// But pass the relaxed user profile (which has Wordsworth) to the grader!
 				res, err = RunEcho(
 					lastGroup,
 					messageDuration,
-					ResponseMS,
-					baseProfile,
+					effectiveResponseMS,
+					baseProfile, // <-- Still contains Wordsworth!
 					ActiveEchoPort,
 					idleInputState,
 				)
-
 			} else {
 				err = fmt.Errorf("serial port not available")
 				res = EchoResult{Success: false, Error: "no keyer"}
@@ -704,6 +752,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 				expectedStr := strings.Join(strings.Fields(expectedRaw), " ")
 				actualStr := strings.Join(strings.Fields(actualRaw), " ")
+				actualCharCount := len(strings.ReplaceAll(actualStr, " ", ""))
 
 				// MASSIVE DATA ACCUMULATOR
 				groupStats.ShortDits += res.Stats.ShortDits
@@ -722,6 +771,9 @@ func RunIWR(text string, iwrMan *IWRManager) {
 				groupStats.LongWordGaps += res.Stats.LongWordGaps
 				groupStats.PerfectWordGaps += res.Stats.PerfectWordGaps
 				groupStats.InvalidSymbols += res.Stats.InvalidSymbols
+
+				groupStats.TotalChars += actualCharCount
+				groupStats.TotalWords += res.Stats.TotalWords
 
 				groupStats.SumDitMs += res.Stats.SumDitMs
 				groupStats.SumDahMs += res.Stats.SumDahMs
@@ -745,6 +797,9 @@ func RunIWR(text string, iwrMan *IWRManager) {
 				SessionStats.LongWordGaps += res.Stats.LongWordGaps
 				SessionStats.PerfectWordGaps += res.Stats.PerfectWordGaps
 				SessionStats.InvalidSymbols += res.Stats.InvalidSymbols
+
+				SessionStats.TotalChars += actualCharCount
+				SessionStats.TotalWords += res.Stats.TotalWords
 
 				SessionStats.SumDitMs += res.Stats.SumDitMs
 				SessionStats.SumDahMs += res.Stats.SumDahMs
@@ -787,6 +842,34 @@ func RunIWR(text string, iwrMan *IWRManager) {
 				if OnStatusUpdate != nil {
 					OnStatusUpdate(" [red]NO COM PORT CABLE DETECTED!       [yellow]ENTER/BACKSPACE to repeat.")
 				}
+			} else if res.Error == "farnsworth option error" {
+				if OnStatusUpdate != nil {
+					OnStatusUpdate(" [red]Farnsworth not supported.[-:-:-] ")
+				}
+			} else if res.Error == "auto_retry" {
+				if OnStatusUpdate != nil {
+					OnStatusUpdate(" [red]MISMATCH!       [yellow]Auto-restarting...")
+				}
+				time.Sleep(300 * time.Millisecond)
+
+				errOsc, errPlayer := StartOscillator(float64(config.User.AlertTone))
+				if errPlayer != nil && errOsc != nil && config.User.ErrorTone {
+					errPlayer.SetVolume(0.75)
+					time.Sleep(time.Duration(0.5 * p.DahDuration * float64(time.Second)))
+					errPlayer.SetVolume(0.0)
+					errPlayer.Pause()
+					errPlayer.Close()
+				}
+
+				// Tweak between 700ms and as needed
+				time.Sleep(700 * time.Millisecond)
+
+				action = 'B'
+
+				if OnStatusUpdate != nil {
+					OnStatusUpdate(" [red]AUTO-RETRY...       [yellow]Restarting group...")
+				}
+
 			} else {
 				if OnStatusUpdate != nil {
 					OnStatusUpdate(" [red]ERROR!       [yellow]ENTER to continue, BACKSPACE to repeat.")
@@ -903,6 +986,11 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 	IsPaused = false
 	if OnStatusUpdate != nil {
-		OnStatusUpdate("STOP")
+		if config.User.Echo {
+			OnStatusUpdate(" [yellow]KeyEcho Input Completed[-]")
+			time.Sleep(2000 * time.Millisecond)
+		} else {
+			OnStatusUpdate("STOP")
+		}
 	}
 }

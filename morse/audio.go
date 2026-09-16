@@ -97,7 +97,12 @@ func Flush() {
 	// 2. Wrap our snapshot in the gapless streamer
 	reader := &gaplessReader{blocks: blocks}
 	p := otoCtx.NewPlayer(reader)
-	p.Play()
+
+	if config.User.Mute && !config.User.Echo {
+		p.SetVolume(0)
+	}
+
+	p.Play() // after vol set else get a blip
 
 	// 3. UI watchdog uses the same snapshot
 	go func(uiQueue []audioBlock) {

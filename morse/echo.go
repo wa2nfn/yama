@@ -1,15 +1,14 @@
 package morse
 
 import (
-	"fmt"
-	"time"
+	"log"
 	"strings"
+	"time"
 	"yama/config"
 
 	"go.bug.st/serial"
 )
 
-var CoachingStrictness float64 = 0.3 // Coach requires twice the accuracy of the decoder for grading only
 var ForceEchoRetry bool
 var ForceEchoFinish bool
 var AutoNextAction rune
@@ -31,6 +30,8 @@ type EchoStats struct {
 	// Overall
 	InvalidSymbols int
 	Retries        int
+	TotalChars     int
+	TotalWords     int
 }
 
 type EchoResult struct {
@@ -83,7 +84,7 @@ func RunEcho(
 
 	defer func() {
 		if r := recover(); r != nil {
-			fmt.Printf("CRITICAL PANIC CAUGHT in RunEcho: %v\n", r)
+			log.Printf("CRITICAL PANIC CAUGHT in RunEcho: %v\n", r)
 		}
 	}()
 
@@ -92,17 +93,19 @@ func RunEcho(
 
 	groupSendMS = int(float64(groupSendMS) * (1 + paddingFactor))
 	msgDur := time.Duration(groupSendMS) * time.Millisecond
-
-	dot := time.Duration(tp.DotDuration*1000) * time.Millisecond
-	dash := time.Duration(tp.DashDuration*1000) * time.Millisecond
+	tol := tp.Tolerance
+	dot := time.Duration(tp.DitDuration*1000) * time.Millisecond
+	dash := time.Duration(tp.DahDuration*1000) * time.Millisecond
 	charGap := time.Duration(tp.CharSpace*1000) * time.Millisecond
 	wordGap := time.Duration(tp.WordSpace*1000) * time.Millisecond
-	tol := tp.Tolerance
+	standardWordGap := time.Duration(tp.DitDuration*7*1000) * time.Millisecond
 
+	charGapEff := time.Duration(float64(charGap) * (1 - tol/2))
+	wordGapEff := time.Duration(float64(standardWordGap) * (1 - tol/2))
 	oscFreq := float64(tp.Tone)
 	osc, player := StartOscillator(oscFreq)
 	if osc == nil || player == nil {
-		fmt.Println("CRITICAL FAIL - osc or player is nil inside RunEcho!")
+		log.Println("CRITICAL FAIL - osc or player is nil inside RunEcho!")
 	} else {
 		// FORCE SILENCE IMMEDIATELY UPON CREATION (Every Group)
 		player.SetVolume(0.0)
@@ -117,6 +120,10 @@ func RunEcho(
 		}()
 	}
 
+	if config.User.UseFarnsworth {
+		return EchoResult{Success: false, Error: "farnsworth option error"}, nil
+	}
+
 	respDur := time.Duration(responseMS) * time.Millisecond
 	minResp := 3 * wordGap // incase input is just single char words
 	if respDur < minResp {
@@ -124,8 +131,12 @@ func RunEcho(
 	}
 
 	// how long to wait for silence at the END to declare group finished
-	// must be > 1 wordGap so doesn't cu off multi word
-	tailTimeout := time.Duration(float64(wordGap)) * 3.0
+	// must be > 1 wordGap so doesn't cut off multi word
+	// The longest gap legally allowed by Wordsworth + your UI Tolerance
+	maxLegalWordGap := time.Duration(float64(tp.WordSpace*1000)*(1+tol)) * time.Millisecond
+
+	// Give the timeout that full duration plus a 500ms safety cushion
+	tailTimeout := maxLegalWordGap + (500 * time.Millisecond)
 	if tailTimeout < (500 * time.Millisecond) {
 		tailTimeout = 500 * time.Millisecond
 	}
@@ -156,8 +167,7 @@ func RunEcho(
 	var resCharGaps []time.Duration
 	var resWordGaps []time.Duration
 
-
-// --- DYNAMIC PIN CONFIGURATION ---
+	// --- DYNAMIC PIN CONFIGURATION ---
 	// Extract the monitor pin from config (e.g., "CD" from "CD:1-DTR:4")
 	pinParts := strings.Split(config.User.KeyLineMode, "-")
 	monitorPin := "CTS" // fallback default
@@ -187,7 +197,7 @@ func RunEcho(
 
 	ms, err := p.GetModemStatusBits()
 	if err != nil {
-		fmt.Println("EXITING: Initial modem read error:", err)
+		log.Println("EXITING: Initial modem read error:", err)
 		return EchoResult{Success: false, Error: "modem read error"}, err
 	}
 
@@ -202,7 +212,7 @@ func RunEcho(
 		if err != nil {
 			return EchoResult{Success: false, Error: "modem read error"}, err
 		}
-		
+
 		currentState := getMonitorState(ms) // Replaced ms.CTS
 		lastState = isKeyDown(currentState)
 
@@ -221,8 +231,8 @@ func RunEcho(
 	grade := func(arr []time.Duration, targetSec float64) (int, int, int, float64) {
 		s, l, p := 0, 0, 0
 		var sumMs float64
-		tMin := time.Duration(targetSec*(1-CoachingStrictness)*1000) * time.Millisecond
-		tMax := time.Duration(targetSec*(1+CoachingStrictness)*1000) * time.Millisecond
+		tMin := time.Duration(targetSec*(1-tol)*1000) * time.Millisecond
+		tMax := time.Duration(targetSec*(1+tol)*1000) * time.Millisecond
 		for _, d := range arr {
 			sumMs += float64(d) / float64(time.Millisecond)
 			if d < tMin {
@@ -238,11 +248,33 @@ func RunEcho(
 
 	compileStats := func() EchoStats {
 		stats := EchoStats{}
-		stats.ShortDits, stats.LongDits, stats.PerfectDits, stats.SumDitMs = grade(resDits, tp.DotDuration)
-		stats.ShortDahs, stats.LongDahs, stats.PerfectDahs, stats.SumDahMs = grade(resDahs, tp.DashDuration)
+		stats.ShortDits, stats.LongDits, stats.PerfectDits, stats.SumDitMs = grade(resDits, tp.DitDuration)
+		stats.ShortDahs, stats.LongDahs, stats.PerfectDahs, stats.SumDahMs = grade(resDahs, tp.DahDuration)
 		stats.ShortElementGaps, stats.LongElementGaps, stats.PerfectElementGaps, stats.SumElementGapsMs = grade(resEleGaps, tp.InterElement)
 		stats.ShortCharGaps, stats.LongCharGaps, stats.PerfectCharGaps, stats.SumCharGapsMs = grade(resCharGaps, tp.CharSpace)
-		stats.ShortWordGaps, stats.LongWordGaps, stats.PerfectWordGaps, stats.SumWordGapsMs = grade(resWordGaps, tp.WordSpace)
+
+		var sumWordMs float64
+		// Floor is based on Standard gap (e.g., 420ms - tolerance)
+		wMin := time.Duration(float64(standardWordGap) * (1 - tol))
+
+		// Ceiling is based on the massive Wordsworth gap (e.g., 840ms + tolerance)
+		wMax := time.Duration(float64(wordGap) * (1 + tol))
+
+		stats.ShortWordGaps, stats.LongWordGaps, stats.PerfectWordGaps = 0, 0, 0
+		for _, d := range resWordGaps {
+			sumWordMs += float64(d) / float64(time.Millisecond)
+			if d < wMin {
+				stats.ShortWordGaps++
+			} else if d > wMax {
+				stats.LongWordGaps++
+			} else {
+				stats.PerfectWordGaps++
+			}
+		}
+		stats.SumWordGapsMs = sumWordMs
+		stats.TotalWords = stats.ShortWordGaps + stats.LongWordGaps + stats.PerfectWordGaps + 1 // 1 added since no last WS
+		stats.TotalChars = stats.ShortCharGaps + stats.LongCharGaps + stats.PerfectCharGaps + 1
+
 		for _, c := range chars {
 			if c == "*" {
 				stats.InvalidSymbols++
@@ -250,7 +282,6 @@ func RunEcho(
 		}
 		return stats
 	}
-
 	for {
 		// UI INTERRUPT CHECKS (Proactively catch BS and ENTER)
 		if ForceEchoRetry {
@@ -286,6 +317,15 @@ func RunEcho(
 		}
 
 		if started && time.Now().After(messageDeadline) {
+			if config.User.EchoAutoRetry {
+				return EchoResult{
+					Chars:      chars,
+					RawTimings: pulses,
+					Stats:      compileStats(),
+					Success:    false,
+					Error:      "auto_retry",
+				}, nil
+			}
 			return EchoResult{Chars: chars, RawTimings: pulses, WordGaps: resWordGaps, Stats: compileStats(), Success: false, Error: "too slow"}, nil
 		}
 
@@ -304,12 +344,10 @@ func RunEcho(
 			if keyDown {
 				if started && len(chars) > 0 {
 					if len(pulses) == 1 {
-						wgEff := time.Duration(float64(wordGap) * (1 - tol/2))
-						cgEff := time.Duration(float64(charGap) * (1 - tol/2))
 
-						if dur >= wgEff {
+						if dur >= wordGapEff {
 							resWordGaps = append(resWordGaps, dur)
-						} else if dur >= cgEff {
+						} else if dur >= charGapEff {
 							resCharGaps = append(resCharGaps, dur)
 						}
 					}
@@ -334,7 +372,6 @@ func RunEcho(
 		if !keyDown && started {
 			gap := time.Since(lastChange)
 
-			charGapEff := time.Duration(float64(charGap) * (1 - tol/2))
 			if gap > charGapEff && len(pulses) > 0 {
 
 				for i, p := range pulses {
@@ -358,20 +395,65 @@ func RunEcho(
 					decodedStr = "*"
 				}
 
+				// --- NEW AUTORETRY LOGIC ---
+				if config.User.EchoAutoRetry {
+					isInvalid := decodedStr == "*"
+					isMismatch := false
+
+					expectedString := strings.Join(lastGroup, " ")
+					// Compare against expected character in lastGroup if available
+					if len(expectedString) > len(chars) && decodedStr != "*" && decodedStr != " " {
+						expectedChar := string(expectedString[len(chars)])
+						if decodedStr != expectedChar {
+							isMismatch = true
+						}
+					}
+
+					if isInvalid || isMismatch {
+						// Kill the sidetone immediately
+						if player != nil {
+							player.SetVolume(0.0)
+						}
+
+						// Append the bad character so stats/UI reflect the failure before the wipe
+						chars = append(chars, decodedStr)
+						if OnEchoCharDecoded != nil {
+							OnEchoCharDecoded(decodedStr)
+						}
+						return EchoResult{
+							Chars:      chars,
+							RawTimings: pulses,
+							Stats:      compileStats(),
+							Success:    false,
+							Error:      "auto_retry",
+						}, nil
+					}
+				}
+				// --- END AUTORETRY LOGIC ---
+
 				if decodedStr != "" {
+					// 1. Append the decoded character
 					chars = append(chars, decodedStr)
 
+					// 2. Update the UI
 					if OnEchoCharDecoded != nil {
 						go func(c string) {
 							defer func() { _ = recover() }()
 							OnEchoCharDecoded(c)
 						}(decodedStr)
 					}
+
+					// 3. --- SMART QUICK-EXIT ---
+					actualStr := strings.Join(strings.Fields(strings.Join(chars, "")), " ")
+					expectedStr := strings.Join(lastGroup, " ")
+					if actualStr == expectedStr {
+						return EchoResult{Chars: chars, RawTimings: pulses, WordGaps: resWordGaps, Stats: compileStats(), Success: true, Error: ""}, nil
+					}
+					// ---------------------------
 				}
 				pulses = pulses[:0]
 			}
 
-			wordGapEff := time.Duration(float64(wordGap) * (1 - tol/2))
 			if gap > wordGapEff {
 				if len(chars) > 0 && chars[len(chars)-1] != " " {
 					chars = append(chars, " ")
@@ -385,6 +467,20 @@ func RunEcho(
 				}
 
 				if gap > tailTimeout {
+					// Safely check how many characters were expected
+					expectedString := strings.Join(lastGroup, " ")
+
+					// If they stopped early and didn't finish the word, force a retry!
+					if config.User.EchoAutoRetry && len(chars) < len(expectedString) {
+						return EchoResult{
+							Chars:      chars,
+							RawTimings: pulses,
+							Stats:      compileStats(),
+							Success:    false,
+							Error:      "auto_retry",
+						}, nil
+					}
+
 					return EchoResult{Chars: chars, RawTimings: pulses, WordGaps: resWordGaps, Stats: compileStats(), Success: true, Error: ""}, nil
 				}
 			}

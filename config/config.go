@@ -20,7 +20,6 @@ var Contractions = map[string]string{
 
 // UserSettings holds all user-adjustable features
 type UserSettings struct {
-	LastWordSpaceDitCnt int    `json:"last_word_space_dit_cnt"`
 	KeyerPortSpeed      int    `json:"keyer_port_speed"`
 	KeyerPort           string `json:"keyer_port"`
 	KeyLineMode         string `json:"key_line_mode"`
@@ -86,8 +85,11 @@ type UserSettings struct {
 	Echo                   bool   `json:"echo"`
 	EchoWordCount          int    `json:"echo_word_count"`
 	EchoRandomCount        bool   `json:"echo_random_count"`
+	EchoAutoRetry          bool   `json:"echo_auto_retry"`
 	SideTone               bool   `json:"sidetone"`
+	ErrorTone              bool   `json:"errortone"`
 	VisualFeedback         bool   `json:"visual_feedback"`
+	Mute                   bool   `json:"mute"`
 
 	// Messaging & Flow Control
 	StartMsg     bool   `json:"start_msg"`
@@ -189,6 +191,7 @@ func LoadConfig() {
 		User.EchoTolerance = 45
 		User.FlashRandomCount = false
 		User.EchoRandomCount = false
+		User.EchoAutoRetry = false
 		User.StartDelay = 0
 		User.BrownNoiseLevel = 0
 		User.PinkNoiseLevel = 0
@@ -201,8 +204,9 @@ func LoadConfig() {
 		User.Alert = 0
 		User.AlertTone = 500
 		User.SideTone = true
-		User.LastWordSpaceDitCnt = 7
+		User.ErrorTone = true
 		User.VisualFeedback = true
+		User.Mute = false
 
 		// 2. Save immediately. This creates the directory AND a valid JSON file.
 		SaveConfig()
