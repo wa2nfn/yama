@@ -80,7 +80,7 @@ func showKeyEchoOptions() {
 	// --- Key Time Padding ---
 	paddingDrop := tview.NewDropDown().
 		SetLabel("Key Time Padding").
-		SetOptions([]string{"Strict", "Normal", "Relaxed", "Forgiving"}, nil).
+		SetOptions([]string{"Strict", "Normal", "Relaxed", "Generous"}, nil).
 		SetCurrentOption(1)
 
 	// --- SideTone ---

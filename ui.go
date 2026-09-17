@@ -297,7 +297,7 @@ func updateBlueLine() {
 
 	// adjust for auto retry
 	if config.User.Echo {
-		paddingName := []string{"Strict", "Normal", "Relaxed", "Forgiving"}
+		paddingName := []string{"Strict", "Normal", "Relaxed", "Generous"}
 		info += fmt.Sprintf("| Auto Retry: %s | Tolerance: %d%% | Key Padding: %s ", retryStatus, config.User.EchoTolerance, paddingName[config.User.KeyTimePadding])
 	}
 
@@ -418,6 +418,7 @@ YAMA has some standard input processing, for example: discarding non-morseable c
 
 YAMA uses a Terminal User Interface (TUI), navigation and selections will be by key combinations, mostly the Control Key and one letter, a few Function keys are supported as alternatives. Help is available with the standard F1 function key. Note: In the menu screens: Timing, Options, and Audio; the back-tab is often quicker to navigate to a field, than several forward tabs.
 
+
 [green::b]Getting Started: Entering Text[::-]
 [white]Before YAMA can play anything, it needs some text. You have three easy ways to do this:
 1. Type or Paste: Simply click into the main Text Input box and type or paste your practice text directly. Cursor keys, Backspace, Delete/Insert, Page Up/Down, Home/End, are supported for editing.
@@ -494,8 +495,8 @@ Word Separator        | If it exists, one character or ProSign in this option se
 Sort                  | With Text Builder or Word Builder, soerts input words in shprt to long order,
 Sylablize Words       | Play multi-sylable words by sylable instead of by letter. A head buffer
                       | feature midway between normal play and Word Builder. Approx. 1000 
-                      | common words will ne syalbalized if not attached to punctuation.
-                      | E.g. "THIS TEXT IS COMPLICATED" plays as "
+                      | common words will be syalbalized if not attached to punctuation.
+		      | E.g. "COMMON BUT DIFFICULT" plays as "COM MON BUT DIF FI CULT".
 Text Builder          | Plays input words progressively (e.g., 11 22 33 44 plays as:  
                       | 11 11 22 11 22 33 11 22 33 44).
                       | Mutually exclusive with Word Builder and Randomize Words.
@@ -518,7 +519,7 @@ End Msg Text          | The specific text to play at the end (e.g., <AR>).
 (Options -> Skip List).
 [yellow]Important Apostrophe Rule:[-] If you add the apostrophe [yellow](')[-] to your skip list, YAMA will automatically expand 17 common English contractions before removing the remaining apostrophes (e.g., "DON'T" safely becomes "DO NOT").
 
-Note that the bottom of the screen has a [yellow]yellow[-] status line and below that a [blue]blue[-] reminder line about your current vales from the Timing screen. It may also the phrase [yellow]Input Modified[-], this indicates that a least one option on the Options screen will modify the input in the text screen before it becomes audible CW, so you are not surprised when the first string is sounded that it maybe different than what was just displayed.
+Note that the bottom of the screen has a [yellow]yellow[-] status line and below that a [blue]blue[-] reminder line about your current values from the Timing screen. It may also the phrase [yellow]Input Modified[-], this indicates that a least one option on the Options screen will modify the input in the text screen before it becomes audible CW, so you are not surprised when the first string is sounded that it maybe different than what was just displayed.
 
 Below is an overview of KeyEcho options, a narrative will follow to pull the ideas into a cohesive description.
 
@@ -529,11 +530,13 @@ Tolerance (%)           | % a symbol element (dit, dah, space, etc.) can vary fr
 Echo Word Count (1-20)  | Number of words played (default 1), and to key/echo back in each group.
 Random Word Count       | Allows count from 1 to Echo Word Count.
 Key Now Alert Tone      | Plays a short audible prompt (~.5 dit) for you to begin keying.
+                        | There is also a Status Line prompt "Key now..." as well as a brief cursor
+			| below the words from Yama. Do NOT key before the prompt - the decoder will
+			| not be active, nor the sidetone.
 Alert Tone Frequency    | Allows the alert tone to differ from audible code.
 Error Tone              | Play Alert Tone Freq for about 0.5 Dah on keying error.
-Key Time Padding %      | Once you start to key, you have the same amount of time that YAMA took
-                        | to send you the word(s), plus 4 levels of padding given as 
-                        | descriptive names.
+Key Padding             | Once you start to key, you have the same amount of time that YAMA took
+                        | to send you the word(s), plus 4 levels of padding given as descriptive names.
 SideTone                | Use the PC sidetone for keying using the same tone as set in 
                         | Timing screen.
 Visual Feedback         | If set, your keyed symbols line up below what YAMA sent.
@@ -589,9 +592,9 @@ To begin, enable KeyEcho in Options ([yellow]Ctrl-O[-]) and start the session wi
 3. Hesitation Window: You have a generous 2-second window to mentally process the word and strike the paddle for your first element. 
 4. Keying Window: The moment you close the paddle, the hesitation timer stops, and your performance clock begins.
 5. Element Accuracy: Individual elements you key (dits, dahs, and internal spaces) must meet a settable accuracy tolerance to be decoded correctly. 
-6. Padding & Evaluation: You must complete the entire group within the exact time YAMA took to send it, plus your chosen Key Time Padding (Strict, Normal, Relaxed, or Forgiving). When YAMA detects silence equal to 3 standard word spaces, it closes the window and grades your input.
+6. Padding & Evaluation: You must complete the entire group within the exact time YAMA took to send it, plus your chosen Key Padding (Strict, Normal, Relaxed, or Forgiving). When YAMA detects silence equal to 3 standard word spaces, it closes the window and grades your input.
 
-Tip for progression: As your keying practice improves, you can force yourself to match YAMA more strictly by reducing the element Tolerance and lowering the Key Time Padding both on the [green::b]KeyEcho[-] screen.
+Tip for progression: As your keying practice improves, you can force yourself to match YAMA more strictly by reducing the element Tolerance and lowering the Key Padding both on the [green::b]KeyEcho[-] screen.
 
 [green::b]Hardware Requirements & Setup[::-]
 [white]KeyEcho requires an RS-232 COM port adapter. The physical wiring is radically simple: it requires exactly two wires. No jumpers, no common grounds, and no resistors are needed. You simply wire your CW key to bridge one output pin to one input pin, making a series loop from the DB9 source pin through your key device and back to the monitor pin.

@@ -214,11 +214,14 @@ func main() {
 	})
 
 	morse.OnClearFlashcardScreen = clearFlashcardScreen
+
 	morse.OnWordChange = func(char string, index int) {
 		if char == "" || index == -1 {
 			return
 		}
+
 		char = colorTagRegex.ReplaceAllString(char, "")
+
 		char = strings.TrimSpace(char)
 		if char == "" {
 			return
@@ -277,6 +280,26 @@ func main() {
 			// We are still safely inside the first QueueUpdateDraw,
 			// so we can just set the focus directly here at the end.
 			app.SetFocus(inputArea)
+		})
+	}
+
+	morse.OnEchoReadyCursor = func(visible bool) {
+		app.QueueUpdateDraw(func() {
+			// Drop to the next line with a plain block. No color tags allowed in InputFields!
+			cursorTag := "\n█"
+
+			currentText := inputArea.GetText()
+
+			if visible {
+				if !strings.HasSuffix(currentText, cursorTag) {
+					inputArea.SetText(currentText+cursorTag, false)
+				}
+			} else {
+				if strings.HasSuffix(currentText, cursorTag) {
+					newText := strings.TrimSuffix(currentText, cursorTag)
+					inputArea.SetText(newText, false)
+				}
+			}
 		})
 	}
 

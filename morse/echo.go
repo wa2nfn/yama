@@ -12,6 +12,7 @@ import (
 var ForceEchoRetry bool
 var ForceEchoFinish bool
 var AutoNextAction rune
+var OnEchoReadyCursor func(visible bool)
 
 type EchoStats struct {
 	// Elements
@@ -145,6 +146,11 @@ func RunEcho(
 		OnStatusUpdate("ECHO:[white:#4CAF50:b] Key now... [-:-:-] ")
 	}
 
+	// NEW: Tell the UI to draw the green dummy block on the text line
+	if OnEchoReadyCursor != nil && config.User.VisualFeedback {
+		OnEchoReadyCursor(true)
+	}
+
 	responseDeadline := time.Now().Add(respDur) // CLOCK IS RUNNING
 
 	minMsg := 1 * wordGap
@@ -218,7 +224,7 @@ func RunEcho(
 
 		if time.Since(primeStart) > 200*time.Millisecond {
 			idleInputState = currentState
-			lastState = false
+			lastState = isKeyDown(getMonitorState(ms))
 		}
 		time.Sleep(1 * time.Millisecond)
 	}
@@ -306,12 +312,22 @@ func RunEcho(
 		if !started {
 			if keyDown {
 				started = true
+
+				// NEW: The user started! Wipe the green dummy block instantly.
+				if OnEchoReadyCursor != nil && config.User.VisualFeedback {
+					OnEchoReadyCursor(false)
+				}
+
 				startTime = time.Now()
 				lastSymbolTime = startTime
 				messageDeadline = startTime.Add(msgDur + tailTimeout)
 				lastChange = time.Now()
 				pulses = pulses[:0]
 			} else if time.Now().After(responseDeadline) {
+				// NEW: User timed out before starting. Wipe the green dummy block!
+				if OnEchoReadyCursor != nil && config.User.VisualFeedback {
+					OnEchoReadyCursor(false)
+				}
 				return EchoResult{Success: false, Error: "no start"}, nil
 			}
 		}
@@ -401,11 +417,16 @@ func RunEcho(
 					isMismatch := false
 
 					expectedString := strings.Join(lastGroup, " ")
-					// Compare against expected character in lastGroup if available
-					if len(expectedString) > len(chars) && decodedStr != "*" && decodedStr != " " {
-						expectedChar := string(expectedString[len(chars)])
-						if decodedStr != expectedChar {
+
+					if decodedStr != "*" {
+						if len(chars) >= len(expectedString) {
+							// They typed an extra character beyond the expected length!
 							isMismatch = true
+						} else {
+							expectedChar := string(expectedString[len(chars)])
+							if decodedStr != expectedChar {
+								isMismatch = true
+							}
 						}
 					}
 
@@ -417,7 +438,7 @@ func RunEcho(
 
 						// Append the bad character so stats/UI reflect the failure before the wipe
 						chars = append(chars, decodedStr)
-						if OnEchoCharDecoded != nil {
+						if OnEchoCharDecoded != nil && config.User.VisualFeedback {
 							OnEchoCharDecoded(decodedStr)
 						}
 						return EchoResult{
@@ -436,7 +457,7 @@ func RunEcho(
 					chars = append(chars, decodedStr)
 
 					// 2. Update the UI
-					if OnEchoCharDecoded != nil {
+					if OnEchoCharDecoded != nil && config.User.VisualFeedback {
 						go func(c string) {
 							defer func() { _ = recover() }()
 							OnEchoCharDecoded(c)
@@ -456,9 +477,50 @@ func RunEcho(
 
 			if gap > wordGapEff {
 				if len(chars) > 0 && chars[len(chars)-1] != " " {
+
+					// --- NEW: HESITATION / GHOST SPACE CHECK ---
+					if config.User.EchoAutoRetry {
+						expectedString := strings.Join(lastGroup, " ")
+						isHesitationError := false
+
+						if len(chars) >= len(expectedString) {
+							// They paused after typing too many characters
+							isHesitationError = true
+						} else {
+							expectedChar := string(expectedString[len(chars)])
+							if expectedChar != " " {
+								// We expected a letter, but they paused too long, generating a space!
+								isHesitationError = true
+							}
+						}
+
+						if isHesitationError {
+							if player != nil {
+								player.SetVolume(0.0) // Kill sidetone instantly
+							}
+
+							chars = append(chars, " ") // Append the bad space so the UI shows the gap
+							if OnEchoCharDecoded != nil && config.User.VisualFeedback {
+								go func() {
+									defer func() { _ = recover() }()
+									OnEchoCharDecoded(" ")
+								}()
+							}
+
+							return EchoResult{
+								Chars:      chars,
+								RawTimings: pulses,
+								Stats:      compileStats(),
+								Success:    false,
+								Error:      "auto_retry",
+							}, nil
+						}
+					}
+					// -------------------------------------------
+
 					chars = append(chars, " ")
 
-					if OnEchoCharDecoded != nil {
+					if OnEchoCharDecoded != nil && config.User.VisualFeedback {
 						go func() {
 							defer func() { _ = recover() }()
 							OnEchoCharDecoded(" ")
@@ -467,11 +529,11 @@ func RunEcho(
 				}
 
 				if gap > tailTimeout {
-					// Safely check how many characters were expected
 					expectedString := strings.Join(lastGroup, " ")
+					actualStr := strings.Join(strings.Fields(strings.Join(chars, "")), " ")
 
-					// If they stopped early and didn't finish the word, force a retry!
-					if config.User.EchoAutoRetry && len(chars) < len(expectedString) {
+					// Catch-all: If it times out and they don't match perfectly, FORCE a retry.
+					if config.User.EchoAutoRetry && actualStr != expectedString {
 						return EchoResult{
 							Chars:      chars,
 							RawTimings: pulses,

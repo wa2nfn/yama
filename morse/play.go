@@ -19,7 +19,7 @@ var OnClearFlashcardScreen func()
 var OnEchoStart func()
 var OnEchoEnd func()
 var OnStatusUpdate func(msg string)
-var ResponseMS int = 2000
+var ResponseMS int = 2000 // the user time to hear the starters gun and actually key
 var ShowBlueLineTolerance func()
 var OnEchoCharDecoded func(char string)
 var OnWordChange func(char string, index int)
@@ -140,31 +140,6 @@ func buildWordBuffer(ctx PlayContext, p TimingProfile) int {
 			}
 		}
 
-		/*
-			isFirstElement := true
-			for j, symbol := range pattern {
-				dur := p.DitDuration
-				if symbol == '-' {
-					dur = p.DahDuration
-				}
-
-				label := ""
-				if isFirstElement {
-					label = token
-					isFirstElement = false
-				}
-
-				QueuePCM(TonePCM(float64(p.Tone), int(dur*float64(SampleRate)), 0.5).Samples, label, i)
-
-				if j < len(pattern)-1 {
-					QueuePCM(SilencePCM(int(p.InterElement*float64(SampleRate))).Samples, "", i)
-				}
-			}
-
-			if i < len(tokens)-1 {
-				QueuePCM(SilencePCM(int(p.CharSpace*float64(SampleRate))).Samples, "", i)
-			}
-		*/
 	}
 
 	totalDurationSec := 0.0
@@ -699,13 +674,15 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 			if ActiveEchoPort != nil {
 				// 1. GUARANTEE standard word spacing before listening, for ALL groups
-				QueuePCM(SilencePCM(wordSpaceSamples).Samples, " ", -1)
+				//QueuePCM(SilencePCM(wordSpaceSamples).Samples, " ", -1)
+				alertSamples := int(p.CharSpace * 2.0 * float64(SampleRate))
+				//QueuePCM(SilencePCM(alertSamples).Samples, " ", -1)
 
 				// 2. Conditionally queue the alert sound based on UI: First(0), None(1), All(2)
 				switch config.User.Alert {
 				case 0: // First Group Only
 					if isFirstEchoGroup {
-						alertBytes := generateDoneAlert(SampleRate, float64(p.DitDuration))
+						alertBytes := generateDoneAlert(alertSamples, float64(p.DitDuration*0.6))
 						QueuePCM(alertBytes, " ", -1)
 						isFirstEchoGroup = false
 					}
@@ -723,7 +700,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 				effectiveResponseMS := ResponseMS
 				if config.User.Mute {
-					effectiveResponseMS += messageDuration
+					effectiveResponseMS += 1000 // since no audible que give user more time
 				}
 
 				// But pass the relaxed user profile (which has Wordsworth) to the grader!
