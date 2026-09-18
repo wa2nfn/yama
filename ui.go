@@ -326,8 +326,12 @@ func refreshUI(state AppState) {
 			statusLine.SetText(" [#FFFF55]" + status)
 		}
 
-		menu = "[#FFFF55]F[white]ile  [#FFFF55]P[white]lay  [#FFFF55]T[white]iming  [#FFFF55]A[white]udio  [#FFFF55]O[white]ption  [#FFFF55]K[white]eyEcho  [#FFFF55]F1[white]help  a[#FFFF55]B[white]out  [#FFFF55]Q[white]uit "
+		if config.User.Echo { //WDL
+			menu = "[#FFFF55]F[white]ile  [#FFFF55]P[white]lay  [#FFFF55]T[white]iming  [#FFFF55]O[white]ption  [#FFFF55]K[white]eyEcho  [#FFFF55]F1[white]help  a[#FFFF55]B[white]out  [#FFFF55]Q[white]uit "
 
+		} else {
+			menu = "[#FFFF55]F[white]ile  [#FFFF55]P[white]lay  [#FFFF55]T[white]iming  [#FFFF55]A[white]udio  [#FFFF55]O[white]ption  [#FFFF55]K[white]eyEcho  [#FFFF55]F1[white]help  a[#FFFF55]B[white]out  [#FFFF55]Q[white]uit "
+		}
 		if hasText {
 			menu = strings.Replace(menu, "a[#FFFF55]B[white]out  ", "", 1)
 			menu = strings.Replace(menu, "[#FFFF55]F[white]ile", "[#FFFF55]F[white]ile  [#FFFF55]N[white]umWords", 1)
@@ -1552,6 +1556,12 @@ func showImpairments() {
 			app.SetFocus(inputArea)
 			return nil // Swallow the key
 		}
+
+		if event.Key() == tcell.KeyCtrlS {
+			onSave()
+			return nil // Swallow the key
+		}
+
 		return event // Pass all other keys (like Tab/Enter) down to the form
 	})
 
