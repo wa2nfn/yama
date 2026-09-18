@@ -136,14 +136,14 @@ func RunEcho(
 	// The longest gap legally allowed by Wordsworth + your UI Tolerance
 	maxLegalWordGap := time.Duration(float64(tp.WordSpace*1000)*(1+tol)) * time.Millisecond
 
+	if OnStatusUpdate != nil {
+		OnStatusUpdate("ECHO:[white:#4CAF50:b] Key now... [-:-:-] ")
+	}
+
 	// Give the timeout that full duration plus a 500ms safety cushion
 	tailTimeout := maxLegalWordGap + (500 * time.Millisecond)
 	if tailTimeout < (500 * time.Millisecond) {
 		tailTimeout = 500 * time.Millisecond
-	}
-
-	if OnStatusUpdate != nil {
-		OnStatusUpdate("ECHO:[white:#4CAF50:b] Key now... [-:-:-] ")
 	}
 
 	// NEW: Tell the UI to draw the green dummy block on the text line
@@ -313,9 +313,12 @@ func RunEcho(
 			if keyDown {
 				started = true
 
-				// NEW: The user started! Wipe the green dummy block instantly.
+				// The user started! Wipe the green dummy block instantly.
 				if OnEchoReadyCursor != nil && config.User.VisualFeedback {
 					OnEchoReadyCursor(false)
+				}
+				if OnStatusUpdate != nil {
+					OnStatusUpdate("ECHO: ")
 				}
 
 				startTime = time.Now()
@@ -324,7 +327,7 @@ func RunEcho(
 				lastChange = time.Now()
 				pulses = pulses[:0]
 			} else if time.Now().After(responseDeadline) {
-				// NEW: User timed out before starting. Wipe the green dummy block!
+				// User timed out before starting. Wipe the green dummy block!
 				if OnEchoReadyCursor != nil && config.User.VisualFeedback {
 					OnEchoReadyCursor(false)
 				}
