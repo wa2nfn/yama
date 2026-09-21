@@ -201,6 +201,42 @@ func SilencePCM16Bit(duration int) PCMData {
 // ==========================================
 
 func TonePCM(freq float64, duration int, vol float64) PCMData {
+	// FAST PATH: If Echo mode is ON, bypass all impairments and return a pure tone.
+	if config.User.Echo {
+		buf := make([]byte, duration*2)
+		maxRamp := int(math.Round(0.005 * float64(SampleRate)))
+		ramp := maxRamp
+
+		if duration/4 < maxRamp {
+			ramp = duration / 4
+		}
+
+		for i := 0; i < duration; i++ {
+			angle := 2.0 * math.Pi * freq * float64(i) / float64(SampleRate)
+			amp := vol
+
+			// The Raised Cosine Envelope (smooth attack/decay)
+			if i < ramp {
+				progress := float64(i) / float64(ramp)
+				amp *= (1.0 - math.Cos(progress*math.Pi)) / 2.0
+			} else if i > duration-ramp {
+				progress := float64(duration-i) / float64(ramp)
+				amp *= (1.0 - math.Cos(progress*math.Pi)) / 2.0
+			}
+
+			s := math.Sin(angle) * amp
+			v := int16(s * 32767)
+			binary.LittleEndian.PutUint16(buf[i*2:], uint16(v))
+		}
+
+		SimTime += float64(duration) / float64(SampleRate)
+		return PCMData{Samples: buf}
+	}
+
+	// ========================================================
+	// ORIGINAL IMPAIRMENT LOGIC CONTINUES BELOW UNCHANGED
+	// ========================================================
+
 	// SPEED DRIFT
 	var speedMod float64 = 0.0
 	switch config.User.NoiseSpeedDriftLevel {
@@ -372,6 +408,13 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 }
 
 func SilencePCM(duration int) PCMData {
+
+	if config.User.Echo {
+		buf := make([]byte, duration*2)
+		SimTime += float64(duration) / float64(SampleRate)
+		return PCMData{Samples: buf}
+	}
+
 	var speedMod float64 = 0.0
 	switch config.User.NoiseSpeedDriftLevel {
 	case 1:

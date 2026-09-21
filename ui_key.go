@@ -291,13 +291,14 @@ func showKeyEchoOptions() {
 
 	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("[yellow]ESC to Close[-]")
+	// 1. Update the footer to advertise the new hotkey
+	footerView.SetText("[yellow]ESC to Close  •  Ctrl-S to Save[-]")
 
 	// Explicitly defining the container here to ensure the compiler sees it
 	var container *tview.Flex = tview.NewFlex()
 	container.SetDirection(tview.FlexRow)
 	container.AddItem(form, 0, 1, true)
-	container.AddItem(footerView, 1, 1, false)
+	container.AddItem(footerView, 1, 0, false)
 
 	container.SetBorder(true).SetTitle(" KeyEcho Options ")
 	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
@@ -308,10 +309,14 @@ func showKeyEchoOptions() {
 			app.SetFocus(inputArea)
 			return nil
 		}
+		// 2. Catch Ctrl-S and trigger the exact same save logic as the button
+		if event.Key() == tcell.KeyCtrlS {
+			onSave()
+			return nil
+		}
 		return event
 	})
 
-	// Increased modal height to 32 to accommodate the new inputs without clipping
-	pages.AddPage("keyEcho", createModal(container, 42, 34), true, true)
+	pages.AddPage("keyEcho", createModal(container, 42, 26), true, true)
 	app.SetFocus(container)
 }
