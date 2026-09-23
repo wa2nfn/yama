@@ -27,10 +27,10 @@ func showOptions() {
 	form.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	form.SetItemPadding(0)
 
-	useProsignsCb := tview.NewCheckbox().SetLabel("Play ProSigns")
+	useProsignsCb := tview.NewCheckbox().SetLabel("ProSign Support")
 	extendedPuncCb := tview.NewCheckbox().SetLabel("Extended Punctuation")
-	europeanCharsCb := tview.NewCheckbox().SetLabel("European & Esparanto Chars")
-	useSkipCb := tview.NewCheckbox().SetLabel("Use Skip")
+	europeanCharsCb := tview.NewCheckbox().SetLabel("European & Esperanto Chars")
+	useSkipCb := tview.NewCheckbox().SetLabel("Use Skip Chars List")
 
 	skipListInput := tview.NewInputField().SetLabel("    Skip List").SetFieldWidth(35)
 	skipListInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
@@ -38,24 +38,25 @@ func showOptions() {
 	skipListInput.SetInputCapture(forceUppercaseInputCapture())
 
 	delayOptions := []string{"0", "1", "2", "3", "4", "5"}
-	delayDropDown := tview.NewDropDown().SetLabel("Start Delay (sec)").SetOptions(delayOptions, nil)
+	delayDropDown := tview.NewDropDown().SetLabel("Start-Up Delay (sec)").SetOptions(delayOptions, nil)
 
 	repeatOptions := []string{"2", "3", "4", "5", "6", "7", "8", "9"}
-	repeatDropDown := tview.NewDropDown().SetLabel("Repeat Limit").SetOptions(repeatOptions, nil)
+	repeatDropDown := tview.NewDropDown().SetLabel("Char Repeat Limit").SetOptions(repeatOptions, nil)
 
-	wordOrderCb := tview.NewCheckbox().SetLabel("Random Order")
-	randomizeWordsCb := tview.NewCheckbox().SetLabel("Randomize Words")
+	wordOrderCb := tview.NewCheckbox().SetLabel("Random Word Order")
+	randomizeWordsCb := tview.NewCheckbox().SetLabel("Randomize Word Chars")
 
-	wordBuilderCb := tview.NewCheckbox().SetLabel("Word Builder")
-	wordSeparatorInput := tview.NewInputField().SetLabel("    Word Separator").SetFieldWidth(35)
+	wordBuilderCb := tview.NewCheckbox().SetLabel("[#00BFFF::b]Word Builder Mode[::-]")
+
+	wordSeparatorInput := tview.NewInputField().SetLabel("    Word Separator").SetFieldWidth(15)
 	wordSeparatorInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
-	wordSeparatorInput.SetPlaceholder("e.g. <BT>.,+").SetPlaceholderTextColor(tcell.ColorYellow)
+	wordSeparatorInput.SetPlaceholder("e.g. . or ,").SetPlaceholderTextColor(tcell.ColorYellow)
 	wordSeparatorInput.SetInputCapture(forceUppercaseInputCapture())
 	wordBuilderSortCb := tview.NewCheckbox().SetLabel("    Sort")
 	syllableExpansionCb := tview.NewCheckbox().SetLabel("Syllablize Words")
 
-	textBuilderCb := tview.NewCheckbox().SetLabel("Text Builder")
-	textSeparatorInput := tview.NewInputField().SetLabel("    Text Separator").SetFieldWidth(35)
+	textBuilderCb := tview.NewCheckbox().SetLabel("[#00BFFF]Text Builder Mode[::-]")
+	textSeparatorInput := tview.NewInputField().SetLabel("    Text Separator").SetFieldWidth(15)
 	textSeparatorInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	textSeparatorInput.SetPlaceholder("e.g. <BT>.,+").SetPlaceholderTextColor(tcell.ColorYellow)
 	textSeparatorInput.SetInputCapture(forceUppercaseInputCapture())
@@ -64,20 +65,20 @@ func showOptions() {
 	textWordCountList := []string{"2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25"}
 	textWordCntDrop := tview.NewDropDown().SetLabel("    Word Count (2-25)").SetOptions(textWordCountList, nil)
 
-	flashcardCb := tview.NewCheckbox().SetLabel("Flashcard")
+	flashcardCb := tview.NewCheckbox().SetLabel("[#00BFFF]Flashcard Mode[::-]")
 	flashWordCountList := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"}
 	flashWordCountDrop := tview.NewDropDown().SetLabel("    Word Count (1-20)").SetOptions(flashWordCountList, nil)
 	flashRandomCountCb := tview.NewCheckbox().SetLabel("    Random Value")
-	echoCb := tview.NewCheckbox().SetLabel("KeyEcho")
+	echoCb := tview.NewCheckbox().SetLabel("[#00BFFF]KeyEcho Sending Mode[::-]")
 
-	startMsgCb := tview.NewCheckbox().SetLabel("Use Start Msg")
-	startMsgInput := tview.NewInputField().SetLabel("    Start Msg Text").SetFieldWidth(35)
+	startMsgCb := tview.NewCheckbox().SetLabel("Use Start Message")
+	startMsgInput := tview.NewInputField().SetLabel("    Message Text").SetFieldWidth(35)
 	startMsgInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	startMsgInput.SetPlaceholder("VVV <KA>").SetPlaceholderTextColor(tcell.ColorYellow)
 	startMsgInput.SetInputCapture(forceUppercaseInputCapture())
 
-	endMsgCb := tview.NewCheckbox().SetLabel("Use End Msg")
-	endMsgInput := tview.NewInputField().SetLabel("    End Msg Text").SetFieldWidth(35)
+	endMsgCb := tview.NewCheckbox().SetLabel("Use End Message")
+	endMsgInput := tview.NewInputField().SetLabel("    Message Text").SetFieldWidth(35)
 	endMsgInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	endMsgInput.SetPlaceholder("<AR>").SetPlaceholderTextColor(tcell.ColorYellow)
 
@@ -168,27 +169,31 @@ func showOptions() {
 
 	resetState()
 
-	form.AddFormItem(useProsignsCb)
-	form.AddFormItem(extendedPuncCb)
-	form.AddFormItem(europeanCharsCb)
-	form.AddFormItem(useSkipCb)
-	form.AddFormItem(skipListInput)
-	form.AddFormItem(delayDropDown)
-	form.AddFormItem(repeatDropDown)
-	form.AddFormItem(syllableExpansionCb)
-	form.AddFormItem(wordOrderCb)
-	form.AddFormItem(randomizeWordsCb)
 	form.AddFormItem(wordBuilderCb)
 	form.AddFormItem(wordSeparatorInput)
 	form.AddFormItem(wordBuilderSortCb)
 	form.AddFormItem(textBuilderCb)
 	form.AddFormItem(textSeparatorInput)
-	form.AddFormItem(textWordCntDrop) // Swapped the text field for the dropdown
+	form.AddFormItem(textWordCntDrop)
 	form.AddFormItem(textBuilderSortCb)
 	form.AddFormItem(flashcardCb)
 	form.AddFormItem(flashWordCountDrop)
 	form.AddFormItem(flashRandomCountCb)
 	form.AddFormItem(echoCb)
+	form.AddTextView("", "", 0, 1, false, false)
+
+	form.AddFormItem(syllableExpansionCb)
+	form.AddFormItem(wordOrderCb)
+	form.AddFormItem(randomizeWordsCb)
+
+	form.AddFormItem(useProsignsCb)
+	form.AddFormItem(extendedPuncCb)
+	form.AddFormItem(europeanCharsCb)
+	form.AddFormItem(useSkipCb)
+	form.AddFormItem(skipListInput)
+	form.AddFormItem(repeatDropDown)
+	form.AddFormItem(delayDropDown)
+
 	form.AddFormItem(startMsgCb)
 	form.AddFormItem(startMsgInput)
 	form.AddFormItem(endMsgCb)
@@ -310,7 +315,7 @@ func showOptions() {
 
 	form.AddButton("Save", onSave)
 	form.AddButton("Reset", onReset)
-	form.AddButton("European & Esparanto Char Skip", func() {
+	form.AddButton("European & Esperanto Char Skip", func() {
 		showEuropeanCharSelector(optionsContainer, &euroSkipList, onSave)
 	})
 	form.AddButton("Cancel", func() {
@@ -347,8 +352,7 @@ func showOptions() {
 		return event
 	})
 
-	// 3. Lowered the height to 31 so it doesn't clip off the terminal screen
-	pages.AddPage("options", createModal(optionsContainer, 80, 31), true, true)
+	pages.AddPage("options", createModal(optionsContainer, 66, 31), true, true)
 	app.SetFocus(optionsContainer)
 }
 
@@ -605,12 +609,12 @@ func showToneSpeed() {
 		return err == nil
 	}
 
-	modeDropDown := tview.NewDropDown().SetLabel("Mode").SetOptions([]string{"Standard", "Farnsworth", "Wordsworth"}, nil)
+	modeDropDown := tview.NewDropDown().SetLabel("Timing Method").SetOptions([]string{"Standard", "Farnsworth", "Wordsworth"}, nil)
 
 	charInput := tview.NewInputField().SetLabel("Character Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
 	charInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
-	endSpeedInput := tview.NewInputField().SetLabel("      End Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
+	endSpeedInput := tview.NewInputField().SetLabel("    End Ramp Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
 	endSpeedInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	effInput := tview.NewInputField().SetLabel("Effective Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
@@ -619,12 +623,12 @@ func showToneSpeed() {
 	toneInput := tview.NewInputField().SetLabel("Tone (Hz)").SetFieldWidth(5).SetAcceptanceFunc(acceptDigits)
 	toneInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
-	iwrCheckbox := tview.NewCheckbox().SetLabel("Use IWR")
+	iwrCheckbox := tview.NewCheckbox().SetLabel("[#00BFFF]Use IWR Mode[::-]")
 
-	iwrSpdInput := tview.NewInputField().SetLabel("IWR Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
+	iwrSpdInput := tview.NewInputField().SetLabel("    Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
 	iwrSpdInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
-	iwrToneInput := tview.NewInputField().SetLabel("IWR Tone (Hz)").SetFieldWidth(5).SetAcceptanceFunc(acceptDigits)
+	iwrToneInput := tview.NewInputField().SetLabel("    Tone (Hz)").SetFieldWidth(5).SetAcceptanceFunc(acceptDigits)
 	iwrToneInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	formatFloatOnExit := func(input *tview.InputField) {
