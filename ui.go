@@ -321,7 +321,7 @@ func refreshUI(state AppState) {
 			statusLine.SetText(" [#FFFF55]" + status)
 		}
 
-		if config.User.Echo { //WDL
+		if config.User.Echo {
 			menu = "[#FFFF55]F[white]ile  [#FFFF55]P[white]lay  [#FFFF55]T[white]iming  [#FFFF55]O[white]ption  [#FFFF55]K[white]eyEcho  [#FFFF55]F1[white]help  a[#FFFF55]B[white]out  [#FFFF55]Q[white]uit "
 
 		} else {

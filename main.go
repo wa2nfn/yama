@@ -174,16 +174,27 @@ func main() {
 	inputArea.SetPlaceholder("Enter text (or Ctrl-F select a file), then Ctrl-P to Play;\nor use function key F1 for full Help.")
 
 	inputArea.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyDelete {
+		if event.Key() == tcell.KeyDelete || event.Key() == tcell.KeyBackspace || event.Key() == tcell.KeyBackspace2 {
 			txt := inputArea.GetText()
 			_, col, _, _ := inputArea.GetCursor()
 
-			if col < len(txt) {
-				// delete rune AFTER cursor
+			if event.Key() == tcell.KeyDelete && col < len(txt) {
 				newTxt := txt[:col] + txt[col+1:]
 				inputArea.SetText(newTxt, false)
 			}
-			return nil // swallow DELETE completely
+
+			// Wait for deletion to process, then refresh
+			go func() {
+				time.Sleep(20 * time.Millisecond)
+				app.QueueUpdateDraw(func() {
+					refreshUI(currentState)
+				})
+			}()
+
+			if event.Key() == tcell.KeyDelete {
+				return nil
+			}
+			return event
 		}
 
 		if event.Key() == tcell.KeyRune {
@@ -196,6 +207,14 @@ func main() {
 					return nil
 				}
 			}
+
+			// DEFER THE REFRESH: Let the widget process the key first!
+			go func() {
+				time.Sleep(20 * time.Millisecond)
+				app.QueueUpdateDraw(func() {
+					refreshUI(currentState)
+				})
+			}()
 
 			upper := unicode.ToUpper(r)
 			if upper != r {
