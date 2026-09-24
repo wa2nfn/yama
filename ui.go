@@ -421,7 +421,7 @@ YAMA uses a Terminal User Interface (TUI), navigation and selections will be by 
 [green::b]Getting Started: Entering Text[::-]
 [white]Before YAMA can play anything, it needs some text. You have three easy ways to do this:
 1. Type or Paste: Simply click into the main Text Input box and type or paste your practice text directly. Cursor keys, Backspace, Delete/Insert, Page Up/Down, Home/End, are supported for editing.
-2. File Load: Press [yellow]Ctrl-F[-] (note: Ctrl-F, means hold the Control Key and simultaneously the 'f' key) to open the File Selector and browse for any standard '.txt' file on your computer.
+2. File Load: Press [yellow]Ctrl-F[-] (note: Ctrl-F, means hold the Control Key and simultaneously the 'f' key) to open the File Selector and browse for any standard '.txt' file on your PC.
 
 With text on the Text Input screen, you can increase or decrease the amount of text with the NumWords option [yellow]Ctrl-N[-].
 
@@ -436,11 +436,14 @@ You can always exit a menu, without a SAVE, by pressing [yellow]ESC[-] to safely
 The following keys display sub menus or perform significant actions.
 
 [white]Key            | Menu Name  | Purpose[-]
----------------|------------|--------------------------------------------------------
+---------------|------------|----------------------------------------------------------------------------------------
 Ctrl-F, F3     | File       | Open a .txt file for playback.
 Ctrl-N         | NumWords   | Iteratively copies or truncates the current text.
 Ctrl-M         |(No Menu)   | This is a Hot-key, use anytime to Mute input sent by YAMA.
-               |            | For copy practice features, YAMA continues to consume input|            | but silently. In KeyEcho, the input you are to echo back   |            | is written to the screen instantly and silently. It is an  |            | On/Off toggle, its state is on the Blue Line.
+               |            | For copy practice features, YAMA continues to consume input 
+               |            | but silently. In KeyEcho, the input you are to echo back    
+               |            | is written to the screen instantly and silently. It is an   
+               |            | On/Off toggle, its state is on the Blue Line.
 Ctrl-P         | Play/Pause | Start or pause the current loaded input text.
 Ctrl-S         | Stop       | Halt playback immediately (cannot be resumed).
 Ctrl-W         | Wave       | Export current text to .wav file(s).
@@ -469,33 +472,27 @@ If "ProSign Support" is disabled in Options ([yellow]Ctrl-O[-]), bracketed ProSi
 
 [green::b]Options Screen (Ctrl-O) - Settings[::-]
 [white]Setting               | Description
-----------------------|--------------------------------------------------------------------------
-Word Builder Mode     | Plays words progressively (e.g., T, TH, THE) for building head
-                      | buffer comprehension. Mutually exclusive with IWR. IWR speed is 
-                      | used to sound the last word.
+----------------------|----------------------------------------------------------------------------------------------
+Word Builder Mode     | Plays words progressively (e.g., T, TH, THE) for building head  buffer comprehension. 
+                      | Mutually exclusive with IWR. IWR speed is used to sound the last word.
 Word Separator        | If it exists, one character or ProSign in this option separates output.
-                      | e.g. A AM AM I IT IT could play as: A AM AM <BT> I IT IT ?. 
-                      | If <BT> and ? were in the Word Separator field. If IWR is enabled,
-                      | one more full word is played at IWR speed.
+                      | e.g. A AM AM I IT IT could play as: A AM AM <BT> I IT IT ?. If <BT> and ? were in the Word 
+                      | Separator field. If IWR is enabled, one more full word is played at IWR speed.
 Sort                  | With Text or Word Builder, sorts input words in short to long order.
-Text Builder          | Plays input words progressively (e.g., 11 22 33 44 plays as:  
-                      | 11 11 22 11 22 33 11 22 33 44).
+Text Builder          | Plays input words progressively (e.g., 11 22 33 44 plays as: 11 11 22 11 22 33 11 22 33 44).
                       | Mutually exclusive with Word Builder and Randomize Words.
 Word Count            | Limits the count of words used by Text Builder (2-25).
-Text Separator        | If its exists, one character or ProSign in this option 
-                      | separates output iterations. e.g. aa bb cc play as: 
-                      | aa aa bb aa bb cc <BT>, if <BT> was in the Text Separator field.
-Flashcard             | For live play except Word Builder, play a word(s) at current speed and 
-                      | waits for the user to recognize and hit Enter to get the next word.
-                      | Backspace will replay the current word(s).
+Text Separator        | If its exists, one character or ProSign in this option separates output iterations. 
+                      | e.g. aa bb cc play as: aa aa bb aa bb cc <BT>, if <BT> was in the Text Separator field.
+Flashcard             | For live play except Word Builder, play a word(s) at current speed and waits for the user to 
+                      | recognize and hit Enter to get the next word. Backspace will replay the current word(s).
 WordCount             | Number of words per flash (1-20, default 1)
 Random Value          | Words per flash, range from 1 to WordCount value.
 KeyEcho Mode          | Enables echo back sending feature. Uses external key device. Text is     
                       | played simlarly to Flashcard Mode, then the user keys in back (see below)
-Sylablize Words       | Play multi-sylable words by sylable instead of by letter. A head buffer
-                      | feature midway between normal play and Word Builder. Approx. 1000 
-                      | common words will be syalbalized if not attached to punctuation.
-		      | E.g. "COMMON BUT DIFFICULT" plays as "COM MON BUT DIF FI CULT".
+Syllablize Words      | Play multi-syllable words by syllable instead of by letter. A head buffer feature similar to 
+                      | Word Builder. Approx. 1000 common words will be syallbalized if not attached 
+                      | to punctuation. E.g. "COMMON BUT DIFFICULT" plays as "COM MON BUT DIF FI CULT".
 Random Word Order     | Shuffles the playback order of the entire document's words.
 Randomize Word Chars  | Mutually exclusive with the IWR Mode, scrambles char order in a word.
 ProSign Support       | Toggles support for bracketed ProSigns (e.g., <AR>). Does NOT affect [yellow]-+=[-].
@@ -503,8 +500,7 @@ Extended Punctuation  | Toggles support for extended punctuation marks.ZZZZ
 European Characters   | Toggles support for European & Esperanto Morse characters ([yellow]ä, û, etc.[-])
 Use Skip Char List    | Enables the Skip List filtering during playback.
 Skip List             | Define specific characters or ProSigns to silently ignore.
-Char Repeat Limit     | Caps consecutive repeating characters to prevent 
-                      | runaway use of a character. Default 3.
+Char Repeat Limit     | Caps consecutive repeating characters to prevent runaway use of a character. Default 3.
 StartUp Delay         | Adds a countdown timer (in seconds) before playback begins.
 Use Start Message     | Toggles injecting a custom message at the beginning of the text.
 Message Text          | Specific text to play at the start (e.g., VVV <KA>).
@@ -521,61 +517,50 @@ Note that the bottom of the screen has a [yellow]yellow[-] status line and below
 Below is an overview of KeyEcho options, a narrative will follow to pull the ideas into a cohesive description.
 
 [green::b]KeyEcho Screen (Ctrl-K) - Settings[::-]
-[white]Setting                 | Description
-------------------------|-----------------------------------------------------------------------
-Tolerance (%)           | % a symbol element (dit, dah, space, etc.) can vary from expected value.
-Echo Word Count (1-20)  | Number of words played (default 1), and to key/echo back in each group.
-Random Word Count       | Allows count from 1 to Echo Word Count.
-Key Now Alert Tone      | Plays a short audible prompt (~.5 dit) for you to begin keying.
-                        | There is also a Status Line prompt "Key now..." as well as a brief cursor
-			| below the words from YAMA. Do NOT key before the prompt - the decoder will
-			| not be active, nor the sidetone.
-Alert Tone Frequency    | Allows the alert tone to differ from audible code.
-Error Tone              | Play Alert Tone Freq for about 0.5 Dah on keying error.
-Key Padding             | Once you start to key, you have the same amount of time that YAMA took
-                        | to send you the word(s), plus 4 levels of padding given as descriptive names.
-SideTone                | Use the PC sidetone for keying using the same tone as set in 
-                        | Timing screen.
-Visual Feedback         | If set, your keyed symbols line up below what YAMA sent.
-                        | Two identical lines.
-                        | is perfect match; * is an invalid morse (i.e. 7 dits) (more on this later)
-KeyEcho Port            | A COM port to connect your device (straight key, keyer, bug).
-Key Line Interface      | Which leads in the COM port are being used.
-Key Line Polarity       | Whether key up is silent (standard) or plays tone, down is inverted.
-Parasitic Power         | If needed by the comport cable. (If cable uses opto-isolators, as an example).
+[white]Setting                | Description
+-----------------------|---------------------------------------------------------------------------------------------
+Tolerance (%)          | % a symbol element (dit, dah, space, etc.) can vary from expected value.
+Echo Word Count (1-20) | Number of words played (default 1), and to key/echo back in each group.
+Random Word Count      | Allows count from 1 to Echo Word Count.
+Key Now Alert Tone     | Plays a short audible prompt (~.5 dit) for you to begin keying. There is also a Status Line 
+                       | prompt "Key now..." as well as a brief cursor below the words from YAMA. Do NOT key before 
+                       | the prompt - the decoder will not be active, nor the sidetone.
+Alert Tone Frequency   | Allows the alert tone to differ from audible code.
+Error Tone             | Play Alert Tone Freq for about 0.5 Dah time on keying error.
+Key Padding            | Once you start to key, you have the same amount of time that YAMA took to send you the 
+                       | word(s), plus 4 levels of padding given as descriptive names.
+SideTone               | Use the PC sidetone for keying using the same tone as set in the Timing screen.
+Visual Feedback        | If set, your keyed symbols line up below what YAMA sent. Two identical line if perfect 
+                       | match; * is an invalid morse (i.e. 7 dits) (more on this later)
+KeyEcho Port           | A COM port to connect your device (straight key, keyer, bug).
+Key Line Interface     | Which leads in the COM port are being used.
+Key Line Polarity      | Whether key up is silent (standard) or plays tone, down is inverted.
+Parasitic Power        | If needed by the comport cable. (If cable uses opto-isolators, as an example).
 
 [green::b]Timing Screen (Ctrl-T) - Timing[::-]
-[white]Setting               | Description
-----------------------|-------------------------------------------------------------------------
-Timing Method         | Standard, Farnsworth or Wordsworth. Choice controlsif/when thw next few
-                      | options apply.
-Character Speed       | Applies to all of the above methods.      
-End Ramp Speed        | If set, must be greater than the above. Will have an audio session       
-                      | increase in speed linearly during the session.
-		      | speed will not change with a word.
-Effective Speed       | A speed lower than Char Speed, used for Farnsworth
-or Wordsworth spacing.|
-Tone                  | For YAMA played audio, also fo optional sidetone
-in the KeyEcho Mode.
-Use IWR Mode          | On on/off feature toggle, placed hear since related to Char speed if the
-                      | played audio will sound your chossed IWR words at a fast rate than other
-		      | words. 
-Speed                 | The character speed for IWR matched words.
-Tone                  | Likely best set the same as previous tone.
-
-
-
+[white]Setting                | Description
+-----------------------|---------------------------------------------------------------------------------------------
+Timing Method          | Standard, Farnsworth or Wordsworth. Choice controlsif/when thw next few options apply.
+Character Speed        | Applies to all of the above methods.      
+End Ramp Speed         | If set, must be greater than the above. Will have an audio session increase in speed 
+                       | linearly during the session. Speed will not change with a word.
+Effective Speed        | A speed lower than Char Speed, used for Farnsworth or Wordsworth spacing.
+Tone                   | For YAMA played audio; for optional sidetone in the KeyEcho Mode.
+Use IWR Mode           | On on/off feature toggle, placed hear since related to Character speed if the played audio
+                       | will sound your chosen IWR words at a fast rate than other words. 
+Speed                  | The character speed for IWR matched words.
+Tone                   | Likely best set the same as previous tone.
 
 [green::b]Audio Screen (Ctrl-A) - Audio-impacting impairments[::-]
-[white]Setting               | Description
-----------------------|-------------------------------------------------------------------------
-Static (QRN)          | Injects constant background hiss and random lightning crashes.
-Fading (QSB)          | Simulates a slow ionospheric roll, dipping and recovering volume.
-Tone Drift            | Simulates an unstable oscillator, bending the pitch up and down.
-Speed Drift           | Simulates a tired operator by slowly expanding/contracting the timing.
-Key Clicks            | Injects a harsh electrical spark at the start and end of elements.
-Brown Noise           | Not an impairment. Can increase mental focus by masking other noise.
-Pink Noise            | Not an impairment. Can increase learning (some clinical evidence).
+[white]Setting                | Description
+-----------------------|-------------------------------------------------------------------------
+Static (QRN)           | Injects constant background hiss and random lightning crashes.
+Fading (QSB)           | Simulates a slow ionospheric roll, dipping and recovering volume.
+Tone Drift             | Simulates an unstable oscillator, bending the pitch up and down.
+Speed Drift            | Simulates a tired operator by slowly expanding/contracting the timing.
+Key Clicks             | Injects a harsh electrical spark at the start and end of elements.
+Brown Noise            | Not an impairment. Can increase mental focus by masking other noise.
+Pink Noise             | Not an impairment. Can increase learning (some clinical evidence).
 
 [yellow]Note that you can make changes to the currently playing audio with the Timing or Audio screens.[-]
 [yellow]Note the two noise tones are hypothetical, not specific to morse code.[-]
@@ -644,7 +629,7 @@ Default COM PORT is 3, your PC may have other see the drop down choices.
 You can see the app is not for complete beginners, nor does it attempt to complete with many excellent training apps such as: Precision CW Tutor & Fistcheck, 
 G4FON, LCWO.net, LICW.org, etc., but rather to bundle a number of practice features in a single app.
 
-You can email me at wa2nfn@gmail.com if you find something that needs clarification, a bug, typo, or if a numerical limit causes you an issue. The sound library will not work on MAC, so thats not a consideration; a mouse will never be supported by the UI libarary, so again that is not a consideration either.
+You can email me at wa2nfn@gmail.com if you find something that needs clarification, a bug, typo, or if a numerical limit causes you an issue. The sound library will not work on MAC, so thats not a consideration; a mouse will never be supported by the UI libarary, so that is not a consideration.
 
 73 and best of luck on your CW journey.
 WA2NFN
@@ -756,10 +741,10 @@ WA2NFN
 		AddItem(form, 3, 1, false).
 		AddItem(hint, 1, 1, false)
 
-	layout.SetBorder(true).SetTitle(" Help Information ")
+	layout.SetBorder(true).SetTitle(" Help ")
 	layout.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	pages.AddPage("help", createModal(layout, 100, 26), true, true)
+	pages.AddPage("help", createModal(layout, 120, 26), true, true)
 	app.SetFocus(layout)
 }
 
