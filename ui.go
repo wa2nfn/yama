@@ -455,7 +455,7 @@ Ctrl-A         | Audio      | Audio impacting impairements (QRN, QSB, Drift, etc
 Ctrl-D         | DataStats  | View statistics and IWR counts. New input clears old data.
 Ctrl-B         | aBout      | App info and License.
 Ctrl-Q         | Quit       | Exit YAMA. (Or close the parent window.)
-F1             | Help       | This screen text.
+
 ESC            | Close      | Cancel/Close menus without saving.
 Spacebar       | Hide/Unhide| Toggle text visibility during audio playback.
 
@@ -608,8 +608,7 @@ Tip for progression: As your keying practice improves, you can force yourself to
 - Inputs (Listeners): Pin 8 (CTS), Pin 6 (DSR), Pin 1 (CD), or Pin 9 (RI)
 (Pin numbers are listed in the KetEcho options page. Viewd from the solder side of a DB9, with the wide edge on top, the top row
 from LEFT to RIGHT is 1 2 3 4 5, the lower row is 6 7 8 9.)
-
-In YAMA's Key Interface options, select the pair you soldered (e.g., CTS-DTR). If your hardware requires an inverted open/closed state (rare), check the Inverted Polarity box. If your adapter requires both outputs to be asserted to supply enough voltage (rare: a harware specific comport cable), check Parasitic Power.
+A simple alternative to to buy a DB9 adapter with pins or sockets to match your comport cable, and a built-in terminal block to screw down the wires, they cost about $5.
 
 [green::b]KeyEcho Quick Test[::-]
 [white]1. Ctrl-T Timing screen: set a Character Speed, and Tone. Then SAVE
