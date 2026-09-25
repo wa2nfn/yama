@@ -1,0 +1,53 @@
+name: YAMA Multi-Platform Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        go-version: ["1.22"]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ matrix.go-version }}
+
+    - name: Build YAMA
+      run: |
+        mkdir -p build
+        export CGO_ENABLED=0
+
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          export GOOS=windows
+          export GOARCH=amd64
+          go build -ldflags="-w -s" -o build/yama.exe ./...
+        elif [[ "$RUNNER_OS" == "macOS" ]]; then
+          export GOOS=darwin
+          export GOARCH=amd64
+          go build -ldflags="-w -s" -o build/yama-darwin ./...
+        else
+          export GOOS=linux
+          export GOARCH=amd64
+          go build -ldflags="-w -s" -o build/yama-linux ./...
+        fi
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: yama-${{ matrix.os }}
+        path: build/
+

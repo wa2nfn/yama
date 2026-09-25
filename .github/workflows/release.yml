@@ -1,0 +1,49 @@
+name: YAMA Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-go@v5
+      with:
+        go-version: "1.22"
+
+    - name: Build YAMA
+      run: |
+        mkdir -p build
+        export CGO_ENABLED=0
+
+        if [[ "$RUNNER_OS" == "Windows" ]]; then
+          export GOOS=windows
+          export GOARCH=amd64
+          go build -ldflags="-w -s" -o build/yama.exe ./...
+        elif [[ "$RUNNER_OS" == "macOS" ]]; then
+          export GOOS=darwin
+          export GOARCH=amd64
+          go build -ldflags="-w -s" -o build/yama-darwin ./...
+        else
+          export GOOS=linux
+          export GOARCH=amd64
+          go build -ldflags="-w -s" -o build/yama-linux ./...
+        fi
+
+    - name: Upload release assets
+      uses: softprops/action-gh-release@v2
+      with:
+        files: build/*
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
