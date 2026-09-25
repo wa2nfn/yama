@@ -290,7 +290,7 @@ func showKeyEchoOptions() {
 				clean = append(clean, p)
 			}
 		}
-		
+
 		echoPortDrop.SetOptions(clean, nil)
 
 		// Try to preserve the currently selected port if it still exists

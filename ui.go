@@ -354,7 +354,7 @@ func refreshUI(state AppState) {
 			menu = "[#FFFF55]R[white]esume  [#FFFF55]S[white]top  [#FFFF55]T[white]iming  [#FFFF55]A[white]udio  [#FFFF55]Q[white]uit "
 		}
 	}
-	header.SetText("[#55FFFF::b] YAMA - Yet Another Morse-code App[white::-]\n\n" + menu)
+	header.SetText("[#55FFFF::b] YAMA - Yet Another Morse-code App\nv" + Ver + "[white::-]\n" + menu)
 }
 
 // --- UI Components & Modals ---
@@ -889,15 +889,15 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 			actualText := parser.FilterValidMorse(txt, morse.MorseTable)
 			// TEMPORARY DEBUG: Dump the active MorseTable
 			/*
-	var dump strings.Builder
-	dump.WriteString(fmt.Sprintf("Total keys in active MorseTable: %d\n\n", len(morse.MorseTable)))
+				var dump strings.Builder
+				dump.WriteString(fmt.Sprintf("Total keys in active MorseTable: %d\n\n", len(morse.MorseTable)))
 
-	for k, v := range morse.MorseTable {
-		dump.WriteString(fmt.Sprintf("Char: %c | Hex: U+%04X | Morse: %s\n", k, k, v))
-	}
+				for k, v := range morse.MorseTable {
+					dump.WriteString(fmt.Sprintf("Char: %c | Hex: U+%04X | Morse: %s\n", k, k, v))
+				}
 
-	os.WriteFile("yama_table_dump.txt", []byte(dump.String()), 0644)
-	*/
+				os.WriteFile("yama_table_dump.txt", []byte(dump.String()), 0644)
+			*/
 
 			// Normalize file content (UC + space compression)
 			normalized := strings.Join(strings.Fields(actualText), " ")
