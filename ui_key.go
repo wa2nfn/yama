@@ -279,8 +279,35 @@ func showKeyEchoOptions() {
 		app.SetFocus(inputArea)
 	}
 
+	onRefreshPorts := func() {
+		newPorts, err := morse.GetSerialPorts()
+		if err != nil || len(newPorts) == 0 {
+			newPorts = []string{"None"}
+		}
+		var clean []string
+		for _, p := range newPorts {
+			if strings.TrimSpace(p) != "" {
+				clean = append(clean, p)
+			}
+		}
+		
+		echoPortDrop.SetOptions(clean, nil)
+
+		// Try to preserve the currently selected port if it still exists
+		currentPort := config.User.KeyerPort
+		idx := 0
+		for i, p := range clean {
+			if p == currentPort {
+				idx = i
+				break
+			}
+		}
+		echoPortDrop.SetCurrentOption(idx)
+	}
+
 	form.AddButton("Save", onSave)
 	form.AddButton("Reset", resetState)
+	form.AddButton("Refresh Ports", onRefreshPorts)
 	form.AddButton("Cancel", func() {
 		pages.RemovePage("keyEcho")
 		app.SetFocus(inputArea)
@@ -292,7 +319,7 @@ func showKeyEchoOptions() {
 	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	// 1. Update the footer to advertise the new hotkey
-	footerView.SetText("[yellow]ESC to Close  •  Ctrl-S to Save[-]")
+	footerView.SetText("[yellow]ESC to Close  ΓÇó  Ctrl-S to Save[-]")
 
 	// Explicitly defining the container here to ensure the compiler sees it
 	var container *tview.Flex = tview.NewFlex()
@@ -317,6 +344,7 @@ func showKeyEchoOptions() {
 		return event
 	})
 
-	pages.AddPage("keyEcho", createModal(container, 42, 26), true, true)
+	// Widened from 42 to 55 to comfortably fit all 4 buttons in a single row
+	pages.AddPage("keyEcho", createModal(container, 55, 26), true, true)
 	app.SetFocus(container)
 }

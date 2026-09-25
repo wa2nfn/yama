@@ -6,9 +6,9 @@ import (
 	"yama/config"
 )
 
-// MorseRegex now permits A-Z, 0-9, supported punctuation, AND the supported European characters!
-// Add the Esperanto characters to the bouncer's VIP list!
-var MorseRegex = regexp.MustCompile(`[^A-Z0-9\.\,\?\/\:\;\=\+\-\"\@\<\>\s\!\$\(\)\'ÄÖÜÉÁÅÇÑĈĜĤĴŜŬÀÈ]`)
+// MorseRegex now uses explicit Unicode hex escapes (\x{XXXX}) to guarantee 
+// proper compilation of European and Esperanto characters regardless of file encoding.
+var MorseRegex = regexp.MustCompile(`[^A-Z0-9\.\,\?\/\:\;\=\+\-\"\@\<\>\s\!\$\(\)\'\x{00C4}\x{00D6}\x{00DC}\x{00C9}\x{00C1}\x{00C5}\x{00C7}\x{00D1}\x{00C0}\x{00C8}\x{0108}\x{011C}\x{0124}\x{0134}\x{015C}\x{016C}]`)
 
 // MorseTable is the dynamic "Source of Truth"
 var MorseTable = make(map[rune]string)
@@ -36,8 +36,6 @@ var basicMap = map[rune]string{
 	'?': "..--..",
 	'/': "-..-.",
 	// ProSign Equivalents (MUST be in basic to prevent discarding)
-	//'=':      "-...-",  // <BT>
-	//'+':      ".-.-.",  // <AR>
 	'-':      "-....-", // <DU>
 	'\u2013': "-....-", // en dash <DU>
 	'\u2014': "-....-", // em dash <DU>
@@ -56,26 +54,26 @@ var extendedPunctuationMap = map[rune]string{
 }
 
 var europeanMap = map[rune]string{
-	'Ä': ".-.-",  // A-umlaut
-	'Ö': "---.",  // O-umlaut
-	'Ü': "..--",  // U-umlaut
-	'É': "..-..", // E-acute
-	'Á': ".--.-", // A-acute
-	'Å': ".--.-", // A-ring
-	'Ç': "-.-..", // C-cedilla
-	'Ñ': "--.--", // N-tilde
-	'À': ".--.-", // A-grave (Shares Morse with Á and Å)
-	'È': ".-..-", // E-grave (Shares Morse with the quotation mark ")
+	'\u00C4': ".-.-",  // Ä A-umlaut
+	'\u00D6': "---.",  // Ö O-umlaut
+	'\u00DC': "..--",  // Ü U-umlaut
+	'\u00C9': "..-..", // É E-acute
+	'\u00C1': ".--.-", // Á A-acute
+	'\u00C5': ".--.-", // Å A-ring
+	'\u00C7': "-.-..", // Ç C-cedilla
+	'\u00D1': "--.--", // Ñ N-tilde
+	'\u00C0': ".--.-", // À A-grave
+	'\u00C8': ".-..-", // È E-grave
 }
 
-// Add the new Esperanto map
+// Add the new Esperanto map using strict Unicode points
 var esperantoMap = map[rune]string{
-	'Ĉ': "-.-..", // C-circumflex
-	'Ĝ': "--.-.", // G-circumflex
-	'Ĥ': "----",  // H-circumflex
-	'Ĵ': ".---.", // J-circumflex
-	'Ŝ': "...-.", // S-circumflex
-	'Ŭ': "..--",  // U-breve
+	'\u0108': "-.-..", // Ĉ C-circumflex
+	'\u011C': "--.-.", // Ĝ G-circumflex
+	'\u0124': "----",  // Ĥ H-circumflex
+	'\u0134': ".---.", // Ĵ J-circumflex
+	'\u015C': "...-.", // Ŝ S-circumflex
+	'\u016C': "..--",  // Ŭ U-breve
 }
 
 // Signature remains the same, we just bundle Esperanto into the European toggle
@@ -85,17 +83,16 @@ func RebuildMorseTable(useExtended bool, useEuropeanChars bool, useSkip bool, sk
 	ProSignTable = make(map[string]string)
 
 	// 2. Rebuild the working copies from the blueprints
-	for k, v := range basicMap {
+	for k, v := range basicMap { // basic english
 		MorseTable[k] = v
 	}
-	if useExtended {
+	if useExtended { // punc beyong ,.?/
 		for k, v := range extendedPunctuationMap {
 			MorseTable[k] = v
 		}
 	}
 
-	// 3. Inject Extended Alphabets
-	if useEuropeanChars {
+	if useEuropeanChars { // European and Esperanto
 		// Load European
 		for k, v := range europeanMap {
 			MorseTable[k] = v
@@ -140,9 +137,6 @@ func RebuildMorseTable(useExtended bool, useEuropeanChars bool, useSkip bool, sk
 }
 
 func ProcessMorseString(input string) string {
-	// 1. Force Upper
-	//work := strings.ToUpper(input)
-
 	// 2. Initial clean: Keep the original regex as a safety net for weird unicode
 	work := MorseRegex.ReplaceAllString(input, "")
 
@@ -179,7 +173,6 @@ func ProcessMorseString(input string) string {
 	}
 
 	// 6. SPACE CONDENSER
-	// Reassemble the final string. strings.Join guarantees exactly one space between words.
 	return strings.Join(cleanWords, " ")
 }
 
@@ -321,90 +314,41 @@ var syllables = map[string]string{
 	"WRITTEN": "WRIT TEN", "YELLOW": "YEL LOW",
 }
 
+
 var EchoMapBase = map[string]string{
-	".-":   "A",
-	"-...": "B",
-	"-.-.": "C",
-	"-..":  "D",
-	".":    "E",
-	"..-.": "F",
-	"--.":  "G",
-	"....": "H",
-	"..":   "I",
-	".---": "J",
-	"-.-":  "K",
-	".-..": "L",
-	"--":   "M",
-	"-.":   "N",
-	"---":  "O",
-	".--.": "P",
-	"--.-": "Q",
-	".-.":  "R",
-	"...":  "S",
-	"-":    "T",
-	"..-":  "U",
-	"...-": "V",
-	".--":  "W",
-	"-..-": "X",
-	"-.--": "Y",
+	".-":   "A", "-...": "B", "-.-.": "C", "-..":  "D", ".":    "E",
+	"..-.": "F", "--.":  "G", "....": "H", "..":   "I", ".---": "J",
+	"-.-":  "K", ".-..": "L", "--":   "M", "-.":   "N", "---":  "O",
+	".--.": "P", "--.-": "Q", ".-.":  "R", "...":  "S", "-":    "T",
+	"..-":  "U", "...-": "V", ".--":  "W", "-..-": "X", "-.--": "Y",
 	"--..": "Z",
-
-	"-----": "0",
-	".----": "1",
-	"..---": "2",
-	"...--": "3",
-	"....-": "4",
-	".....": "5",
-	"-....": "6",
-	"--...": "7",
-	"---..": "8",
-	"----.": "9",
-
-	".-.-.-": ".",
-	"--..--": ",",
-	"..--..": "?",
-	"-..-.":  "/",
+	"-----": "0", ".----": "1", "..---": "2", "...--": "3", "....-": "4",
+	".....": "5", "-....": "6", "--...": "7", "---..": "8", "----.": "9",
+	".-.-.-": ".", "--..--": ",", "..--..": "?", "-..-.":  "/",
 }
 
 var EchoMapExtended = map[string]string{
-	"---...":  ":",
-	"-.-.-.":  ";",
-	".-..-.":  "\"",
-	".--.-.":  "@",
-	".----.":  "'",
-	"..--.":   "!",
-	"...-..-": "$",
-	"-.--.":   "(",
-	"-.--.-":  ")",
+	"---...":  ":", "-.-.-.":  ";", ".-..-.":  "\"", ".--.-.":  "@",
+	".----.":  "'", "..--.":   "!", "...-..-": "$", "-.--.":   "(", "-.--.-":  ")",
 }
 
 var EchoMapProsigns = map[string]string{
-
-	// --- Prosigns ---
-	".-...":     "<AS>",
-	"-...-":     "<BT>",
-	".-.-.":     "<AR>",
-	"-....-":    "<DU>",
-	"-.-.-":     "<KA>",
-	"...-.-":    "<SK>", // also VA
-	"........":  "<HH>",
-	"...---...": "<SOS>",
-	"----":      "<CH>",
-	"...-.":     "<VE>", // also <SN>
-
-	// BK — optional shorthand (modern ham usage)
-	"-...-.-": "<BK>",
+	".-...":     "<AS>", "-...-":     "<BT>", ".-.-.":     "<AR>",
+	"-....-":    "<DU>", "-.-.-":     "<KA>", "...-.-":    "<SK>", 
+	"........":  "<HH>", "...---...": "<SOS>", "----":      "<CH>",
+	"...-.":     "<VE>", "-...-.-":   "<BK>",
 }
 
+// EchoMapEuropean fixed to output true UTF-8 strings instead of mojibake
 var EchoMapEuropean = map[string]string{
-	".-.-":  "Ä",
-	"---.":  "Ö",
-	"..--":  "Ü",
-	"..-..": "É",
-	".--.-": "Á", // also Å, À
-	"-.-..": "Ç",
-	"--.--": "Ñ",
-	".-..-": "È",
+	".-.-":  "\u00C4", // Ä
+	"---.":  "\u00D6", // Ö
+	"..--":  "\u00DC", // Ü
+	"..-..": "\u00C9", // É
+	".--.-": "\u00C1", // Á (also Å, À)
+	"-.-..": "\u00C7", // Ç
+	"--.--": "\u00D1", // Ñ
+	".-..-": "\u00C8", // È
 }
 
 var EchoMap map[string]string // to be populated

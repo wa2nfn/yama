@@ -172,7 +172,8 @@ func ResolvePath(inputPath string) string {
 func CreateDefaultIWRFile(targetPath string) error {
 	defaultText := `# Add IWR words meaningful to you, one per line.
 # Lines beginning with # are ignored.
-# Words ending with * (i.e. QRZ*) match: QRZ QRZ? QRZ. QRZ, QRZ:
+# Words ending with * (i.e. QRZ*) match the word, optionally
+# followed by one of: ".,?:"
 # To edit, use cursor keys, Backspace, Insert/Delete; Hit Tab to access buttons.
 # words start below
 # Make sure the "Use IWR" checkbox on the Timing menu is checked.

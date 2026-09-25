@@ -168,7 +168,7 @@ func main() {
 	blueLine.SetDynamicColors(true)
 	blueLine.SetBackgroundColor(tcell.ColorSteelBlue)
 
-	inputArea = tview.NewTextArea()
+inputArea = tview.NewTextArea()
 	inputArea.SetBackgroundColor(tcell.ColorBlack)
 	inputArea.SetBorder(true).SetTitle(" Text Input/Output ")
 	inputArea.SetPlaceholder("Enter text (or Ctrl-F select a file), then Ctrl-P to Play;\nor use function key F1 for full Help.")
