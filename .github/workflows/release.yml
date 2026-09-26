@@ -40,7 +40,7 @@ jobs:
                   export GOARCH=amd64
                   sudo apt-get update && sudo apt-get install -y libasound2-dev
                   go build -ldflags="-w -s" -o build/yama-linux .
-                f
+                fi
        - name: Upload release assets
           uses: softprops/action-gh-release@v2
           with:
