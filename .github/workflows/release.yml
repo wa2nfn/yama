@@ -23,25 +23,22 @@ jobs:
       - name: Build YAMA
         shell: bash
         run: |
-            mkdir -p build
-        
-            if [[ "$RUNNER_OS" == "Windows" ]]; then
-              export CGO_ENABLED=0
-              export GOOS=windows
-              export GOARCH=amd64
-              go build -ldflags="-w -s" -o build/yama.exe .
-            elif [[ "$RUNNER_OS" == "macOS" ]]; then
-              export CGO_ENABLED=1
-              export GOOS=darwin
-              export GOARCH=amd64
-              go build -ldflags="-w -s" -o build/yama-darwin .
-            else
-              export CGO_ENABLED=1
-              export GOOS=linux
-              export GOARCH=amd64
-              sudo apt-get update && sudo apt-get install -y libasound2-dev
-              go build -ldflags="-w -s" -o build/yama-linux .
-            fi
+          mkdir -p build
+          
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            export CGO_ENABLED=0
+            export GOOS=windows
+            export GOARCH=amd64
+            go build -ldflags="-w -s" -o build/yama.exe .
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            export CGO_ENABLED=1
+            export GOOS=darwin
+            export GOARCH=amd64
+            go build -ldflags="-w -s" -o build/yama-darwin .
+          else
+            # Build Linux inside an older Debian container for glibc backwards compatibility
+            docker run --rm -v ${{ github.workspace }}:/app -w /app golang:1.22-bullseye bash -c "apt-get update && apt-get install -y libasound2-dev && env CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags='-w -s' -o build/yama-linux ."
+          fi
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
