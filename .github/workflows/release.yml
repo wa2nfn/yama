@@ -35,13 +35,11 @@ jobs:
             export GOOS=darwin
             export GOARCH=amd64
             go build -ldflags="-w -s" -o build/yama-darwin .
-          else
-              
-             # Build Linux inside older Debian container using Archive repos for backward compatibility
-            docker run --rm -v ${{ github.workspace }}:/app -w /app golang:1.22-bullseye bash -c "echo 'deb http://archive.debian.org/debian bullseye main' > /etc/apt/sources.list && apt-get update -o Acquire::Check-Valid-Until=false && apt-get install -y libasound2-dev && env CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags='-w -s' -o build/yama-linux ."
+         else
+            # Build Linux inside older Debian container using Archive repos for backward compatibility
+            docker run --rm -v ${{ github.workspace }}:/app -w /app golang:1.22-bullseye bash -c "rm -rf /etc/apt/sources.list.d/* && echo 'deb http://archive.debian.org/debian bullseye main' > /etc/apt/sources.list && echo 'deb http://archive.debian.org/debian-security bullseye-security main' >> /etc/apt/sources.list && apt-get update -o Acquire::Check-Valid-Until=false && apt-get install -y libasound2-dev && env CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags='-w -s' -o build/yama-linux ."
           fi
-                  
-          fi
+        
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
