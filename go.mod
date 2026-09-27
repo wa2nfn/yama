@@ -1,6 +1,6 @@
 module yama
 
-go 1.22.0
+go 1.26.0
 
 require (
 	github.com/ebitengine/oto/v3 v3.5.1
