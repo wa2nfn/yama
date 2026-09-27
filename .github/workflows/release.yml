@@ -35,7 +35,7 @@ jobs:
             export CGO_ENABLED=1
             export GOOS=darwin
             export GOARCH=amd64
-            go build -ldflags="-w -s" -o build/yama-macos .
+            go build -ldflags="-w -s" -o build/yama-darwin .
           else
             # Build Linux inside Ubuntu 20.04 (glibc 2.31) and install Go 1.26 on the fly for max compatibility
             docker run --rm -v ${{ github.workspace }}:/app -w /app ubuntu:20.04 bash -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y wget ca-certificates build-essential libasound2-dev && wget -q https://go.dev/dl/go1.26.0.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.26.0.linux-amd64.tar.gz && export PATH=\$PATH:/usr/local/go/bin && env CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags='-w -s' -o build/yama-linux ."
