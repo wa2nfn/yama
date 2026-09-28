@@ -89,6 +89,7 @@ type UserSettings struct {
 	SideTone               bool   `json:"sidetone"`
 	ErrorTone              bool   `json:"errortone"`
 	VisualFeedback         bool   `json:"visual_feedback"`
+	PerfectPause         bool   `json:"perfect_pause"`
 	Mute                   bool   `json:"mute"`
 
 	// Messaging & Flow Control
@@ -158,7 +159,7 @@ func LoadConfig() {
 		// 1. SET MANDATORY DEFAULTS SO THE ENGINE DOESN'T PANIC
 		User.CharacterSpeed = 20
 		User.EffectiveSpeed = 15
-		User.Tone = 600
+		User.Tone = 700
 		User.ResponseMS = 5000
 		User.GroupSendMS = 9000
 
@@ -174,7 +175,7 @@ func LoadConfig() {
 		User.SkipList = ""
 		User.IWREnabled = true
 		User.IWRSpeed = 30
-		User.IWRTone = 600
+		User.IWRTone = 700
 		User.WordBuilder = false
 		User.WordBuilderSort = false
 		User.TextBuilderSort = false
@@ -188,7 +189,7 @@ func LoadConfig() {
 		User.Flashcard = false
 		User.FlashWordCount = 1
 		User.EchoWordCount = 1
-		User.EchoTolerance = 45
+		User.EchoTolerance = 30
 		User.FlashRandomCount = false
 		User.EchoRandomCount = false
 		User.EchoAutoRetry = false
@@ -206,6 +207,7 @@ func LoadConfig() {
 		User.SideTone = true
 		User.ErrorTone = true
 		User.VisualFeedback = true
+		User.PerfectPause = false
 		User.Mute = false
 
 		// 2. Save immediately. This creates the directory AND a valid JSON file.

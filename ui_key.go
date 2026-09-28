@@ -13,6 +13,7 @@ import (
 
 func showKeyEchoOptions() {
 	form := tview.NewForm()
+	form.SetItemPadding(0) // Removes the blank lines between form fields
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	form.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
@@ -91,6 +92,10 @@ func showKeyEchoOptions() {
 	visualCb := tview.NewCheckbox().
 		SetLabel("Visual Feedback")
 
+	// --- PerfectPause ---
+	perfectPauseCb := tview.NewCheckbox().
+		SetLabel("Perfect Match Message")
+
 	// --- Key Line Mode ---
 	keyLineOptions := []string{"CTS:8-DTR:4", "DSR:6-DTR:4", "CD:1-DTR:4", "RI:9-DTR:4", "CTS:8-RTS:7", "DSR:6-RTS:7", "CD:1-RTS:7", "RI:9-RTS:7"}
 	lineModeDrop := tview.NewDropDown().
@@ -164,6 +169,8 @@ func showKeyEchoOptions() {
 
 		// Visual Feedback
 		visualCb.SetChecked(config.User.VisualFeedback)
+		// PerfectPause Feedback
+		perfectPauseCb.SetChecked(config.User.PerfectPause)
 
 		// Key Line Mode
 		lmIndex := 0
@@ -200,14 +207,19 @@ func showKeyEchoOptions() {
 
 	// Add items in order
 	form.AddFormItem(tolDrop)
+	form.AddTextView("", "", 0, 1, false, false)
 	form.AddFormItem(wcDrop)
 	form.AddFormItem(echoRandomCountCb)
+	form.AddTextView("", "", 0, 1, false, false)
 	form.AddFormItem(alertDrop)
 	form.AddFormItem(alertFreqInput)
 	form.AddFormItem(errorCb)
+	form.AddTextView("", "", 0, 1, false, false)
 	form.AddFormItem(paddingDrop)
 	form.AddFormItem(sideCb)
 	form.AddFormItem(visualCb)
+	form.AddFormItem(perfectPauseCb)
+	form.AddTextView("", "", 0, 1, false, false)
 	form.AddFormItem(echoPortDrop)
 	form.AddFormItem(lineModeDrop)
 	form.AddFormItem(parasiticCb)
@@ -245,6 +257,7 @@ func showKeyEchoOptions() {
 		config.User.SideTone = sideCb.IsChecked()
 		config.User.ErrorTone = errorCb.IsChecked()
 		config.User.VisualFeedback = visualCb.IsChecked()
+		config.User.PerfectPause = perfectPauseCb.IsChecked()
 
 		lmIdx, _ := lineModeDrop.GetCurrentOption()
 		if lmIdx >= 0 && lmIdx < len(keyLineOptions) {
@@ -290,7 +303,7 @@ func showKeyEchoOptions() {
 				clean = append(clean, p)
 			}
 		}
-
+		
 		echoPortDrop.SetOptions(clean, nil)
 
 		// Try to preserve the currently selected port if it still exists
@@ -319,7 +332,7 @@ func showKeyEchoOptions() {
 	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	// 1. Update the footer to advertise the new hotkey
-	footerView.SetText("[yellow]ESC to Close  ΓÇó  Ctrl-S to Save[-]")
+	footerView.SetText("[yellow]ESC to Close  •  Ctrl-S to Save[-]")
 
 	// Explicitly defining the container here to ensure the compiler sees it
 	var container *tview.Flex = tview.NewFlex()
@@ -327,7 +340,7 @@ func showKeyEchoOptions() {
 	container.AddItem(form, 0, 1, true)
 	container.AddItem(footerView, 1, 0, false)
 
-	container.SetBorder(true).SetTitle(" KeyEcho Options ")
+	container.SetBorder(true).SetTitle(" KeyEcho ")
 	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
 	container.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {

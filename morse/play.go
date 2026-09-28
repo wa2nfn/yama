@@ -724,6 +724,14 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 			var action rune
 			if err == nil && res.Success {
+				if config.User.PerfectPause {
+					// moment to bask in glory
+					if OnStatusUpdate != nil {
+						OnStatusUpdate(" [green]Perfect Match!       [yellow]ENTER to continue, BACKSPACE to repeat.")
+					}
+					time.Sleep(2000 * time.Millisecond)
+				}
+
 				expectedRaw := strings.ToUpper(strings.Join(lastGroup, " "))
 				actualRaw := strings.ToUpper(strings.Join(res.Chars, ""))
 
