@@ -411,39 +411,40 @@ func showErrorModal(errors []string, onDismiss func()) {
 
 
 func showHelp() {
-	helpText := ` [white::-]
+	helpText := ` [-:-:-]
 Whether you are looking for routine practice, seeking head-copy tools, wanting to test your copying limits against simulated audio impairments, or working on your CW sending skills, YAMA is built to help you.
 
 YAMA features standard input processing, such as: discarding non-Morseable characters, space compression, and case-agnostic input, as well as non-traditional features: selectable ProSign support, selected character filtering, expansion of contractions (e.g., won't to will not), European & Esperanto support, graduating speed, dynamic wave shaping for QRQ, and more. Changes to speed/tone and audio impairments can be made during play. Many operational modes and options can be used in combination, and almost all of them are compatible with the KeyEcho sending feature as well.
 
 YAMA uses a Terminal User Interface (TUI). Navigation and selections are performed using key combinations—mostly the Control Key plus a letter, though a few Function keys are supported as alternatives. Help is available via the standard F1 function key. Note: In the menu screens (Timing, Options, and Audio), using back-tab is often quicker to navigate to a field of interest than pressing tab multiple times forward.
 
-[green::b]High-Level Overview - Please read.[white::-]
+[green::b]High-Level Overview - Please read.[-:-:-]
 Your introduction to the app will be greatly enhanced by reviewing the environment briefly before diving into the specific sections below. As the main screen (Input/Output Text) indicates with its prompt, the app is ready to create CW using a number of default options. Type "Hello World" and press Ctrl-P. You will hear 20wpm CW as long as the PC volume is on and you resisted making changes.
 
-Across the top of the screen is a menu bar with names, left to right: [yellow]F[white::-]ile, [yellow]P[white::-]lay ... etc. (access and navigation follow below). Some of the menu items cause immediate action (Play, Quit, About...), some collect a few choices and then cause immediate action (File, Wave, Audio...), and three (Options, KeyEcho, Timing) collect input to control the major functional modes of the app (WordBuilder, TextBuilder, FlashCard, KeyEcho, all explained in the tables below). The most significant is the Options screen. This screen serves two functions: First, it enables or activates the modes just listed (indicated by blue-labeled checkboxes on the screen). Second, it collects a long list of options (at the bottom) that impact various modes and the general user experience. All inputs from these screens are permanently saved in a file. 
+Across the top of the screen is a menu bar with names, left to right: [yellow::b]F[white::b]ile, [yellow::b]P[white::b]lay ... [-:-:-]etc. (access and navigation follow below). Some of the menu items cause immediate action (Play, Quit, About...), some collect a few choices and then cause immediate action (File, Wave, Audio...), and three (Options, KeyEcho, Timing) collect input to control the major functional modes of the app (WordBuilder, TextBuilder, FlashCard, KeyEcho, all explained in the tables below). The most significant is the Options screen. This screen serves two functions: First, it enables or activates the modes just listed (indicated by blue-labeled checkboxes on the screen). Second, it collects a long list of options (at the bottom) that impact various modes and the general user experience. All inputs from these screens are permanently saved in a file. 
 
 I've used a lot of words and will elaborate further, but I think you will quickly find it intuitive. Let me clarify two things: First, if your selections are invalid or conflict with another option, a pop-up will warn you and you must correct the problem to save. Second, the KeyEcho mode (for sending practice) is enabled on the Options screen, but its keying behavior is configured on the KeyEcho screen.
 A lot more will be said about KeyEcho.
 
-[green::b]Getting Started: Entering Text[white::-]
+[green::b]Getting Started: Entering Text[-:-:-]
 [white]Before YAMA can play anything, it needs text. You have two easy ways to do this:
 1. Type or Paste: Simply click into the main Text Input box and type or paste your practice text directly. Cursor keys, Backspace, Delete/Insert, Page Up/Down, and Home/End are supported for editing.
-2. File Load: Press [yellow]Ctrl-F[-] (note: Ctrl-F means hold the Control Key and simultaneously press the 'f' key) to open the File Selector and browse for any standard '.txt' file on your PC (e.g., word list, email, a novel). There are no canned or generated input materials.
+2. File Load: Press [yellow::b]Ctrl-F[-:-:-] (note: Ctrl-F means hold the Control Key and simultaneously press the 'f' key) to open the File Selector and browse for any standard '.txt' file on your PC (e.g., word list, email, a novel). There are no canned or generated input materials.
 
-Once text is on the Text Input/Output screen, you can increase or decrease the amount of text using the NumWords option [yellow]Ctrl-N[-], instead of requiring an external editor.
+Once text is on the Text Input/Output screen, you can increase or decrease the amount of text using the NumWords option [yellow::b]Ctrl-N[-:-:-], instead of requiring an external editor.
 
-[green::b]Dynamic Menus & Navigation[::-]
-[white]YAMA is operated entirely via keyboard shortcuts (no mouse). Keep an eye on the top menu bar, as it is dynamic. YAMA will only show you the shortcuts that make sense for the current context. For example, you cannot open the Options menu while audio is actively playing; therefore, there will not be an Options label and [yellow]Ctrl-O[-] will be ignored. Similarly, the Wave export label will only appear when you actually have text loaded to export.
+
+[green::b]Dynamic Menus & Navigation[-:-:-]
+YAMA is operated entirely via keyboard shortcuts (no mouse). Keep an eye on the top menu bar, as it is dynamic. YAMA will only show you the shortcuts that make sense for the current context. For example, you cannot open the Options menu while audio is actively playing; therefore, there will not be an Options label and [yellow::b]Ctrl-O[-:-:-] will be ignored. Similarly, the Wave export label will only appear when you actually have text loaded to export.
 
 The method to enter or change an option depends on the option type (similar to a GUI app). First, navigate to the option of interest using TAB or BACKTAB. If the option is a single-character field (like "Use..." or "Random Order"), simply hit Enter or Space to toggle it, then TAB forward. If the option shows a single digit or the name of a timing method (e.g., Farnsworth), the choices are provided in a drop-down menu; use the cursor keys and hit Enter. For multi-digit options like tones or speeds, use Backspace, type the new value, and hit Enter or TAB. For input text boxes (such as start/end messages or skip characters), use Backspace, enter a value, and hit Enter or TAB. 
-You can always exit a menu without saving by pressing [yellow]ESC[-] to safely close and return to the prior screen. You can also press [yellow]Ctrl-S[-] to SAVE instantly without navigating to the Save button.
+You can always exit a menu without saving by pressing [yellow::b]ESC[-:-:-] to safely close and return to the prior screen. You can also press [yellow::b]Ctrl-S[-:-:-] to SAVE instantly without navigating to the Save button.
 
-[#FFFF55](Note: insertion or removal of headphones can trigger a Windows hang of the YAMA app requiring an app restart. This is a common Windows issue, not YAMA's.)[-]
+[#FFFF55](Note: insertion or removal of headphones can trigger a Windows hang of the YAMA app requiring an app restart. This is a common Windows issue, not YAMA's.)[-:-:-]
 
 The following keys display sub menus or perform significant actions.
 
-[white]Key            | Menu Name  | Purpose[-]
+Key            | Menu Name  | Purpose
 ---------------|------------|----------------------------------------------------------------------------------------
 Ctrl-F, F3     | File       | Open a .txt file for playback.
 Ctrl-N         | NumWords   | Iteratively copies or truncates the current text.
@@ -467,19 +468,19 @@ Ctrl-Q         | Quit       | Exit YAMA. (Or close the parent window.)
 ESC            | Close      | Cancel/Close menus without saving.
 Spacebar       | Hide/Unhide| Toggle text visibility during audio playback.
 
-[green::b]Supported Characters & Punctuation[::-]
-[white]YAMA naturally supports standard letters [yellow]A-Z[-] and numbers [yellow]0-9[-].
+[green::b]Supported Characters & Punctuation[-:-:-]
+YAMA naturally supports standard letters [yellow::b]A-Z[-:-:-] and numbers [yellow::b]0-9[-:-:-].
 
-[white]Basic punctuation: [yellow]. , ? /[-]
-[white]Extended punctuation (Enable in Options): [yellow]: ; " @ ' ( ) $ ! \ [-]
+Basic punctuation: [yellow::b]. , ? /[-:-:-]
+Extended punctuation (Enable in Options): [yellow::b]: ; " @ ' ( ) $ ! \ [-:-:-]
 
-[green::b]ProSigns & Equivalents[::-]
-[white]Supported ProSigns:[yellow] <AR> <AS> <BT> <KA> <SK> <VA> <VE> <SN> <BK> <HH> <DU> <SOS> <CH>[-].
+[green::b]ProSigns & Equivalents[-:-:-]
+Supported ProSigns:[yellow::b] <AR> <AS> <BT> <KA> <SK> <VA> <VE> <SN> <BK> <HH> <DU> <SOS> <CH>[-:-:-].
 
-If "ProSign Support" is disabled in Options ([yellow]Ctrl-O[-]), bracketed ProSigns will be ignored (including their use in the Start/End Message). However, the standard keyboard equivalents [yellow]+[-] (<AR>), [yellow]=[-] (<BT>), and [yellow]-[-] (<DU>) will still play, unless the shortcuts are added to the Skip List in the Options screen. (Note: any other use of the '<' or '>' character within YAMA is ignored.)
+If "ProSign Support" is disabled in Options ([yellow::b]Ctrl-O[-:-:-]), bracketed ProSigns will be ignored (including their use in the Start/End Message). However, the standard keyboard equivalents [yellow::b]+[-:-:-] (<AR>), [yellow::b]=[-:-:-] (<BT>), and [yellow::b]-[-:-:-] (<DU>) will still play, unless the shortcuts are added to the Skip List in the Options screen. (Note: any other use of the '<' or '>' character within YAMA is ignored.)
 
-[green::b]Options Screen (Ctrl-O) - Settings[::-]
-[white]Setting               | Description
+[green::b]Options Screen (Ctrl-O) - Settings[-:-:-]
+Setting               | Description
 ----------------------|----------------------------------------------------------------------------------------------
 Word Builder Mode     | Plays words progressively (e.g., T, TH, THE) for building head buffer comprehension. 
                       | Mutually exclusive with IWR. IWR speed is used to sound the last word.
@@ -503,9 +504,9 @@ Syllablize Words      | Play multi-syllable words by syllable instead of by lett
                       | to punctuation. E.g., "COMMON BUT DIFFICULT" plays as "COM MON BUT DIF FI CULT".
 Random Word Order     | Shuffles the playback order of the entire document's words.
 Randomize Word Chars  | Mutually exclusive with the IWR Mode; scrambles character order in a word.
-ProSign Support       | Toggles support for bracketed ProSigns (e.g., <AR>). Does NOT affect [yellow]-+=[-].
+ProSign Support       | Toggles support for bracketed ProSigns (e.g., <AR>). Does NOT affect [yellow]-+=[-:-:-].
 Extended Punctuation  | Toggles support for extended punctuation marks.
-European Characters   | Toggles support for European & Esperanto Morse characters ([yellow]├ñ, ├╗, etc.[-])
+European Characters   | Toggles support for European & Esperanto Morse characters ([yellow::b] '\u00C4' '\u0108' etc.[-:-:-])
 Use Skip Char List    | Enables the Skip List filtering during playback.
 Skip List             | Define specific characters or ProSigns to silently ignore.
 Char Repeat Limit     | Caps consecutive repeating characters to prevent runaway use of a character. Default 3.
@@ -515,28 +516,29 @@ Message Text          | Specific text to play at the start (e.g., VVV <KA>).
 Use End Message       | Toggles injecting a custom message at the end of the text.
 Message Text          | The specific text to play at the end (e.g., <AR>).
 
-[green::b]The Skip List & Contractions[::-]
-[white]You can define specific characters or ProSigns to silently skip during playback
+[green::b]The Skip List & Contractions[-:-:-]
+You can define specific characters or ProSigns to silently skip during playback
 (Options -> Skip List).
-[yellow]Important Apostrophe Rule:[-] If you add the apostrophe [yellow](')[-] to your skip list, YAMA will automatically expand 17 common English contractions before removing the remaining apostrophes (e.g., "DON'T" safely becomes "DO NOT").
+[yellow::b]Important Apostrophe Rule:[-:-:-] If you add the apostrophe [yellow::b](')[-:-:-] to your skip list, YAMA will automatically expand 17 common English contractions before removing the remaining apostrophes (e.g., "DON'T" will becomes "DO NOT").
 
-Note that the bottom of the screen has a [yellow]yellow[-] status line, and below that is a [blue]blue[-] reminder line about your current values from the Timing screen. It may also show the phrase [yellow]Input Modified[-]. This indicates that at least one selection on the Options screen will modify the text input before it becomes audible CW, ensuring you are not surprised if the first sounded string differs from what is displayed.
+Note that the bottom of the screen has a [yellow::b]yellow[-:-:-] status line, and below that is a [blue::b]blue[-:-:-] reminder line about your current values from the Timing screen. It may also show the phrase [yellow::b]Input Modified[-:-:-]. This indicates that at least one selection on the Options screen will modify the text input before it becomes audible CW, ensuring you are not surprised if the first sounded string differs from what is displayed.
 
 [green::b]KeyEcho Overview[white::-]
+
 This feature is unique within YAMA. It is the only feature that enhances sending (though it can provide copy practice when combined with other modes), requires an external keying device (no mouse or keyboard) and its associated hardware setup, and is fully interactive between the app and the user. 
 
-KeyEcho is designed to actively build and improve your sending skills by having you echo back perfectly timed Morse code generated by YAMA. To align with head word buffering and Instant Word Recognition (IWR) training (NOT YAMA's IWR feature), the interaction is based on [yellow]groups of one or more words[-], not individual characters (e.g., <word1><wordspace><word2>). Of course, you can have a group as short as one character, and a word count per group as low as one as well—this provides rapid two-way interaction between the app and your keying.
+KeyEcho is designed to actively build and improve your sending skills by having you echo back perfectly timed Morse code generated by YAMA. To align with head word buffering and Instant Word Recognition (IWR) training (NOT YAMA's IWR feature), the interaction is based on [yellow::b]groups of one or more words[-:-:-], not individual characters (e.g., <word1><wordspace><word2>). Of course, you can have a group as short as one character, and a word count per group as low as one as well—this provides rapid two-way interaction between the app and your keying.
 
-The length of these groups is unrestricted and depends entirely on your chosen input stream; it could be "E", "RST", "555-1212", or "MISSISSIPPI". Note that selections on the Options screen ([yellow]Ctrl-O[-]), such as Use Prosigns or Extended Punctuation, act as filters to automatically allow or delete specific characters from your input stream.
+The length of these groups is unrestricted and depends entirely on your chosen input stream; it could be "E", "RST", "555-1212", or "MISSISSIPPI". Note that selections on the Options screen ([yellow::b]Ctrl-O[-:-:-]), such as Use Prosigns or Extended Punctuation, act as filters to automatically allow or delete specific characters from your input stream.
 
-To begin, enable KeyEcho in Options ([yellow]Ctrl-O[-]) and start the session with Play ([yellow]Ctrl-P[-]). The timing method is limited to the Standard and Wordsworth options (more on how Wordsworth functions in KeyEcho). (The IWR feature, if enabled on the Timing screen, is ignored during KeyEcho).
-- Listen & Echo: YAMA plays the audio (with an optional sidetone available in the [yellow]Ctrl-T[-] Timing menu), and you echo it back.
+To begin, enable KeyEcho in Options ([yellow::b]Ctrl-O[-:-:-]) and start the session with Play ([yellow::b]Ctrl-P[-:-:-]). The timing method is limited to the Standard and Wordsworth options (more on how Wordsworth functions in KeyEcho). (The IWR feature, if enabled on the Timing screen, is ignored during KeyEcho).
+- Listen & Echo: YAMA plays the audio (with an optional sidetone available in the [yellow]Ctrl-T[-:-:-] Timing menu), and you echo it back.
 - Success: If your input matches exactly, YAMA automatically advances to the next group.
 - Mismatch: YAMA pauses. Press Backspace to retry the group, or Enter to skip and advance.
-- Live Controls: Press Spacebar at any time to hide or unhide the main YAMA screen, and [yellow]Ctrl-D[-] to toggle the DataStats overlay. The DataStats is not updated until the group is finished so as not to be distracting. The grading of your keying is by elements: dits, dahs, intra-element space, etc. The screen shows the current (or just completed) group on the left, the summary of the session on the right, and a comparison to the standard timing based on the selected character wpm that you are trying to emulate. Note that your grading is based on the Tolerance setting you have configured. 
+- Live Controls: Press Spacebar at any time to hide or unhide the main YAMA screen, and [yellow::b]Ctrl-D[-:-:-] to toggle the DataStats overlay. The DataStats is not updated until the group is finished so as not to be distracting. The grading of your keying is by elements: dits, dahs, intra-element space, etc. The screen shows the current (or just completed) group on the left, the summary of the session on the right, and a comparison to the standard timing based on the selected character wpm that you are trying to emulate. Note that your grading is based on the Tolerance setting you have configured. 
 
-[green::b]Timing & The Keying Window[::-]
-[white]Understanding the timeline of a KeyEcho group is critical for a smooth UX. The sequence flows linearly:
+[green::b]Timing & The Keying Window[-:-:-]
+Understanding the timeline of a KeyEcho group is critical for a smooth UX. The sequence flows linearly:
 1. YAMA Plays: The application sends the group at your configured speed.
 2. Word Space & Alert: YAMA waits one standard word space, then plays a short alert tone (if configured) to signal your turn.
 3. Hesitation Window: You have a generous 2-second window to mentally process the word and strike the paddle for your first element. 
@@ -546,22 +548,22 @@ To begin, enable KeyEcho in Options ([yellow]Ctrl-O[-]) and start the session wi
 
 Tip for progression: As your keying practice improves, you can force yourself to match YAMA more strictly by reducing
 the element Tolerance, lowering the Key Padding, and increasing the number of words in a group, all set on the 
-[green::b]KeyEcho[-] screen. It may be humbling, or at least frustrating, if you start too aggressively. Since this is a 
+[green::b]KeyEcho[-:-:-] screen. It may be humbling, or at least frustrating, if you start too aggressively. Since this is a 
 PC app, not a dedicated microprocessor, it might be impossible to get down to a 5% tolerance (feedback welcome).
 
-[green::b]Hardware Requirements & Setup[white::-]
-[white]KeyEcho requires an RS-232 COM port adapter. The physical wiring is radically simple: it requires exactly two wires. No jumpers, no common grounds, and no resistors are needed. You simply wire your CW key to bridge one output pin to one input pin, making a series loop from the DB9 source pin through your key device and back to the monitor pin.
+[green::b]Hardware Requirements & Setup[-:-:-]
+KeyEcho requires an RS-232 COM port adapter. The physical wiring is radically simple: it requires exactly two wires. No jumpers, no common grounds, and no resistors are needed. You simply wire your CW key to bridge one output pin to one input pin, making a series loop from the DB9 source pin through your key device and back to the monitor pin.
 
-[green::b]DB9 Adapter Connection:[white::-]
-[white]- Outputs (Power Sources): Pin 4 (DTR) or Pin 7 (RTS)
+[green::b]DB9 Adapter Connection:[-:-:-]
+- Outputs (Power Sources): Pin 4 (DTR) or Pin 7 (RTS)
 - Inputs (Listeners): Pin 8 (CTS), Pin 6 (DSR), Pin 1 (CD), or Pin 9 (RI)
 Match the two wires on the adapter to the "Key Line Interface" setting on the KeyEcho page.
 The Default CTS-DTR is most commonly used.
 (Pin numbers are listed on the KeyEcho options page. Viewed from the back (solder) side of a DB9, with the wide edge on top, the top row from LEFT to RIGHT is 1 2 3 4 5; the lower row is 6 7 8 9.) Match your wires to the option setting.
 A simpler alternative is to buy a DB9 adapter with a built-in terminal block to screw down the wires; they cost about $5. 
 
-[green::b]KeyEcho Quick Test[::-]
-[white]1. Ctrl-T Timing screen: set a Character Speed and Tone. Then SAVE.
+[green::b]KeyEcho Quick Test[-:-:-]
+1. Ctrl-T Timing screen: set a Character Speed and Tone. Then SAVE.
 2. Ctrl-K KeyEcho screen: set sidetone, set alert, and set KeyLineMode for the wiring/pins you soldered on your
 DB9. Set Polarity to standard, uncheck Parasitic Power. SAVE.
 3. Ctrl-O Options: Check KeyEcho. SAVE.
@@ -577,11 +579,8 @@ The default COM PORT is 3. Your PC may have others; see the drop-down choices.
 Depending on when you insert the COM PORT, it's possible the KeyEcho Port may show none; try the button at the bottom labeled
 Refresh Ports.
 
-Note that the KeyEcho screen has more options than are seen. Use TAB to get to the last few options and the buttons, one
-of which relates to the KeyEcho Port option.
-
-[green::b]KeyEcho Screen (Ctrl-K) - Settings[::-]
-[white]Setting                | Description
+[green::b]KeyEcho Screen (Ctrl-K) - Settings[-:-:-]
+Setting                | Description
 -----------------------|---------------------------------------------------------------------------------------------
 Tolerance (%)          | % a symbol element (dit, dah, space, etc.) can vary from the expected value.
 Echo Word Count (1-20) | Number of words played (default 1) and to key/echo back in each group.
@@ -602,8 +601,8 @@ Key Line Interface     | Which leads in the COM port are being used.
 Key Line Polarity      | Whether key up is silent (standard) or plays a tone (down is inverted).
 Parasitic Power        | If needed by the COM port cable (e.g., if the cable uses opto-isolators).
 
-[green::b]Timing Screen (Ctrl-T) - Timing[::-]
-[white]Setting                | Description
+[green::b]Timing Screen (Ctrl-T) - Timing[-:-:-]
+Setting                | Description
 -----------------------|---------------------------------------------------------------------------------------------
 Timing Method          | Standard, Farnsworth, or Wordsworth. Choice controls if/when the next few options apply.
 Character Speed        | Applies to all of the above methods.      
@@ -616,8 +615,8 @@ Use IWR Mode           | An on/off feature toggle, placed here since it relates 
 Speed                  | The character speed for IWR matched words.
 Tone                   | Likely best set the same as the previous tone.
 
-[green::b]Audio Screen (Ctrl-A) - Audio-impacting impairments[::-]
-[white]Setting                | Description
+[green::b]Audio Screen (Ctrl-A) - Audio-impacting impairments[-:-:-]
+Setting                | Description
 -----------------------|-------------------------------------------------------------------------
 Static (QRN)           | Injects constant background hiss and random lightning crashes.
 Fading (QSB)           | Simulates a slow ionospheric roll, dipping and recovering volume.
@@ -627,29 +626,35 @@ Key Clicks             | Injects a harsh electrical spark at the start and end o
 Brown Noise            | Not an impairment. Can increase mental focus by masking other noise.
 Pink Noise             | Not an impairment. Can increase learning (some clinical evidence).
 
-[yellow]Note that you can make changes to the currently playing audio via the Timing or Audio screens.[-]
-[yellow]Note: the two noise tones are hypothetical, not specific to Morse code.[-]
+[yellow::b]Note that you can make changes to the currently playing audio via the Timing or Audio screens.[-:-:-]
+[yellow::b]Note: the two noise tones are hypothetical, not specific to Morse code.[-:-:-]
 
-[green::b]WAV File Export (Ctrl-W)[::-]
-[white]YAMA exports 16-bit Mono audio. The wave screen lets you select a target directory for the created wave files; if the path does not exist, it will create it. The approximate play time for the chosen speed and the corresponding size are shown. You can also specify (actually limit) the number of files. If your input is a large novel, you can certainly limit the output to a handful of practice files. If you are emailing the completed files to yourself so that you can play them on a cell phone, capping the file size near 10MB should be reasonable.
+[green::b]WAV File Export (Ctrl-W)[-:-:-]
+YAMA exports 16-bit Mono audio. The wave screen lets you select a target directory for the created wave files; if the path does not exist, it will create it. The approximate play time for the chosen speed and the corresponding size are shown. You can also specify (actually limit) the number of files. If your input is a large novel, you can certainly limit the output to a handful of practice files. If you are emailing the completed files to yourself so that you can play them on a cell phone, capping the file size near 10MB should be reasonable.
 
-[green::b]IWR - Instant Word Recognition Feature[::-]
-[white]This is a head-copy related feature. It looks to match words (actually any space-separated string of supported characters, e.g., the qsl 73 cul) in the input, override the chosen timing mode (Standard, Farnsworth, Wordsworth and the associated speed/tone), and play the matched word at an increased speed with standard timing. To do this, you must create a [blue]yamaIWR.txt[-] file. A sample file has been created in your OS's standard configuration file directory ($HOME\AppData\Roaming\YAMA for Windows). The file will be editable (cursor keys, home/end, pg up/down, backspace, delete/insert) from the Timing screen ([yellow]Ctrl-T[-]), or you may create a local one in the same directory that YAMA is launched from. This one will take priority, but you will have to edit it with Notepad, vi, emacs, or whatever your favorite text editor is (not a word processor, unless it has a save as txt option). The file should list one word per line (any case, any order); a [yellow]'#'[-] at the start of a line tells YAMA to ignore that line. If you choose to also match the word if it's immediately followed by [yellow], . ? : [-] as well as the bare word, this is indicated by a trailing asterisk (e.g., qsl* matches: qsl qsl? qsl. qsl: qsl, Note this is the only supported use of the asterisk in the app). The IWR feature as described is ignored if you have chosen either Word Builder or Randomize Word in the Options menu since you would never get a match. A small purposeful interaction with IWR speed is as follows: if you chose Word Builder and have IWR enabled, when Word Builder has completed constructing the word (as in: t te tes test) you will have one more sounding of the final word, but now at IWR speed.
+[green::b]IWR - Instant Word Recognition Feature[-:-:-]
+This is a head-copy related feature. It matches words (actually any space-separated string of supported characters, e.g., the qsl 73 cul) in the input text, override the chosen timing mode (Standard, Farnsworth, Wordsworth and the associated speed/tone), and plays the matched word (from the yamaIWR.txt file) at an increased speed with standard timing. To do this, you must create a [blue]yamaIWR.txt[-:-:-] file. A sample file has been created in your OS's standard configuration file directory ($HOME\AppData\Roaming\YAMA for Windows). The file will be editable (cursor keys, home/end, pg up/down, backspace, delete/insert) from the Timing screen ([yellow::b]Ctrl-T[-:-:-]), or you may create a local one in the same directory that YAMA is launched from. This one will take priority, but you will have to edit it with Notepad, vi, emacs, or whatever your favorite text editor is (not a word processor, unless it has a save as txt option). The file should list one word per line (any case, any order); a [yellow::b]'#'[-:-:-] at the start of a line tells YAMA to ignore that line. If you choose to also match the word if it's immediately followed by [yellow::b], . ? : [-:-:-] as well as the bare word, this is indicated by a trailing asterisk (e.g., qsl* matches: qsl qsl? qsl. qsl: qsl, Note this is the only supported use of the asterisk in the app). The IWR feature as described is ignored if you have chosen either Word Builder, Randomize Word, or KeyEcho in the Options menu since you would never get a match (or make sense in KeyEcho). A small purposeful interaction with IWR speed is as follows: if you chose Word Builder and have IWR enabled, when Word Builder has completed constructing the word (as in: t te tes test) you will have one more sounding of the final word, but now at IWR speed.
 
-[#FFFF55]Note: Using the high end of the 2K Tone limit may impact the audio profile for QRQ speeds; let your ears guide your choice, rather than letting the app limit you.[-]
+Let's use a more concrete example.  Setting: standard timing method, characters at 20 wpm, and IWR Mode unchecked.
 
-Experiment and I'm sure you will quickly understand the capabilities. Remember, an ESC will always get you back to the previous screen (without SAVING), whether there is a Cancel button or not.
+Now with "THE QUICK BROWN FOX JUMPED OVER THE LAZY DOGS BACK" loaded into the Text Input/Output screen, hitting Ctrl-P will PLAY that sentance at 20wpm, standard timing. Now on the Timing screen, check the IWR Mode checkbox, and set the IWR speed to 25 wpm, use the Edit IWR button to open the yamaIWR.txt file, cursor down to a blank line and enter the following 3 words, one per line: THE AND FOX, then SAVE and SAVE on the Timing screen. Now use PLAY and hear the difference. The words shown in [yellow::b]yellow[-:-:-] will be played at the 20 wpm Character Speed. The words in [red::b]red[-:-:-] match the IWR words so they are played at the IWR speed.
 
-[green::b]KeyEcho (Ctrl-K) YAMA's Only Sending Feature[::-]
-[white]The previous KeyEcho table fully documents the KeyEcho ([yellow]Ctrl-K[-]) options. 
+[red::b]THE[yellow] QUICK BROWN[red] FOX[yellow] JUMPED OVER[red] THE[yellow] LAZY DOGS BACK[-:-:-]
+
+With a much larger input, and/or multiple practice sessions, the word THE would be more comfortable as a complete new sound at a higher speed, FOX while short and unique would not likely be found very often so not a good candidate, AND had no matches in this small test sample, but it was included to demonstate that an unmatched word is no problem, and it certainly would be matched in other practice. After this practice, the DataStats (Ctrl-D) would show you the counts for all the matches. Why do this? Nobody send like this; thats correct but its a mechanism to start building up a "dictionary" of familar sounds at a much higher speed then your normal practice, just as most hams can recognize CQ, or maybe RST 5NN at a much faster rate.
+
+
+[yellow::b]Note: Using the high end of the 2K Tone limit may impact the audio profile for QRQ speeds; let your ears guide your choice, rather than letting the app limit you.[-:-:-]
+
+Experiment and you will quickly understand the capabilities. 
 
 You can see the app is not for complete beginners, nor does it attempt to compete with many excellent training apps such as Precision CW Tutor & Fistcheck, G4FON, LCWO.net, LICW.org, etc., but rather bundles a number of practice features in a single app.
 
 You can email me at wa2nfn@gmail.com if you find something that needs clarification, a bug, a typo, or if a numerical limit causes you an issue. The sound library will not work on MAC, so that's not a consideration; a mouse will never be supported by the UI library, so that is not a consideration.
 
 73 and best of luck on your CW journey.
-WA2NFN
-[::-]`
+[white::b]WA2NFN
+[-:-:-]`
 
 	tv := tview.NewTextView().
 		SetDynamicColors(true).
