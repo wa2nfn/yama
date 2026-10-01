@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"slices"
@@ -26,6 +27,9 @@ func showOptions() {
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	form.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	form.SetItemPadding(0)
+
+	// ⚡ THE FIX: Properly removes the invisible blank lines at the top and bottom of the form
+	form.SetBorderPadding(0, 0, 1, 1)
 
 	useProsignsCb := tview.NewCheckbox().SetLabel("ProSign Support")
 	extendedPuncCb := tview.NewCheckbox().SetLabel("Extended Punctuation")
@@ -127,7 +131,6 @@ func showOptions() {
 		flashRandomCountCb.SetChecked(config.User.FlashRandomCount)
 		echoCb.SetChecked(config.User.Echo)
 
-		// Set the Text Builder dropdown cleanly
 		twIdx := 0
 		for i, opt := range textWordCountList {
 			if opt == fmt.Sprintf("%d", config.User.TextWordCount) {
@@ -179,8 +182,9 @@ func showOptions() {
 	form.AddFormItem(flashcardCb)
 	form.AddFormItem(flashWordCountDrop)
 	form.AddFormItem(flashRandomCountCb)
+	form.AddTextView(" ", "", 0, 1, false, false)
 	form.AddFormItem(echoCb)
-	form.AddTextView("", "", 0, 1, false, false)
+	// ⚡ THE FIX: Removed the empty text view that was creating a blank space here
 
 	form.AddFormItem(syllableExpansionCb)
 	form.AddFormItem(wordOrderCb)
@@ -210,11 +214,9 @@ func showOptions() {
 		isFC := flashcardCb.IsChecked()
 		isSkip := useSkipCb.IsChecked()
 
-		// Mutual Exclusivity Checks
 		if isRandomizeWords && (isWB || isTB || isFC || isSyl) {
 			errors = append(errors, "Randomize Word is not compatiable with Word Builder, Text Builder, Syllablize Words or Flashcard.")
 		}
-
 		if isTB && isWB {
 			errors = append(errors, "Text Builder and Word Builder are mutually exclusive.")
 		}
@@ -240,16 +242,12 @@ func showOptions() {
 		}
 		formattedSkipList := strings.Join(cleanSkips, " ")
 
-		// Flashcard Validation
 		_, fcStr := flashWordCountDrop.GetCurrentOption()
 		fcVal, _ := strconv.Atoi(fcStr)
 		if isFC && fcVal < 1 {
 			errors = append(errors, "Flashcard Word Count must be 1-25.")
 		}
 
-		//
-		// APPLY
-		//
 		apply := func() {
 			config.User.Playprosigns = useProsignsCb.IsChecked()
 			config.User.UseExtendedPunctuation = extendedPuncCb.IsChecked()
@@ -263,11 +261,9 @@ func showOptions() {
 			config.User.TextBuilder = isTB
 			config.User.WordBuilderSort = wordBuilderSortCb.IsChecked()
 			config.User.TextBuilderSort = textBuilderSortCb.IsChecked()
-
 			config.User.WordSeparator = wordSeparatorInput.GetText()
 			config.User.TextSeparator = textSeparatorInput.GetText()
 
-			// Extract integer straight from the dropdown
 			_, twStr := textWordCntDrop.GetCurrentOption()
 			config.User.TextWordCount, _ = strconv.Atoi(twStr)
 
@@ -306,7 +302,7 @@ func showOptions() {
 			}
 			apply()
 		}
-		refreshUI(currentState) // in case Echo changed to fix main menu remove Audio
+		refreshUI(currentState)
 	}
 
 	onReset := func() {
@@ -326,12 +322,10 @@ func showOptions() {
 	applyFocusStyles(form)
 	form.SetBorder(false)
 
-	// 1. Made the footer compact by removing the \n newlines
 	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	footerView.SetText("[yellow]ESC to Close  •  Ctrl-S to Save[-]")
 
-	// 2. Added the footer with a strict height of 1
 	optionsContainer = tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(form, 0, 1, true).
 		AddItem(footerView, 1, 1, false)
@@ -352,7 +346,9 @@ func showOptions() {
 		return event
 	})
 
-	pages.AddPage("options", createModal(optionsContainer, 66, 31), true, true)
+	// ⚡ THE FIX: Reduced height to 24 so it fits entirely inside standard PowerShell terminals.
+	// This forces tview to perfectly draw the border and use natural scrolling for the contents!
+	pages.AddPage("options", createModal(optionsContainer, 66, 30), true, true)
 	app.SetFocus(optionsContainer)
 }
 
@@ -1043,6 +1039,12 @@ func showNumWordsModal() {
 
 	form.AddFormItem(input)
 
+	// Track the state of the randomize checkbox
+	var randomize bool
+	form.AddCheckbox("Randomize:", false, func(checked bool) {
+		randomize = checked
+	})
+
 	onSave := func() {
 		val, err := strconv.Atoi(input.GetText())
 
@@ -1052,7 +1054,8 @@ func showNumWordsModal() {
 			val = 99999
 		}
 
-		if val != currentCount && currentCount > 0 {
+		// Trigger update if the count changed OR if they requested a randomize
+		if (val != currentCount || randomize) && currentCount > 0 {
 			if !isResized {
 				preResizeSnapshot = rawText
 				isResized = true
@@ -1061,6 +1064,13 @@ func showNumWordsModal() {
 			var newWords []string
 			for i := 0; i < val; i++ {
 				newWords = append(newWords, words[i%currentCount])
+			}
+
+			// Shuffle the newly built array if checkbox is checked
+			if randomize {
+				rand.Shuffle(len(newWords), func(i, j int) {
+					newWords[i], newWords[j] = newWords[j], newWords[i]
+				})
 			}
 
 			isProgrammaticUpdate = true

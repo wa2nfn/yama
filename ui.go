@@ -152,6 +152,7 @@ func stopAudio() {
 }
 
 func showStats() {
+	app.EnableMouse(true)
 	statsIWRList = make([]string, 0, len(statsIWRMap))
 	for k := range statsIWRMap {
 		statsIWRList = append(statsIWRList, k)
@@ -208,10 +209,23 @@ func showStats() {
 		SetDynamicColors(true).
 		SetScrollable(true).
 		SetText(sb.String())
+	tv.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	tv.SetBorder(false)
 
-	tv.SetBackgroundColor(tcell.GetColor(AppBackgroundColor)).
-		SetBorder(true).
-		SetTitle(" DataStats ")
+	form := tview.NewForm().
+		AddButton("Close", func() {
+			pages.RemovePage("stats")
+			app.SetFocus(inputArea)
+		})
+	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	applyFocusStyles(form)
+
+	layout := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(tv, 0, 1, true).
+		AddItem(form, 3, 1, false)
+
+	layout.SetBorder(true).SetTitle(" DataStats ")
+	layout.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
 	tv.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
@@ -219,10 +233,27 @@ func showStats() {
 			app.SetFocus(inputArea)
 			return nil
 		}
+		if event.Key() == tcell.KeyTab {
+			app.SetFocus(form)
+			return nil
+		}
 		return event
 	})
 
-	pages.AddPage("stats", createModal(tv, 38, 22), true, true)
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			pages.RemovePage("stats")
+			app.SetFocus(inputArea)
+			return nil
+		}
+		if event.Key() == tcell.KeyBacktab {
+			app.SetFocus(tv)
+			return nil
+		}
+		return event
+	})
+
+	pages.AddPage("stats", createModal(layout, 40, 26), true, true)
 	app.SetFocus(tv)
 }
 
@@ -279,7 +310,6 @@ func updateBlueLine() {
 		}
 
 		info = fmt.Sprintf(" [black] %s Speed: %g/%g wpm ", mode, config.User.CharacterSpeed, config.User.EffectiveSpeed)
-		//info = fmt.Sprintf(" [black] %s  Speed: %g wpm | Eff. Speed: %g wpm ", mode, config.User.CharacterSpeed, config.User.EffectiveSpeed)
 	}
 
 	// adjust for YAMA voice
@@ -370,10 +400,10 @@ func applyFocusStyles(form *tview.Form) {
 }
 
 func createModal(p tview.Primitive, width, height int) tview.Primitive {
-	modal := tview.NewFlex().
-		SetDirection(tview.FlexRow)
+	app.EnableMouse(true)
 
-	modal.AddItem(nil, 0, 1, false) // top spacer
+	modal := tview.NewFlex().SetDirection(tview.FlexRow)
+	modal.AddItem(nil, 0, 1, false)
 	modal.AddItem(
 		tview.NewFlex().
 			AddItem(nil, 0, 1, false).
@@ -383,12 +413,13 @@ func createModal(p tview.Primitive, width, height int) tview.Primitive {
 		1,
 		true,
 	)
-	modal.AddItem(nil, 0, 1, false) // bottom spacer
+	modal.AddItem(nil, 0, 1, false)
 
 	return modal
 }
 
 func showErrorModal(errors []string, onDismiss func()) {
+	app.EnableMouse(true)
 	msg := "[yellow::b]Configuration Adjustments Required:[::-]\n\n"
 	for _, e := range errors {
 		msg += "- " + e + "\n"
@@ -409,14 +440,14 @@ func showErrorModal(errors []string, onDismiss func()) {
 	app.SetFocus(modal)
 }
 
-
 func showHelp() {
+	app.EnableMouse(true)
 	helpText := ` [-:-:-]
 Whether you are looking for routine practice, seeking head-copy tools, wanting to test your copying limits against simulated audio impairments, or working on your CW sending skills, YAMA is built to help you.
 
 YAMA features standard input processing, such as: discarding non-Morseable characters, space compression, and case-agnostic input, as well as non-traditional features: selectable ProSign support, selected character filtering, expansion of contractions (e.g., won't to will not), European & Esperanto support, graduating speed, dynamic wave shaping for QRQ, and more. Changes to speed/tone and audio impairments can be made during play. Many operational modes and options can be used in combination, and almost all of them are compatible with the KeyEcho sending feature as well.
 
-YAMA uses a Terminal User Interface (TUI). Navigation and selections are performed using key combinations—mostly the Control Key plus a letter, though a few Function keys are supported as alternatives. Help is available via the standard F1 function key. Note: In the menu screens (Timing, Options, and Audio), using back-tab is often quicker to navigate to a field of interest than pressing tab multiple times forward.
+YAMA uses a Terminal User Interface (TUI), with some mouse support. Navigation to screens (menus) is performed using key combinations mostly the Control Key plus a letter, though a few Function keys are supported as alternatives. Within screens you have the option to select fields to edit with the mouse, or by TABBING through fields; similarly you can TAB to buttons and hit Enter or mouse click, or Ctrl-S for the SAVE key. Help is available via the standard F1 function key. Note: In the menu screens (Timing, Options, and Audio), using back-tab is often quicker to navigate to a field of interest than pressing tab multiple times forward.
 
 [green::b]High-Level Overview - Please read.[-:-:-]
 Your introduction to the app will be greatly enhanced by reviewing the environment briefly before diving into the specific sections below. As the main screen (Input/Output Text) indicates with its prompt, the app is ready to create CW using a number of default options. Type "Hello World" and press Ctrl-P. You will hear 20wpm CW as long as the PC volume is on and you resisted making changes.
@@ -433,9 +464,8 @@ A lot more will be said about KeyEcho.
 
 Once text is on the Text Input/Output screen, you can increase or decrease the amount of text using the NumWords option [yellow::b]Ctrl-N[-:-:-], instead of requiring an external editor.
 
-
 [green::b]Dynamic Menus & Navigation[-:-:-]
-YAMA is operated entirely via keyboard shortcuts (no mouse). Keep an eye on the top menu bar, as it is dynamic. YAMA will only show you the shortcuts that make sense for the current context. For example, you cannot open the Options menu while audio is actively playing; therefore, there will not be an Options label and [yellow::b]Ctrl-O[-:-:-] will be ignored. Similarly, the Wave export label will only appear when you actually have text loaded to export.
+YAMA is operated via keyboard shortcuts and in some case mouse clicks. Keep an eye on the top menu bar, as it is dynamic. YAMA will only show you the shortcuts that make sense for the current context. For example, you cannot open the Options menu while audio is actively playing; therefore, there will not be an Options label and [yellow::b]Ctrl-O[-:-:-] will be ignored. Similarly, the Wave export label will only appear when you actually have text loaded to export.
 
 The method to enter or change an option depends on the option type (similar to a GUI app). First, navigate to the option of interest using TAB or BACKTAB. If the option is a single-character field (like "Use..." or "Random Order"), simply hit Enter or Space to toggle it, then TAB forward. If the option shows a single digit or the name of a timing method (e.g., Farnsworth), the choices are provided in a drop-down menu; use the cursor keys and hit Enter. For multi-digit options like tones or speeds, use Backspace, type the new value, and hit Enter or TAB. For input text boxes (such as start/end messages or skip characters), use Backspace, enter a value, and hit Enter or TAB. 
 You can always exit a menu without saving by pressing [yellow::b]ESC[-:-:-] to safely close and return to the prior screen. You can also press [yellow::b]Ctrl-S[-:-:-] to SAVE instantly without navigating to the Save button.
@@ -527,7 +557,7 @@ Note that the bottom of the screen has a [yellow::b]yellow[-:-:-] status line, a
 
 This feature is unique within YAMA. It is the only feature that enhances sending (though it can provide copy practice when combined with other modes), requires an external keying device (no mouse or keyboard) and its associated hardware setup, and is fully interactive between the app and the user. 
 
-KeyEcho is designed to actively build and improve your sending skills by having you echo back perfectly timed Morse code generated by YAMA. To align with head word buffering and Instant Word Recognition (IWR) training (NOT YAMA's IWR feature), the interaction is based on [yellow::b]groups of one or more words[-:-:-], not individual characters (e.g., <word1><wordspace><word2>). Of course, you can have a group as short as one character, and a word count per group as low as one as well—this provides rapid two-way interaction between the app and your keying.
+KeyEcho is designed to actively build and improve your sending skills by having you echo back perfectly timed Morse code generated by YAMA. To align with head word buffering and Instant Word Recognition (IWR) training (NOT YAMA's IWR feature), the interaction is based on [yellow::b]groups of one or more words[-:-:-], not individual characters (e.g., <word1><wordspace><word2>). Of course, you can have a group as short as one character, and a word count per group as low as one as wellΓÇöthis provides rapid two-way interaction between the app and your keying.
 
 The length of these groups is unrestricted and depends entirely on your chosen input stream; it could be "E", "RST", "555-1212", or "MISSISSIPPI". Note that selections on the Options screen ([yellow::b]Ctrl-O[-:-:-]), such as Use Prosigns or Extended Punctuation, act as filters to automatically allow or delete specific characters from your input stream.
 
@@ -766,10 +796,11 @@ You can email me at wa2nfn@gmail.com if you find something that needs clarificat
 	layout.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
 	pages.AddPage("help", createModal(layout, 120, 26), true, true)
-	app.SetFocus(layout)
+	app.SetFocus(tv)
 }
 
 func showAbout() {
+	app.EnableMouse(true)
 	aboutText := `About [#55FFFF]YAMA - Yet Another Morse-code App[-]
 ` + "Version " + Ver +
 		`
@@ -798,19 +829,60 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMA
 		SetText(aboutText).
 		SetWrap(true).
 		SetWordWrap(true)
+	tv.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	tv.SetBorder(false)
 
-	tv.SetBackgroundColor(tcell.GetColor(AppBackgroundColor)).
-		SetBorder(true).
-		SetTitle(" About ")
+	form := tview.NewForm().
+		AddButton("Close", func() {
+			pages.RemovePage("about")
+			app.SetFocus(inputArea)
+		})
+	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	applyFocusStyles(form)
 
-	pages.AddPage("about", createModal(tv, 110, 28), true, true)
-	app.SetFocus(tv)
+	layout := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(tv, 0, 1, true).
+		AddItem(form, 3, 1, false)
+
+	layout.SetBorder(true).SetTitle(" About ")
+	layout.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+
+	tv.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			pages.RemovePage("about")
+			app.SetFocus(inputArea)
+			return nil
+		}
+		if event.Key() == tcell.KeyTab {
+			app.SetFocus(form)
+			return nil
+		}
+		return event
+	})
+
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			pages.RemovePage("about")
+			app.SetFocus(inputArea)
+			return nil
+		}
+		if event.Key() == tcell.KeyBacktab {
+			app.SetFocus(tv)
+			return nil
+		}
+		return event
+	})
+
+	pages.AddPage("about", createModal(layout, 110, 32), true, true)
+	app.SetFocus(layout)
 }
 
 func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextArea) {
+	app.EnableMouse(true)
+
 	list := tview.NewList().ShowSecondaryText(false)
-	list.SetBackgroundColor(tcell.GetColor(AppBackgroundColor)).
-		SetBorder(true).SetTitle(" Input Files (cursor & Enter) ")
+	list.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	list.SetBorder(false)
 
 	currentDir, _ := os.Getwd()
 
@@ -851,7 +923,7 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 
 	populate(currentDir)
 
-	list.SetSelectedFunc(func(i int, main string, sec string, r rune) {
+	onSelect := func(main string) {
 		name := strings.TrimSuffix(strings.TrimPrefix(main, "[#00BFFF]"), "/")
 
 		if name == ".." {
@@ -881,7 +953,6 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 			return
 		}
 
-		// FILE SELECTED
 		currentInputFile = name
 		currentFileDir = currentDir
 
@@ -899,7 +970,6 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 				return
 			}
 
-			// Your parser pipeline
 			txt := parser.NormalizeText(string(data))
 
 			if config.User.UseSkip {
@@ -908,34 +978,19 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 			}
 
 			actualText := parser.FilterValidMorse(txt, morse.MorseTable)
-			// TEMPORARY DEBUG: Dump the active MorseTable
-			/*
-				var dump strings.Builder
-				dump.WriteString(fmt.Sprintf("Total keys in active MorseTable: %d\n\n", len(morse.MorseTable)))
 
-				for k, v := range morse.MorseTable {
-					dump.WriteString(fmt.Sprintf("Char: %c | Hex: U+%04X | Morse: %s\n", k, k, v))
-				}
-
-				os.WriteFile("yama_table_dump.txt", []byte(dump.String()), 0644)
-			*/
-
-			// Normalize file content (UC + space compression)
 			normalized := strings.Join(strings.Fields(actualText), " ")
 			normalized = strings.ToUpper(normalized)
-			inputArea.SetText(normalized, false)
 
 			app.QueueUpdateDraw(func() {
-				// Disable ChangedFunc temporarily
 				inputArea.SetChangedFunc(nil)
 
 				isProgrammaticUpdate = true
 				isResized = false
 				preResizeSnapshot = ""
-				inputArea.SetText(normalized, false) // final load
+				inputArea.SetText(normalized, false)
 				isProgrammaticUpdate = false
 
-				// Restore your REAL ChangedFunc
 				inputArea.SetChangedFunc(func() {
 					if isProgrammaticUpdate {
 						return
@@ -962,8 +1017,60 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 				refreshUI(currentState)
 			})
 		}(full)
+	}
+
+	// Double-click or Enter on a list item
+	list.SetSelectedFunc(func(i int, main string, sec string, r rune) {
+		onSelect(main)
 	})
 
-	pages.AddPage("file", createModal(list, 40, 20), true, true)
+	// 1. Removed redundant "Select" button
+	form := tview.NewForm().
+		AddButton("Cancel", func() {
+			pages.RemovePage("file")
+			app.SetFocus(inputArea)
+		})
+	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	applyFocusStyles(form)
+
+	// 2. Updated Footer
+	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
+	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+	footerView.SetText("[yellow]Cursor Up/Down to Move  •  Enter to Select[-]")
+
+	layout := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(list, 0, 1, true).
+		AddItem(form, 3, 1, false).
+		AddItem(footerView, 1, 1, false)
+
+	layout.SetBorder(true).SetTitle(" Input Files ")
+	layout.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
+
+	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyTab {
+			app.SetFocus(form)
+			return nil
+		}
+		return event
+	})
+
+	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyBacktab {
+			app.SetFocus(list)
+			return nil
+		}
+		return event
+	})
+
+	layout.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape {
+			pages.RemovePage("file")
+			app.SetFocus(inputArea)
+			return nil
+		}
+		return event
+	})
+
+	pages.AddPage("file", createModal(layout, 55, 26), true, true)
 	app.SetFocus(list)
 }

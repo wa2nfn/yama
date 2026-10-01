@@ -124,6 +124,7 @@ func main() {
 		}
 	}()
 
+	app.EnableMouse(true)
 	app.SetBeforeDrawFunc(func(s tcell.Screen) bool {
 		s.SetStyle(tcell.StyleDefault.Background(tcell.ColorBlack).Foreground(tcell.ColorWhite))
 		s.Clear()
@@ -167,6 +168,7 @@ func main() {
 	blueLine = tview.NewTextView()
 	blueLine.SetDynamicColors(true)
 	blueLine.SetBackgroundColor(tcell.ColorSteelBlue)
+	blueLine.SetRegions(true)
 
 	inputArea = tview.NewTextArea()
 	inputArea.SetBackgroundColor(tcell.ColorBlack)
