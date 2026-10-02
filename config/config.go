@@ -89,7 +89,7 @@ type UserSettings struct {
 	SideTone               bool   `json:"sidetone"`
 	ErrorTone              bool   `json:"errortone"`
 	VisualFeedback         bool   `json:"visual_feedback"`
-	PerfectPause         bool   `json:"perfect_pause"`
+	PerfectPause           bool   `json:"perfect_pause"`
 	Mute                   bool   `json:"mute"`
 
 	// Messaging & Flow Control

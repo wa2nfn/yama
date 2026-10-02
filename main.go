@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -81,7 +82,14 @@ func checkIWRFiles() (targetPath string) {
 }
 
 func main() {
-	// handle cmdline
+	exe := filepath.Base(os.Args[0])
+	lower := strings.ToLower(exe)
+
+	if !strings.HasPrefix(lower, "yama") {
+		fmt.Println("App's name changed, it must start with \"yama\":", exe)
+		os.Exit(3)
+	}
+
 	config.LoadConfig()
 
 	logPath := morse.ResolvePath("yama.log")
