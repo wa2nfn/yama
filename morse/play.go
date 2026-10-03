@@ -723,14 +723,8 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			messageDuration = 0
 
 			var action rune
+
 			if err == nil && res.Success {
-				if config.User.PerfectPause {
-					// moment to bask in glory
-					if OnStatusUpdate != nil {
-						OnStatusUpdate(" [green]Perfect Match!       [yellow]ENTER to continue, BACKSPACE to repeat.")
-					}
-					time.Sleep(2000 * time.Millisecond)
-				}
 
 				expectedRaw := strings.ToUpper(strings.Join(lastGroup, " "))
 				actualRaw := strings.ToUpper(strings.Join(res.Chars, ""))
@@ -802,6 +796,19 @@ func RunIWR(text string, iwrMan *IWRManager) {
 				}
 
 				if expectedStr == actualStr {
+					if config.User.PerfectPause {
+						// moment to bask in glory
+						if OnStatusUpdate != nil {
+							OnStatusUpdate(" [green]Perfect Match![-:-:-]")
+						}
+						time.Sleep(1500 * time.Millisecond)
+
+						// Clear the status text BEFORE we loop and start the next audio playback
+						if OnStatusUpdate != nil {
+							OnStatusUpdate("")
+						}
+					}
+
 					if OnClearFlashcardScreen != nil {
 						OnClearFlashcardScreen()
 					}
@@ -816,6 +823,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 				}
 
 			} else if res.Error == "no start" {
+
 				if OnStatusUpdate != nil {
 					OnStatusUpdate(" [red]NO INPUT DETECTED.       [yellow]ENTER to continue, BACKSPACE to repeat.")
 				}

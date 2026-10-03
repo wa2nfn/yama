@@ -184,7 +184,7 @@ func LoadConfig() {
 		User.WordOrder = false
 		User.RepeatLimit = 3
 		User.TextWordCount = 2
-		User.StartDelay = 0
+		User.StartDelay = 2
 		User.SyllableExpansion = false
 		User.Flashcard = false
 		User.FlashWordCount = 1
