@@ -402,20 +402,10 @@ func applyFocusStyles(form *tview.Form) {
 func createModal(p tview.Primitive, width, height int) tview.Primitive {
 	app.EnableMouse(true)
 
-	modal := tview.NewFlex().SetDirection(tview.FlexRow)
-	modal.AddItem(nil, 0, 1, false)
-	modal.AddItem(
-		tview.NewFlex().
-			AddItem(nil, 0, 1, false).
-			AddItem(p, width, 1, true). // <-- THIS MUST BE focusable
-			AddItem(nil, 0, 1, false),
-		height,
-		1,
-		true,
-	)
-	modal.AddItem(nil, 0, 1, false)
-
-	return modal
+	return tview.NewGrid().
+		SetColumns(0, width, 0). // Left space (auto), Center (fixed width), Right space (auto)
+		SetRows(0, height, 0).   // Top space (auto), Center (fixed height), Bottom space (auto)
+		AddItem(p, 1, 1, 1, 1, 0, 0, true)
 }
 
 func showErrorModal(errors []string, onDismiss func()) {

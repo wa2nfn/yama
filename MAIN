@@ -390,18 +390,6 @@ func main() {
 
 	mainFlex.SetBackgroundColor(tcell.ColorBlack)
 
-	// Wrap the entire app in a centering grid to cap maximum width/height
-	centeredAppLayout := tview.NewFlex().
-		AddItem(tview.NewBox(), 0, 1, false). // Left void
-		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-			AddItem(tview.NewBox(), 0, 1, false). // Top void
-			AddItem(mainFlex, 30, 1, true).       // MAXIMUM HEIGHT: 30 rows
-			AddItem(tview.NewBox(), 0, 1, false), // Bottom void
-							100, 1, true). // MAXIMUM WIDTH: 100 columns
-		AddItem(tview.NewBox(), 0, 1, false) // Right void
-
-	pages.AddPage("main", centeredAppLayout, true, true)
-
 	pages.AddPage("main", mainFlex, true, true)
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -530,7 +518,6 @@ func main() {
 			}
 			showImpairments()
 			return nil
-
 		case tcell.KeyCtrlD:
 			if config.User.Echo {
 				if currentEchoView != nil {
@@ -541,18 +528,10 @@ func main() {
 					return nil
 				}
 
-				// Generate the raw stats view
-				statsView := showStatsEcho()
-
-				// Wrap it horizontally to cap its width at exactly 70 columns, centered
-				currentEchoView = tview.NewFlex().SetDirection(tview.FlexColumn).
-					AddItem(tview.NewBox(), 0, 1, false). // Left invisible spring
-					AddItem(statsView, 70, 1, true).      // Fixed 70-column width
-					AddItem(tview.NewBox(), 0, 1, false)  // Right invisible spring
-
-				// Add the wrapped view to the main layout
+				// It's closed, so open it!
+				currentEchoView = showStatsEcho()
 				mainFlex.AddItem(currentEchoView, 18, 1, true)
-				app.SetFocus(statsView)
+				app.SetFocus(currentEchoView)
 			} else {
 				if config.StatsTotalWords > 0 {
 					if currentState == StateIdle || currentState == StateStopped {

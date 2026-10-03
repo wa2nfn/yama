@@ -358,6 +358,6 @@ func showKeyEchoOptions() {
 	})
 
 	// Widened from 42 to 55 to comfortably fit all 4 buttons in a single row
-	pages.AddPage("keyEcho", createModal(container, 55, 26), true, true)
+	pages.AddPage("keyEcho", createModal(container, 65, 26), true, true)
 	app.SetFocus(container)
 }

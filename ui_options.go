@@ -182,9 +182,8 @@ func showOptions() {
 	form.AddFormItem(flashcardCb)
 	form.AddFormItem(flashWordCountDrop)
 	form.AddFormItem(flashRandomCountCb)
-	form.AddTextView(" ", "", 0, 1, false, false)
 	form.AddFormItem(echoCb)
-	// ⚡ THE FIX: Removed the empty text view that was creating a blank space here
+	form.AddTextView(" ", "", 0, 1, false, false)
 
 	form.AddFormItem(syllableExpansionCb)
 	form.AddFormItem(wordOrderCb)
