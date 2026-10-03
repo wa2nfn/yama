@@ -214,14 +214,42 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		}
 
 		//// PORT SETUP START
-		if config.User.KeyerPort == "" {
+		if config.User.KeyerPort == "" || config.User.KeyerPort == "None" {
 			config.User.Echo = false
 			config.SaveConfig()
+
 			if OnStatusUpdate != nil {
-				OnStatusUpdate("[red] KeyEcho requires a connected device - KeyEcho now disabled.")
+				OnStatusUpdate(" [red]KeyEcho requires a selected COM port! KeyEcho disabled. [yellow]Press ENTER.")
+			}
+
+			waitMutex.Lock()
+			isWaitingForKey = true
+			waitMutex.Unlock()
+
+			select {
+			case <-waitActionChan:
+			default:
+			} // Drain channel
+
+		WaitErr1:
+			for !IsStopping {
+				select {
+				case <-waitActionChan:
+					break WaitErr1
+				case <-time.After(50 * time.Millisecond):
+				}
+			}
+
+			waitMutex.Lock()
+			isWaitingForKey = false
+			waitMutex.Unlock()
+
+			if OnStatusUpdate != nil {
+				OnStatusUpdate("STOP")
 			}
 			return
 		}
+
 		// 1. WAKE UP HARDWARE IMMEDIATELY BEFORE KEYING
 		if ActiveEchoPort != nil {
 			ActiveEchoPort.Close()
@@ -238,6 +266,38 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		ActiveEchoPort, openErr = serial.Open(config.User.KeyerPort, mode)
 
 		if openErr != nil {
+			config.User.Echo = false
+			config.SaveConfig()
+
+			if OnStatusUpdate != nil {
+				OnStatusUpdate(fmt.Sprintf(" [red]Port Error (%s) - KeyEcho disabled. [yellow]Press ENTER.", config.User.KeyerPort))
+			}
+
+			waitMutex.Lock()
+			isWaitingForKey = true
+			waitMutex.Unlock()
+
+			select {
+			case <-waitActionChan:
+			default:
+			}
+
+		WaitErr2:
+			for !IsStopping {
+				select {
+				case <-waitActionChan:
+					break WaitErr2
+				case <-time.After(50 * time.Millisecond):
+				}
+			}
+
+			waitMutex.Lock()
+			isWaitingForKey = false
+			waitMutex.Unlock()
+
+			if OnStatusUpdate != nil {
+				OnStatusUpdate("STOP")
+			}
 			if OnEchoRuntimeFailure != nil {
 				OnEchoRuntimeFailure("port-failure")
 			}

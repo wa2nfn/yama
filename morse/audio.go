@@ -551,7 +551,7 @@ func startAudioEngine() error {
 		SampleRate:   SampleRate,
 		ChannelCount: 2,
 		Format:       oto.FormatSignedInt16LE,
-		BufferSize:   time.Millisecond * 25,
+		BufferSize:   time.Millisecond * 20,
 	}
 
 	var readyChan chan struct{}
