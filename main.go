@@ -382,13 +382,13 @@ func main() {
 	pages.SetBackgroundColor(tcell.ColorBlack)
 	refreshUI(StateIdle)
 
+
 	mainFlex = tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 3, 0, false).
 		AddItem(inputArea, 0, 1, true).
 		AddItem(statusLine, 1, 0, false).
 		AddItem(blueLine, 1, 0, false)
 
-	//mainFlex.SetBackgroundColor(tcell.ColorBlack)
 	mainFlex.SetBackgroundColor(tcell.ColorBlack)
 
 	// Lock the main app inside a rigid grid so it never over-expands
@@ -398,20 +398,6 @@ func main() {
 		AddItem(mainFlex, 1, 1, 1, 1, 0, 0, true)
 
 	pages.AddPage("main", centeredAppLayout, true, true)
-
-	// Wrap the entire app in a centering grid to cap maximum width/height
-	centeredAppLayout := tview.NewFlex().
-		AddItem(tview.NewBox(), 0, 1, false). // Left void
-		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
-			AddItem(tview.NewBox(), 0, 1, false). // Top void
-			AddItem(mainFlex, 30, 1, true).       // MAXIMUM HEIGHT: 30 rows
-			AddItem(tview.NewBox(), 0, 1, false), // Bottom void
-							100, 1, true). // MAXIMUM WIDTH: 100 columns
-		AddItem(tview.NewBox(), 0, 1, false) // Right void
-
-	pages.AddPage("main", centeredAppLayout, true, true)
-
-	pages.AddPage("main", mainFlex, true, true)
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 
