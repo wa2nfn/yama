@@ -382,7 +382,6 @@ func main() {
 	pages.SetBackgroundColor(tcell.ColorBlack)
 	refreshUI(StateIdle)
 
-
 	mainFlex = tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(header, 3, 0, false).
 		AddItem(inputArea, 0, 1, true).
@@ -393,7 +392,7 @@ func main() {
 
 	// Lock the main app inside a rigid grid so it never over-expands
 	centeredAppLayout := tview.NewGrid().
-		SetColumns(0, 100, 0). // Auto left-margin, 100-col center, Auto right-margin
+		SetColumns(0, 120, 0). // Auto left-margin, 100-col center, Auto right-margin
 		SetRows(0, 30, 0).     // Auto top-margin, 30-row center, Auto bottom-margin
 		AddItem(mainFlex, 1, 1, 1, 1, 0, 0, true)
 
