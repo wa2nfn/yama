@@ -1,49 +1,47 @@
-name: YAMA Release
+
+name: Build and Release
 
 on:
   push:
     tags:
-      - "v*"
-  workflow_dispatch: #
+      - 'v*'
+
 jobs:
   release:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-
-    runs-on: ${{ matrix.os }}
-
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-      - uses: actions/setup-go@v5
+      - name: Setup Go
+        uses: actions/setup-go@v4
         with:
-          go-version: "1.26"
-          
-      - name: Build YAMA
-        shell: bash
+          go-version: '>=1.20'
+
+      - name: Build and Package
         run: |
-          mkdir -p build
+          # 1. Windows (Intel/AMD)
+          GOOS=windows GOARCH=amd64 go build -o yama.exe .
+          zip yama-windows-amd64.zip yama.exe README.md
+          rm yama.exe
           
-          if [[ "$RUNNER_OS" == "Windows" ]]; then
-            export CGO_ENABLED=0
-            export GOOS=windows
-            export GOARCH=amd64
-            go build -ldflags="-w -s" -o build/yama.exe .
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            export CGO_ENABLED=1
-            export GOOS=darwin
-            export GOARCH=amd64
-            go build -ldflags="-w -s" -o build/yama-darwin .
-          else
-            # Build Linux inside Ubuntu 20.04 (glibc 2.31) and install Go 1.26 on the fly for max compatibility
-            docker run --rm -v ${{ github.workspace }}:/app -w /app ubuntu:20.04 bash -c "apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y wget ca-certificates build-essential libasound2-dev && wget -q https://go.dev/dl/go1.26.0.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.26.0.linux-amd64.tar.gz && export PATH=\$PATH:/usr/local/go/bin && env CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -ldflags='-w -s' -o build/yama-linux ."
-          fi
+          # 2. Linux (Intel/AMD)
+          GOOS=linux GOARCH=amd64 go build -o yama .
+          tar -czvf yama-linux-amd64.tar.gz yama README.md
           
-      - name: Upload release assets
-        uses: softprops/action-gh-release@v2
+          # 3. macOS (Intel)
+          GOOS=darwin GOARCH=amd64 go build -o yama .
+          zip yama-mac-intel.zip yama README.md
+          
+          # 4. macOS (Apple Silicon / M1 / M2 / M3)
+          GOOS=darwin GOARCH=arm64 go build -o yama .
+          zip yama-mac-arm64.zip yama README.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
         with:
-         files: build/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            yama-windows-amd64.zip
+            yama-linux-amd64.tar.gz
+            yama-mac-intel.zip
+            yama-mac-arm64.zip
