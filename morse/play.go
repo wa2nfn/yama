@@ -1047,3 +1047,147 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		}
 	}
 }
+
+// added for manual keying
+func RunManualOscillator(updateUI func(statusMsg, mainMsg string)) {
+	// 1. Check if the user has a port configured
+	if config.User.KeyerPort == "" || config.User.KeyerPort == "None" {
+		updateUI(
+			" [red]No COM port selected.",
+			"\n\n *** MANUAL OSCILLATOR MODE ***\n\n ERROR: No COM port configured.\n Go to Options (Ctrl-K) to select a port first.\n\n Press ESC to exit.",
+		)
+		return
+	}
+
+	// 2. --- AUDIO SETUP (Initialize once for the whole session) ---
+	oscFreq := float64(config.User.Tone)
+	osc, player := StartOscillator(oscFreq)
+	if osc == nil || player == nil {
+		updateUI(
+			" [red]Audio Failure",
+			"\n\n *** MANUAL OSCILLATOR MODE ***\n\n CRITICAL FAIL - osc or player is nil!\n\n Press ESC to exit.",
+		)
+		return
+	}
+
+	player.SetVolume(0.0)
+
+	// CLEAN TEARDOWN ON ESC
+	defer func() {
+		if player != nil {
+			player.SetVolume(0.0)
+			time.Sleep(50 * time.Millisecond)
+			player.Pause()
+			player.Close()
+		}
+		if ActiveEchoPort != nil {
+			ActiveEchoPort.Close()
+		}
+	}()
+
+	mode := &serial.Mode{
+		BaudRate: config.User.KeyerPortSpeed,
+		Parity:   serial.NoParity,
+		StopBits: serial.OneStopBit,
+		DataBits: 8,
+	}
+
+	// 3. --- DYNAMIC PIN CONFIGURATION ---
+	pinParts := strings.Split(config.User.KeyLineMode, "-")
+	monitorPin := "CTS"
+	if len(pinParts) > 0 {
+		monitorPin = strings.Split(pinParts[0], ":")[0]
+	}
+
+	getMonitorState := func(ms *serial.ModemStatusBits) bool {
+		switch monitorPin {
+		case "CD", "DCD":
+			return ms.DCD
+		case "DSR":
+			return ms.DSR
+		case "RI":
+			return ms.RI
+		case "CTS":
+			fallthrough
+		default:
+			return ms.CTS
+		}
+	}
+
+	idleInputState := config.User.KeyLineIdlePolarity
+	isKeyDown := func(currentState bool) bool {
+		return currentState != idleInputState
+	}
+
+	// 4. --- THE INFINITE LIFECYCLE LOOP ---
+	for !IsStopping {
+		var openErr error
+
+		// Phase A: The Connection Loop
+		for !IsStopping {
+			if ActiveEchoPort != nil {
+				ActiveEchoPort.Close()
+				ActiveEchoPort = nil
+			}
+
+			ActiveEchoPort, openErr = serial.Open(config.User.KeyerPort, mode)
+
+			if openErr != nil {
+				updateUI(
+					" [yellow]Waiting for key device...",
+					fmt.Sprintf("\n\n *** MANUAL OSCILLATOR MODE ***\n\n Waiting for port: %s\n\n Insert your key device and send, or press ESC to exit.", config.User.KeyerPort),
+				)
+				time.Sleep(1 * time.Second)
+				continue
+			}
+			break // Connected successfully!
+		}
+
+		// Check if they pressed ESC while it was searching
+		if IsStopping {
+			break
+		}
+
+		updateUI(
+			" [green]Manual Oscillator Active",
+			fmt.Sprintf("\n\n *** MANUAL OSCILLATOR MODE ***\n\n Connected to %s.\n\n Freely key now, or press ESC to exit.", config.User.KeyerPort),
+		)
+
+		wasDown := false
+
+		// Phase B: The Polling Loop (Tight, fast, no limits)
+		for !IsStopping {
+			ms, err := ActiveEchoPort.GetModemStatusBits()
+			if err != nil {
+				// The cable was unplugged mid-session!
+				// Kill the tone, alert the user, and break back to Phase A
+				player.SetVolume(0.0)
+				wasDown = false
+				updateUI(
+					" [red]Device disconnected...",
+					"\n\n *** MANUAL OSCILLATOR MODE ***\n\n Connection lost.\n\n Reinsert your key device, or press ESC to exit.",
+				)
+				time.Sleep(500 * time.Millisecond) // brief pause before reconnect attempt
+				break
+			}
+
+			currentState := getMonitorState(ms)
+			keyDown := isKeyDown(currentState)
+
+			if keyDown && !wasDown {
+				player.SetVolume(1.0)
+				wasDown = true
+			} else if !keyDown && wasDown {
+				player.SetVolume(0.0)
+				wasDown = false
+			}
+
+			// Micro-sleep to prevent 100% CPU usage
+			time.Sleep(1 * time.Millisecond)
+		}
+	}
+
+	// The outer loop broke (ESC pressed).
+	// Defer block will safely kill the audio and close the COM port.
+	updateUI("STOP", "")
+}

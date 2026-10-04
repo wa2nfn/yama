@@ -21,7 +21,7 @@ type AppState int
 const (
 	AppBackgroundColor = "#000000" // black
 	playPauseDelay     = 200
-	Ver                = "1.5.1"
+	Ver                = "1.5"
 
 	StateIdle AppState = iota
 	StatePlaying
@@ -499,28 +499,6 @@ func main() {
 		case tcell.KeyF1:
 			if currentState != StatePlaying && currentState != StatePaused {
 				showHelp()
-			}
-			return nil
-		case tcell.KeyF4:
-			if currentState == StateIdle || currentState == StateStopped {
-				currentState = StatePlaying
-
-				inputArea.SetText("\n\n *** PRACTICE OSCILLATOR MODE ***\n\n Initializing...", false)
-				statusLine.SetText(" [yellow]Starting Manual Oscillator...")
-
-				morse.IsStopping = false
-
-				// Launch as a goroutine so it doesn't freeze the UI
-				go morse.RunManualOscillator(func(statusMsg, mainMsg string) {
-					app.QueueUpdateDraw(func() {
-						if statusMsg != "" {
-							statusLine.SetText(statusMsg)
-						}
-						if mainMsg != "" {
-							inputArea.SetText(mainMsg, false)
-						}
-					})
-				})
 			}
 			return nil
 		case tcell.KeyCtrlT:

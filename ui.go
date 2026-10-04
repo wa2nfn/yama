@@ -467,6 +467,8 @@ The following keys display sub menus or perform significant actions.
 Key            | Menu Name  | Purpose
 ---------------|------------|----------------------------------------------------------------------------------------
 Ctrl-F, F3     | File       | Open a .txt file for playback.
+F4             | (No Menu)  | Turns on a standalone Practice Oscillator.
+               |            | ESC exits. (More below)
 Ctrl-N         | NumWords   | Iteratively copies or truncates the current text.
 Ctrl-M         |(No Menu)   | This is a Hot-key; use anytime to Mute input sent by YAMA.
                |            | For copy practice features, YAMA continues to consume input 
@@ -544,6 +546,11 @@ You can define specific characters or ProSigns to silently skip during playback
 [yellow::b]Important Apostrophe Rule:[-:-:-] If you add the apostrophe [yellow::b](')[-:-:-] to your skip list, YAMA will automatically expand 17 common English contractions before removing the remaining apostrophes (e.g., "DON'T" will becomes "DO NOT").
 
 Note that the bottom of the screen has a [yellow::b]yellow[-:-:-] status line, and below that is a [blue::b]blue[-:-:-] reminder line about your current values from the Timing screen. It may also show the phrase [yellow::b]Input Modified[-:-:-]. This indicates that at least one selection on the Options screen will modify the text input before it becomes audible CW, ensuring you are not surprised if the first sounded string differs from what is displayed.
+
+[green::b]Practice Oscillator Overview[white::-]
+This is a simple audio oscillator. It takes its tone from the Timing screen (Ctrl-T) - nothing else; it uses the KeyEcho (Ctrl-K) KeyEcho Port settings at the bottom of the screen - nothing else. Besides sharing the options stated above, the feature is independent of all other features and options.
+
+Use it to troubleshooting or confirming your comport wiring, the KeyEcho Port settings, the tone and volume of your audio. Or naturally for manual keying warm up before KeyEcho or teaching CW. This will not support a keyer or bug becasue there is concept or timing, decoding, grading.
 
 [green::b]KeyEcho Overview[white::-]
 
