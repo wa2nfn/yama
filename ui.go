@@ -500,6 +500,8 @@ Supported ProSigns:[yellow::b] <AR> <AS> <BT> <KA> <SK> <VA> <VE> <SN> <BK> <HH>
 If "ProSign Support" is disabled in Options ([yellow::b]Ctrl-O[-:-:-]), bracketed ProSigns will be ignored (including their use in the Start/End Message). However, the standard keyboard equivalents [yellow::b]+[-:-:-] (<AR>), [yellow::b]=[-:-:-] (<BT>), and [yellow::b]-[-:-:-] (<DU>) will still play, unless the shortcuts are added to the Skip List in the Options screen. (Note: any other use of the '<' or '>' character within YAMA is ignored.)
 
 [green::b]Options Screen (Ctrl-O) - Settings[-:-:-]
+Note: On MAC, and possibly some terminal apps, the Options screen values may not all be visible on screen. If you don't see buttons at the bottom of the page use the TABS to access those fields.
+
 Setting               | Description
 ----------------------|----------------------------------------------------------------------------------------------
 Word Builder Mode     | Plays words progressively (e.g., T, TH, THE) for building head buffer comprehension. 
