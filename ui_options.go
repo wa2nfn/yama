@@ -22,13 +22,14 @@ import (
 )
 
 // OPTIONS_MENU
+// OPTIONS_MENU
 func showOptions() {
 	form := tview.NewForm()
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	form.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	form.SetItemPadding(0)
 
-	// ⚡ THE FIX: Properly removes the invisible blank lines at the top and bottom of the form
+	// THE FIX: Properly removes the invisible blank lines at the top and bottom of the form
 	form.SetBorderPadding(0, 0, 1, 1)
 
 	useProsignsCb := tview.NewCheckbox().SetLabel("ProSign Support")
@@ -124,7 +125,6 @@ func showOptions() {
 		textBuilderCb.SetChecked(config.User.TextBuilder)
 		textSeparatorInput.SetText(config.User.TextSeparator)
 		textSeparatorInput.SetText(strings.TrimSpace(config.User.TextSeparator))
-		textBuilderCb.SetChecked(config.User.TextBuilder)
 		syllableExpansionCb.SetChecked(config.User.SyllableExpansion)
 		textBuilderSortCb.SetChecked(config.User.TextBuilderSort)
 		flashcardCb.SetChecked(config.User.Flashcard)
@@ -155,7 +155,7 @@ func showOptions() {
 				rIdx = i
 				break
 			}
-		}
+        }
 		repeatDropDown.SetCurrentOption(rIdx)
 
 		fIdx := 0
@@ -323,7 +323,7 @@ func showOptions() {
 
 	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("[yellow]ESC to Close  •  Ctrl-S to Save[-]")
+	footerView.SetText("[yellow]ESC to Close  -  Ctrl-S to Save[-]")
 
 	optionsContainer = tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(form, 0, 1, true).
@@ -345,8 +345,6 @@ func showOptions() {
 		return event
 	})
 
-	// ⚡ THE FIX: Reduced height to 24 so it fits entirely inside standard PowerShell terminals.
-	// This forces tview to perfectly draw the border and use natural scrolling for the contents!
 	pages.AddPage("options", createModal(optionsContainer, 66, 30), true, true)
 	app.SetFocus(optionsContainer)
 }
@@ -425,7 +423,7 @@ func showEuropeanCharSelector(parentContainer tview.Primitive, activeEuroSkip *s
 	// 1. Added uniform footer
 	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("\n[yellow]ESC to Cancel  •  Ctrl-S to Save[-]\n")
+	footerView.SetText("\n[yellow]ESC to Cancel  -  Ctrl-S to Save[-]\n")
 
 	container := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(form, 0, 1, true).
@@ -571,7 +569,7 @@ func showIWREditModal(parentContainer tview.Primitive) {
 	// 4. Added uniform footer
 	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("\n[yellow]ESC to Close  •  Ctrl-S to Save[-]\n")
+	footerView.SetText("\n[yellow]ESC to Close  -  Ctrl-S to Save[-]\n")
 
 	layout := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(textArea, 0, 1, true).
@@ -806,7 +804,7 @@ func showToneSpeed() {
 
 	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("\n[yellow]ESC to Close  •  Ctrl-S to Save[-]\n")
+	footerView.SetText("\n[yellow]ESC to Close  -  Ctrl-S to Save[-]\n")
 
 	timingContainer = tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(form, 0, 1, true).
@@ -990,7 +988,7 @@ func showImpairments() {
 
 	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("\n[yellow]ESC to Close  •  Ctrl-S to Save[-]\n")
+	footerView.SetText("\n[yellow]ESC to Close  -  Ctrl-S to Save[-]\n")
 
 	container = tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(form, 0, 1, true).
@@ -1112,7 +1110,7 @@ func showNumWordsModal() {
 
 	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("\n[yellow]ESC to Close  •  Ctrl-S to Save[-]\n")
+	footerView.SetText("\n[yellow]ESC to Close  -  Ctrl-S to Save[-]\n")
 
 	container := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(form, 0, 1, true).
@@ -1137,7 +1135,6 @@ func showNumWordsModal() {
 	pages.AddPage("numWords", createModal(container, 45, 12), true, true)
 	app.SetFocus(container)
 }
-
 func showWaveModal(targetDir string) {
 	rawText := inputArea.GetText()
 
@@ -1332,7 +1329,7 @@ func showWaveModal(targetDir string) {
 	// 1. Add the footer view
 	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("\n[yellow]ESC to Close  •  Ctrl-S to Save[-]\n")
+	footerView.SetText("\n[yellow]ESC to Close  -  Ctrl-S to Save[-]\n")
 
 	// 2. Add the footerView to the container flex
 	container := tview.NewFlex().SetDirection(tview.FlexRow).
@@ -1381,7 +1378,7 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 	}
 
 	// ==========================================
-	// 🚦 THE GHOST THREAD ASSASSIN 🚦
+	// THE GHOST THREAD ASSASSIN
 	// ==========================================
 	// Give the old goroutine 150ms to read IsStopping=true and completely
 	// exit its loop before we reset the flag. This guarantees the old
@@ -1496,7 +1493,7 @@ func SortByWordLength(text string) string {
 	// Split into words (Fields handles multiple spaces)
 	words := strings.Fields(text)
 
-	// Sort shortest → longest
+	// Sort shortest to longest
 	slices.SortFunc(words, func(a, b string) int {
 		return cmp.Compare(len(a), len(b))
 	})

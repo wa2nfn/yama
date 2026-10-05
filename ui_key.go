@@ -332,7 +332,7 @@ func showKeyEchoOptions() {
 	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	// 1. Update the footer to advertise the new hotkey
-	footerView.SetText("[yellow]ESC to Close  •  Ctrl-S to Save[-]")
+	footerView.SetText("\n[yellow]ESC to Close  -  Ctrl-S to Save[-]\n")
 
 	// Explicitly defining the container here to ensure the compiler sees it
 	var container *tview.Flex = tview.NewFlex()
@@ -361,3 +361,4 @@ func showKeyEchoOptions() {
 	pages.AddPage("keyEcho", createModal(container, 65, 26), true, true)
 	app.SetFocus(container)
 }
+
