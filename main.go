@@ -21,7 +21,7 @@ type AppState int
 const (
 	AppBackgroundColor = "#000000" // black
 	playPauseDelay     = 200
-	Ver                = "1.5.1"
+	Ver                = "1.5.2"
 
 	StateIdle AppState = iota
 	StatePlaying
@@ -560,14 +560,13 @@ func main() {
 				// Generate the raw stats view
 				statsView := showStatsEcho()
 
-				// Wrap it horizontally to cap its width at exactly 70 columns, centered
-				currentEchoView = tview.NewFlex().SetDirection(tview.FlexColumn).
-					AddItem(tview.NewBox(), 0, 1, false). // Left invisible spring
-					AddItem(statsView, 70, 1, true).      // Fixed 70-column width
-					AddItem(tview.NewBox(), 0, 1, false)  // Right invisible spring
+				// No springs! Just assign it directly so it matches the full width
+				// of the Text Input/Output box above it.
+				currentEchoView = statsView
 
-				// Add the wrapped view to the main layout
-				mainFlex.AddItem(currentEchoView, 18, 1, true)
+				// Add it to the bottom of the layout (like you had originally),
+				// but now it will naturally stretch to match the parent width!
+				mainFlex.AddItem(currentEchoView, 16, 1, true)
 				app.SetFocus(statsView)
 			} else {
 				if config.StatsTotalWords > 0 {
