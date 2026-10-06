@@ -21,7 +21,7 @@ type AppState int
 const (
 	AppBackgroundColor = "#000000" // black
 	playPauseDelay     = 200
-	Ver                = "1.5.3"
+	Ver                = "1.6"
 
 	StateIdle AppState = iota
 	StatePlaying
