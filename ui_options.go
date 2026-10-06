@@ -74,7 +74,7 @@ func showOptions() {
 	flashWordCountList := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"}
 	flashWordCountDrop := tview.NewDropDown().SetLabel("    Word Count (1-20)").SetOptions(flashWordCountList, nil)
 	flashRandomCountCb := tview.NewCheckbox().SetLabel("    Random Value")
-	echoCb := tview.NewCheckbox().SetLabel("[#00BFFF]KeyEcho Sending Mode[::-]")
+	echoCb := tview.NewCheckbox().SetLabel("[#00BFFF]Echo Sending Mode[::-]")
 
 	startMsgCb := tview.NewCheckbox().SetLabel("Use Start Message")
 	startMsgInput := tview.NewInputField().SetLabel("    Message Text").SetFieldWidth(35)
@@ -226,7 +226,7 @@ func showOptions() {
 			errors = append(errors, "Flashcard and Text Builder are mutually exclusive.")
 		}
 		if isFC && echoCb.IsChecked() {
-			errors = append(errors, "Flashcard and KeyEcho are mutually exclusive.")
+			errors = append(errors, "Flashcard and Echo are mutually exclusive.")
 		}
 
 		rawSkipFields := strings.Fields(skipListInput.GetText())
@@ -994,7 +994,7 @@ func showImpairments() {
 		AddItem(form, 0, 1, true).
 		AddItem(footerView, 2, 1, false)
 
-	container.SetBorder(true).SetTitle(" Audio Impairments ")
+	container.SetBorder(true).SetTitle(" Impairments ")
 	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
 	// Catch the ESC key specifically for this modal to close it without saving

@@ -3,7 +3,7 @@ YAMA — Yet Another Morse-code App
 YAMA is a lightweight, standalone Morse practice application for Windows, macOS, and Linux. No installer, no complex setups, and no network required — just download and run.
 
 Features
-* KeyEcho sending mode with real timing capture
+* Echo sending mode with real timing capture
  
 * A simple practice oscillator for straight keys
 
@@ -109,13 +109,13 @@ You can now see how it is straightforward to hear input whether typed in or read
 
 Use Numwords (Ctrl-N) after you have loaded text in the Input Text screen if you want to increase/decrease the amount of text to practice. You can also perform edits on the data with: insert/delete, pg up/dn, home/end, backspace instead of a standalone editor. If you increase the number available, you will get additional words added in the same order. For general CW practice, you likely will want to use the random button (or the randomize option in the Ctrl-O screen).
 
-The DataStats (Ctrl-D) is available after some play has taken place. It is for the last played text and is mostly of interest to those using the IWR feature. An alternate form of DataStats can be used with the KeyEcho feature; its presence can be toggled with Ctrl-D without losing your current statistics.
+The DataStats (Ctrl-D) is available after some play has taken place. It is for the last played text and is mostly of interest to those using the IWR feature. An alternate form of DataStats can be used with the Echo feature; its presence can be toggled with Ctrl-D without losing your current statistics.
 
 The Audio Impairments (Ctrl-A) and Timing (Ctrl-T) are unique in that you do not have to abandon the current practice session in order to make a change. Timing changes do require a temporary pause (Ctrl-P during Play becomes Pause as the menu bar indicates) and then Ctrl-R resumes play. Impairments is fully dynamic, allowing sound modification during play.
 
 Also during play, a toggle of the SPACEBAR hides/unhides the Text Input screen which is now showing played code.
 
-There is one feature, KeyEcho, which is for sending practice. The bulk of the options for this are on the KeyEcho (Ctrl-K) screen; however, it also works in conjunction with the Timing (Ctrl-T) and the Options (Ctrl-O) that were used for receiving practice. This combination can allow your practice session to improve receiving, head-buffer, IWR, at the same time as sending practice. See Examples below.
+There is one feature, Echo, which is for sending practice. The bulk of the options for this are on the Echo (Ctrl-E) screen; however, it also works in conjunction with the Timing (Ctrl-T) and the Options (Ctrl-O) that were used for receiving practice. This combination can allow your practice session to improve receiving, head-buffer, IWR, at the same time as sending practice. See Examples below.
 
 This README does not cover all the details of the app; please read or print the entire Help available with function key F1.
 
@@ -123,17 +123,17 @@ Examples
 ========
 I will add examples here so as to not overload the app's F1 Help text. This may grow as I get user feedback. If you develop a particular combination that you find especially helpful, let me know and I will add it and your name/call sign will be added to internet history (LOL).
 
-1. KeyEcho Combination With WordBuilder For IWR
+1. Echo Combination With WordBuilder For IWR
 Create an input file of your choice (CW abbreviations, Q-Signals, etc.). I asked AI to make me a file. Here are the simple steps with that file. This simple input gives practice on 23 letters of the alphabet (lots of Qs).
 
 1- Start Yama
 2- Ctrl-T, set my practice character speed (and tone). SAVE
-3- Ctrl-K, (a few more than necessary) set Tolerance=15% (challenging), Word Count=1, Key Now Alert Tone=All, Last Word Space Dit Cnt=4 (challenging, normal is 7), SideTone and Visual Feedback both=checked. SAVE
-4- Ctrl-O, Options. Check these 3: Random Order, Word Builder (your choice), KeyEcho (this is what makes YAMA do echo when Play is done! else its for code copy).
+3- , (a few more than necessary) set Tolerance=15% (challenging), Word Count=1, Key Now Alert Tone=All, Last Word Space Dit Cnt=4 (challenging, normal is 7), SideTone and Visual Feedback both=checked. SAVE
+4- Ctrl-O, Options. Check these 3: Random Order, Word Builder (your choice), Echo (this is what makes YAMA do echo when Play is done! else its for code copy).
 5- Ctrl-F, select the txt file of Q-signals you or AI created.
 6- Ctrl-N, I'll increase the 36 standard Q-Signals to 120 so I hear each Q-Signal at least 3 times.
 
-That's all the prep, it's all saved, the next time you might not change anything. Assuming you did the one-time KeyEcho setup (port, adapter signals/pins, and created your comport adapter).
+That's all the prep, it's all saved, the next time you might not change anything. Assuming you did the one-time Echo setup (port, adapter signals/pins, and created your comport adapter).
 
 Connect key device to com port adapter, insert into PC.
 

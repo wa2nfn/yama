@@ -21,7 +21,7 @@ type AppState int
 const (
 	AppBackgroundColor = "#000000" // black
 	playPauseDelay     = 200
-	Ver                = "1.5.2"
+	Ver                = "1.5.3"
 
 	StateIdle AppState = iota
 	StatePlaying
@@ -462,13 +462,18 @@ func main() {
 				return nil
 			}
 			return event
-		case tcell.KeyCtrlB:
+		case tcell.KeyCtrlA:
 			text := inputArea.GetText()
 			hasText := len(strings.Fields(text)) > 0
 			if currentState != StatePlaying && currentState != StatePaused && !hasText {
 				showAbout()
+				return nil
 			}
-			return nil
+			if config.User.Echo {
+				config.User.EchoAutoRetry = !config.User.EchoAutoRetry
+				updateBlueLine()
+				return nil
+			}
 		case tcell.KeyCtrlN:
 			if currentState != StatePlaying && len(inputArea.GetText()) > 0 {
 				showNumWordsModal()
@@ -533,18 +538,10 @@ func main() {
 				showOptions()
 			}
 			return nil
-		case tcell.KeyCtrlK:
+		case tcell.KeyCtrlE:
 			if currentState != StatePlaying && currentState != StatePaused {
 				showKeyEchoOptions()
 			}
-			return nil
-		case tcell.KeyCtrlA:
-			if config.User.Echo {
-				config.User.EchoAutoRetry = !config.User.EchoAutoRetry
-				updateBlueLine()
-				return nil
-			}
-			showImpairments()
 			return nil
 
 		case tcell.KeyCtrlD:
@@ -583,7 +580,10 @@ func main() {
 				}
 			}
 			return nil
-		case tcell.KeyCtrlE, tcell.KeyCtrlL:
+		case tcell.KeyCtrlI:
+			showImpairments()
+			return nil
+		case tcell.KeyCtrlL:
 			if currentState != StatePlaying {
 				actualText = ""
 				inputArea.SetText("", false)

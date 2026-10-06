@@ -17,7 +17,7 @@ func showKeyEchoOptions() {
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	form.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
-	// --- KeyEcho Port ---
+	// --- Echo Port ---
 	ports, err := morse.GetSerialPorts()
 	if err != nil || len(ports) == 0 {
 		ports = []string{"None"}
@@ -31,7 +31,7 @@ func showKeyEchoOptions() {
 	ports = clean
 
 	echoPortDrop := tview.NewDropDown().
-		SetLabel("KeyEcho Port").
+		SetLabel("Echo Port").
 		SetOptions(ports, nil)
 	echoPortDrop.SetFieldBackgroundColor(tcell.ColorBlue)
 	echoPortDrop.SetFieldTextColor(tcell.ColorWhite)
@@ -340,7 +340,7 @@ func showKeyEchoOptions() {
 	container.AddItem(form, 0, 1, true)
 	container.AddItem(footerView, 1, 0, false)
 
-	container.SetBorder(true).SetTitle(" KeyEcho ")
+	container.SetBorder(true).SetTitle(" Echo ")
 	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
 	container.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
