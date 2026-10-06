@@ -464,31 +464,31 @@ You can always exit a menu without saving by pressing [yellow::b]ESC[-:-:-] to s
 
 The following keys display sub menus or perform significant actions.
 
-Key            | Menu Name  | Purpose
----------------|------------|----------------------------------------------------------------------------------------
-Ctrl-F, F3     | File       | Open a .txt file for playback.
-F4             | (No Menu)  | Turns on a standalone Practice Oscillator.
-               |            | ESC exits. (More below)
-Ctrl-N         | NumWords   | Iteratively copies or truncates the current text.
-Ctrl-M         |(No Menu)   | This is a Hot-key; use anytime to Mute input sent by YAMA.
-               |            | For copy practice features, YAMA continues to consume input 
-               |            | but silently. In Echo, the input you are to echo back    
-               |            | is written to the screen instantly and silently. It is an   
-               |            | On/Off toggle; its state is on the Blue Line.
-Ctrl-P         | Play/Pause | Start or pause the current loaded input text.
-Ctrl-S         | Stop       | Halt playback immediately (cannot be resumed).
-Ctrl-W         | Wave       | Export current text to .wav file(s).
-Ctrl-L         | cLear      | Clear the current text input (aka screen clear).
-Ctrl-T         | Timing     | Speed, Tone, and IWR settings.
-Ctrl-O         | Options    | Parser, messaging, and text processing options.
-Ctrl-E         | Echo       | Options for sending practice. (see Echo table)
-Ctrl-I         | Impairments| Audio impacting impairments (QRN, QSB, Drift, etc.)
-Ctrl-D         | DataStats  | Statistics and IWR counts. New input clears old data. During Echo the screen grades
-               |            | your timing for dits, dahs, and spaces based on the Tolerance factor you have set.
-Ctrl-A         | About      | App info and License.
-Ctrl-Q         | Quit       | Exit YAMA. (Or close the parent window.)
-ESC            | Close      | Cancel/Close menus without saving.
-Spacebar       | Hide/Unhide| Toggle text visibility during audio playback.
+Key            |  Menu Name  | Purpose
+---------------|-------------|----------------------------------------------------------------------------------------
+Ctrl-A         | About       | App info and License.
+Ctrl-D         | DataStats   | Statistics and IWR counts. New input clears old data. During Echo the screen grades
+               |             | your timing for dits, dahs, and spaces based on the Tolerance factor you have set.
+Ctrl-E         | Echo        | Options for sending practice. (see Echo table)
+Ctrl-F, F3     | File        | Open a .txt file for playback.
+F4             | (No Menu)   | Turns on a standalone Practice Oscillator.
+               |             | ESC exits. (More below)
+Ctrl-I         | Impairments | Audio impacting impairments (QRN, QSB, Drift, etc.)
+Ctrl-L         | cLear       | Clear the current text input (aka screen clear).
+Ctrl-M         | (No Menu)   | This is a Hot-key; use anytime to Mute input sent by YAMA.
+               |             | For copy practice features, YAMA continues to consume input 
+               |             | but silently. In Echo, the input you are to echo back    
+               |             | is written to the screen instantly and silently. It is an   
+               |             | On/Off toggle; its state is on the Blue Line.
+Ctrl-N         | NumWords    | Iteratively copies or truncates the current text.
+Ctrl-O         | Options     | Parser, messaging, and text processing options.
+Ctrl-P         | Play/Pause  | Start or pause the current loaded input text.
+Ctrl-Q         | Quit        | Exit YAMA. (Or close the parent window.)
+Ctrl-S         | Stop        | Halt playback immediately (cannot be resumed).
+Ctrl-T         | Timing      | Speed, Tone, and IWR settings.
+Ctrl-W         | Wave        | Export current text to .wav file(s).
+ESC            | Close       | Cancel/Close menus without saving.
+Spacebar       | Hide/Unhide | Toggle text visibility during audio playback.
 
 [green::b]Supported Characters & Punctuation[-:-:-]
 YAMA naturally supports standard letters [yellow::b]A-Z[-:-:-] and numbers [yellow::b]0-9[-:-:-].
@@ -521,7 +521,7 @@ Flashcard             | For live play except Word Builder, plays a word(s) at cu
                       | recognize and hit Enter to get the next word. Backspace will replay the current word(s).
 WordCount             | Number of words per flash (1-20, default 1).
 Random Value          | Words per flash, range from 1 to WordCount value.
-Echo Mode          | Enables echo-back sending feature. Uses external key device. Text is     
+Echo Mode             | Enables echo-back sending feature. Uses external key device. Text is     
                       | played similarly to Flashcard Mode, then the user keys it back (see below).
 Syllablize Words      | Play multi-syllable words by syllable instead of by letter. A head buffer feature similar to 
                       | Word Builder. Approx. 1,000 common words will be syllablized if not attached 
@@ -622,8 +622,8 @@ Error Tone             | Plays Alert Tone Freq for about 0.5 Dah time on a keyin
 Key Padding            | Once you start to key, you have the same amount of time that YAMA took to send you the 
                        | word(s), plus 4 levels of padding given as descriptive names.
 SideTone               | Use the PC sidetone for keying using the same tone as set on the Timing screen.
-Visual Feedback        | If set, your keyed symbols line up below what YAMA sent. Two identical lines indicate a perfect 
-                       | match; * indicates invalid Morse (i.e., 7 dits) (more on this later).
+Visual Feedback        | If set, your keyed symbols line up below what YAMA sent. Two identical lines indicate
+                       | perfect match; * indicates invalid Morse (i.e., 7 dits) (more on this later).
 Perfect Match Message  | Brief pause on match, with a green status message. Helpful is Visual Feedback is off.
 Echo Port              | A COM port to connect your device (straight key, keyer, bug).
 Key Line Interface     | Which leads in the COM port are being used.
@@ -639,8 +639,8 @@ End Ramp Speed         | If set, must be greater than the above. Will have an au
                        | linearly during the session. Speed will not change with a word.
 Effective Speed        | A speed lower than Char Speed, used for Farnsworth or Wordsworth spacing.
 Tone                   | For YAMA-played audio; for optional sidetone in the Echo Mode.
-Use IWR Mode           | An on/off feature toggle, placed here since it relates to Character speed (if the played audio
-                       | sounds your chosen IWR words at a faster rate than other words). 
+Use IWR Mode           | An on/off feature toggle, placed here since it relates to Character speed (if the played 
+                       | audio sounds your chosen IWR words at a faster rate than other words). 
 Speed                  | The character speed for IWR matched words.
 Tone                   | Likely best set the same as the previous tone.
 
