@@ -361,4 +361,3 @@ func showKeyEchoOptions() {
 	pages.AddPage("keyEcho", createModal(container, 65, 26), true, true)
 	app.SetFocus(container)
 }
-

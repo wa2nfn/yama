@@ -155,7 +155,7 @@ func showOptions() {
 				rIdx = i
 				break
 			}
-        }
+		}
 		repeatDropDown.SetCurrentOption(rIdx)
 
 		fIdx := 0

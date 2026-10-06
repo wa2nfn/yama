@@ -1031,8 +1031,7 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 		})
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	applyFocusStyles(form)
-
-	// 2. Updated Footer
+	// 1. Revert to the clean keyboard-only footer
 	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	footerView.SetText("[yellow]Cursor Up/Down to Move  •  Enter to Select[-]")
@@ -1045,6 +1044,14 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 	layout.SetBorder(true).SetTitle(" Input Files ")
 	layout.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
+	// FIX 1: The Mouse Killer
+	// Intercept and discard all mouse events on the list.
+	// This prevents the internal highlight from jumping around and getting "confused".
+	list.SetMouseCapture(func(action tview.MouseAction, event *tcell.EventMouse) (tview.MouseAction, *tcell.EventMouse) {
+		return action, nil // Returning a nil event consumes it completely
+	})
+
+	// FIX 2: Infinite Tab Cycling
 	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyTab {
 			app.SetFocus(form)
@@ -1054,11 +1061,25 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 	})
 
 	form.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyBacktab {
+		if event.Key() == tcell.KeyBacktab || event.Key() == tcell.KeyTab {
 			app.SetFocus(list)
 			return nil
 		}
 		return event
+	})
+
+	// FIX 3: The Focus Trap
+	modalGrid := createModal(layout, 55, 26)
+
+	// Type assert to *tview.Grid to access SetMouseCapture
+	modalGrid.(*tview.Grid).SetMouseCapture(func(action tview.MouseAction, event *tcell.EventMouse) (tview.MouseAction, *tcell.EventMouse) {
+		if action == tview.MouseLeftClick {
+			// If they click empty space, shove focus back to the list
+			if !form.HasFocus() {
+				app.SetFocus(list)
+			}
+		}
+		return action, event
 	})
 
 	layout.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
@@ -1070,6 +1091,6 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 		return event
 	})
 
-	pages.AddPage("file", createModal(layout, 55, 26), true, true)
+	pages.AddPage("file", modalGrid, true, true)
 	app.SetFocus(list)
 }
