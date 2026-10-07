@@ -875,10 +875,7 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMA
 	pages.AddPage("about", createModal(layout, 110, 32), true, true)
 	app.SetFocus(layout)
 }
-
 func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextArea) {
-	app.EnableMouse(true)
-
 	list := tview.NewList().ShowSecondaryText(false)
 	list.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	list.SetBorder(false)
@@ -941,6 +938,7 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 		info, err := os.Stat(full)
 		if err != nil {
 			inputArea.SetText("Error finding file: "+full+"\n"+err.Error(), true)
+			app.EnableMouse(true) // EXIT DOOR 1: Error reading dir
 			pages.RemovePage("file")
 			app.SetFocus(inputArea)
 			return
@@ -954,6 +952,8 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 
 		currentInputFile = name
 		currentFileDir = currentDir
+
+		app.EnableMouse(true) // EXIT DOOR 2: File selected
 
 		go func(targetFile string) {
 			stopAudio()
@@ -1023,15 +1023,15 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 		onSelect(main)
 	})
 
-	// 1. Removed redundant "Select" button
 	form := tview.NewForm().
 		AddButton("Cancel", func() {
+			app.EnableMouse(true) // EXIT DOOR 3: Cancel button clicked
 			pages.RemovePage("file")
 			app.SetFocus(inputArea)
 		})
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	applyFocusStyles(form)
-	// 1. Revert to the clean keyboard-only footer
+
 	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	footerView.SetText("[yellow]Cursor Up/Down to Move  •  Enter to Select[-]")
@@ -1044,14 +1044,6 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 	layout.SetBorder(true).SetTitle(" Input Files ")
 	layout.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	// FIX 1: The Mouse Killer
-	// Intercept and discard all mouse events on the list.
-	// This prevents the internal highlight from jumping around and getting "confused".
-	list.SetMouseCapture(func(action tview.MouseAction, event *tcell.EventMouse) (tview.MouseAction, *tcell.EventMouse) {
-		return action, nil // Returning a nil event consumes it completely
-	})
-
-	// FIX 2: Infinite Tab Cycling
 	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyTab {
 			app.SetFocus(form)
@@ -1068,22 +1060,16 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 		return event
 	})
 
-	// FIX 3: The Focus Trap
 	modalGrid := createModal(layout, 55, 26)
 
-	// Type assert to *tview.Grid to access SetMouseCapture
-	modalGrid.(*tview.Grid).SetMouseCapture(func(action tview.MouseAction, event *tcell.EventMouse) (tview.MouseAction, *tcell.EventMouse) {
-		if action == tview.MouseLeftClick {
-			// If they click empty space, shove focus back to the list
-			if !form.HasFocus() {
-				app.SetFocus(list)
-			}
-		}
-		return action, event
-	})
+	// THE NUCLEAR OPTION
+	// createModal natively calls app.EnableMouse(true). We immediately override it 
+	// and physically tell the terminal emulator to stop sending mouse clicks.
+	app.EnableMouse(false)
 
 	layout.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
+			app.EnableMouse(true) // EXIT DOOR 4: Escape key
 			pages.RemovePage("file")
 			app.SetFocus(inputArea)
 			return nil
