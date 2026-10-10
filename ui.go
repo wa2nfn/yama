@@ -1063,7 +1063,7 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 	modalGrid := createModal(layout, 55, 26)
 
 	// THE NUCLEAR OPTION
-	// createModal natively calls app.EnableMouse(true). We immediately override it 
+	// createModal natively calls app.EnableMouse(true). We immediately override it
 	// and physically tell the terminal emulator to stop sending mouse clicks.
 	app.EnableMouse(false)
 
