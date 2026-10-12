@@ -875,14 +875,19 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMA
 	pages.AddPage("about", createModal(layout, 110, 32), true, true)
 	app.SetFocus(layout)
 }
+
 func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextArea) {
 	list := tview.NewList().ShowSecondaryText(false)
 	list.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	list.SetBorder(false)
 
 	currentDir, _ := os.Getwd()
+	selectedFiles := make(map[string]bool) // TRACKS TAGGED FILES
 
 	populate := func(dir string) {
+		// Save current selection index so the list doesn't jump to the top when redrawn
+		currentIndex := list.GetCurrentItem()
+
 		list.Clear()
 		files, err := os.ReadDir(dir)
 		if err != nil {
@@ -913,14 +918,31 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 		}
 
 		for _, t := range txts {
-			list.AddItem(t.Name(), "", 0, nil)
+			fullPath := filepath.Join(dir, t.Name())
+			prefix := "  "
+			if selectedFiles[fullPath] {
+				prefix = "[yellow]* [-]" // VISUAL TAG
+			}
+			list.AddItem(prefix+t.Name(), "", 0, nil)
+		}
+
+		if currentIndex < list.GetItemCount() {
+			list.SetCurrentItem(currentIndex)
 		}
 	}
 
 	populate(currentDir)
 
+	// Helper to strip formatting tags to get the real filename
+	getCleanName := func(main string) string {
+		name := strings.TrimPrefix(main, "[yellow]* [-]")
+		name = strings.TrimPrefix(name, "  ")
+		name = strings.TrimSuffix(strings.TrimPrefix(name, "[#00BFFF]"), "/")
+		return name
+	}
+
 	onSelect := func(main string) {
-		name := strings.TrimSuffix(strings.TrimPrefix(main, "[#00BFFF]"), "/")
+		name := getCleanName(main)
 
 		if name == ".." {
 			currentDir = filepath.Dir(currentDir)
@@ -938,7 +960,7 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 		info, err := os.Stat(full)
 		if err != nil {
 			inputArea.SetText("Error finding file: "+full+"\n"+err.Error(), true)
-			app.EnableMouse(true) // EXIT DOOR 1: Error reading dir
+			app.EnableMouse(true)
 			pages.RemovePage("file")
 			app.SetFocus(inputArea)
 			return
@@ -950,26 +972,49 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 			return
 		}
 
-		currentInputFile = name
+		// GATHER FILES TO READ
+		var filesToRead []string
+
+		// If the user tagged files with Spacebar, use those
+		for path, isSelected := range selectedFiles {
+			if isSelected {
+				filesToRead = append(filesToRead, path)
+			}
+		}
+
+		// If they just hit Enter without tagging anything, use the single highlighted file
+		if len(filesToRead) == 0 {
+			filesToRead = append(filesToRead, full)
+		}
+
+		currentInputFile = "Multiple Files"
+		if len(filesToRead) == 1 {
+			currentInputFile = filepath.Base(filesToRead[0])
+		}
 		currentFileDir = currentDir
 
-		app.EnableMouse(true) // EXIT DOOR 2: File selected
+		app.EnableMouse(true)
 
-		go func(targetFile string) {
+		go func(targets []string) {
 			stopAudio()
 			time.Sleep(150 * time.Millisecond)
 
-			data, err := os.ReadFile(targetFile)
-			if err != nil {
-				app.QueueUpdateDraw(func() {
-					inputArea.SetText("Error reading file: "+err.Error(), true)
-					pages.RemovePage("file")
-					app.SetFocus(inputArea)
-				})
-				return
+			var combinedData []byte
+			for _, targetFile := range targets {
+				data, err := os.ReadFile(targetFile)
+				if err != nil {
+					app.QueueUpdateDraw(func() {
+						inputArea.SetText("Error reading file: "+err.Error(), true)
+						pages.RemovePage("file")
+						app.SetFocus(inputArea)
+					})
+					return
+				}
+				combinedData = append(combinedData, data...)
+				combinedData = append(combinedData, []byte(" ")...) // Space between files
 			}
 
-			txt := parser.NormalizeText(string(data))
+			txt := parser.NormalizeText(string(combinedData))
 
 			if config.User.UseSkip {
 				parser.SetSkipList(config.User.SkipList, morse.ProSignTable)
@@ -1015,17 +1060,21 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 				app.SetFocus(inputArea)
 				refreshUI(currentState)
 			})
-		}(full)
+		}(filesToRead)
 	}
 
-	// Double-click or Enter on a list item
 	list.SetSelectedFunc(func(i int, main string, sec string, r rune) {
 		onSelect(main)
 	})
 
 	form := tview.NewForm().
+		AddButton("Open Selected", func() {
+			i := list.GetCurrentItem()
+			main, _ := list.GetItemText(i)
+			onSelect(main)
+		}).
 		AddButton("Cancel", func() {
-			app.EnableMouse(true) // EXIT DOOR 3: Cancel button clicked
+			app.EnableMouse(true)
 			pages.RemovePage("file")
 			app.SetFocus(inputArea)
 		})
@@ -1034,7 +1083,7 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 
 	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("[yellow]Cursor Up/Down to Move  •  Enter to Select[-]")
+	footerView.SetText("[yellow]Space: Tag File  •  Enter: Open/Directory[-]")
 
 	layout := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(list, 0, 1, true).
@@ -1045,6 +1094,27 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 	layout.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
 	list.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Rune() == ' ' {
+			i := list.GetCurrentItem()
+			main, _ := list.GetItemText(i)
+			name := getCleanName(main)
+
+			full := filepath.Join(currentDir, name)
+			info, err := os.Stat(full)
+
+			// Only allow tagging files, not directories
+			if err == nil && !info.IsDir() {
+				selectedFiles[full] = !selectedFiles[full]
+				populate(currentDir)
+
+				// Automatically advance the cursor down one slot for fast tagging
+				if i+1 < list.GetItemCount() {
+					list.SetCurrentItem(i + 1)
+				}
+			}
+			return nil // Consume the spacebar event
+		}
+
 		if event.Key() == tcell.KeyTab {
 			app.SetFocus(form)
 			return nil
@@ -1061,15 +1131,11 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 	})
 
 	modalGrid := createModal(layout, 55, 26)
-
-	// THE NUCLEAR OPTION
-	// createModal natively calls app.EnableMouse(true). We immediately override it
-	// and physically tell the terminal emulator to stop sending mouse clicks.
 	app.EnableMouse(false)
 
 	layout.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
-			app.EnableMouse(true) // EXIT DOOR 4: Escape key
+			app.EnableMouse(true)
 			pages.RemovePage("file")
 			app.SetFocus(inputArea)
 			return nil

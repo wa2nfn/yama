@@ -85,7 +85,7 @@ Linux
 =====
 Because YAMA generates Morse code audio, it requires the standard ALSA audio library, which is pre-installed on most desktop Linux distributions.
 
-Extract the downloaded archive (e.g., tar -xzf yama-linux-amd64.tar.gz).
+Extract the downloaded archive (e.g., yama-linux-amd64.zip).
 
 Open your terminal and navigate to the extracted folder.
 
