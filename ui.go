@@ -432,7 +432,9 @@ func showErrorModal(errors []string, onDismiss func()) {
 
 func showHelp() {
 	app.EnableMouse(true)
-	helpText := ` [-:-:-]
+	helpText := ` [-:-:-]                    
+                                       YAMA Help
+
 Whether you are looking for routine practice, seeking head-copy tools, wanting to test your copying limits against simulated audio impairments, or working on your CW sending skills, YAMA is built to help you.
 
 YAMA features standard input processing, such as: discarding non-Morseable characters, space compression, and case-agnostic input, as well as non-traditional features: selectable ProSign support, selected character filtering, expansion of contractions (e.g., won't to will not), European & Esperanto support, graduating speed, dynamic wave shaping for QRQ, and more. Changes to speed/tone and audio impairments can be made during play. Many operational modes and options can be used in combination, and almost all of them are compatible with the Echo sending feature as well.
@@ -442,7 +444,7 @@ YAMA uses a Terminal User Interface (TUI), with some mouse support. Navigation t
 [green::b]High-Level Overview - Please read.[-:-:-]
 Your introduction to the app will be greatly enhanced by reviewing the environment briefly before diving into the specific sections below. As the main screen (Input/Output Text) indicates with its prompt, the app is ready to create CW using a number of default options. Type "Hello World" and press Ctrl-P. You will hear 20wpm CW as long as the PC volume is on and you resisted making changes.
 
-Across the top of the screen is a menu bar with names, left to right: [yellow::b]F[white::b]ile, [yellow::b]P[white::b]lay ... [-:-:-]etc. (access and navigation follow below). Some of the menu items cause immediate action (Play, Quit, About...), some collect a few choices and then cause immediate action (File, Wave, Audio...), and three (Options, Echo, Timing) collect input to control the major functional modes of the app (WordBuilder, TextBuilder, FlashCard, Echo, all explained in the tables below). The most significant is the Options screen. This screen serves two functions: First, it enables or activates the modes just listed (indicated by blue-labeled checkboxes on the screen). Second, it collects a long list of options (at the bottom) that impact various modes and the general user experience. All inputs from these screens are permanently saved in a file. 
+Across the top of the screen is a menu bar with names, left to right: [yellow::b]F[-:-:-][white::b]ile, [-:-:-][yellow::b]P[-:-:-][white::b]lay ... [-:-:-]etc. (access and navigation follow below). Some of the menu items cause immediate action (Play, Quit, About...), some collect a few choices and then cause immediate action (File, Wave, Audio...), and three (Options, Echo, Timing) collect input to control the major functional modes of the app (WordBuilder, TextBuilder, FlashCard, Echo, all explained in the tables below). The most significant is the Options screen. This screen serves two functions: First, it enables or activates the modes just listed (indicated by blue-labeled checkboxes on the screen). Second, it collects a long list of options (at the bottom) that impact various modes and the general user experience. All inputs from these screens are permanently saved in a file. 
 
 I've used a lot of words and will elaborate further, but I think you will quickly find it intuitive. Let me clarify two things: First, if your selections are invalid or conflict with another option, a pop-up will warn you and you must correct the problem to save. Second, the Echo mode (for sending practice) is enabled on the Options screen, but its keying behavior is configured on the Echo screen.
 A lot more will be said about Echo.
@@ -547,12 +549,12 @@ You can define specific characters or ProSigns to silently skip during playback
 
 Note that the bottom of the screen has a [yellow::b]yellow[-:-:-] status line, and below that is a [blue::b]blue[-:-:-] reminder line about your current values from the Timing screen. It may also show the phrase [yellow::b]Input Modified[-:-:-]. This indicates that at least one selection on the Options screen will modify the text input before it becomes audible CW, ensuring you are not surprised if the first sounded string differs from what is displayed.
 
-[green::b]Practice Oscillator Overview[white::-]
+[green::b]Practice Oscillator Overview[-:-:-]
 This is a simple audio oscillator. It takes its tone from the Timing screen (Ctrl-T) - nothing else; it uses the Echo (Ctrl-E) Echo Port settings at the bottom of the screen - nothing else. Besides sharing the options stated above, the feature is independent of all other features and options.
 
 Use it to troubleshooting or confirming your comport wiring, the Echo Port settings, the tone and volume of your audio. Or naturally for manual keying warm up before Echo or teaching CW. This will not support a keyer or bug becasue there is concept or timing, decoding, grading.
 
-[green::b]Echo Overview[white::-]
+[green::b]Echo Overview[-:-:-]
 
 This feature is unique within YAMA. It is the only feature that enhances sending (though it can provide copy practice when combined with other modes), requires an external keying device (no mouse or keyboard) and its associated hardware setup, and is fully interactive between the app and the user. 
 
@@ -668,7 +670,7 @@ Let's use a more concrete example.  Setting: standard timing method, characters 
 
 Now with "THE QUICK BROWN FOX JUMPED OVER THE LAZY DOGS BACK" loaded into the Text Input/Output screen, hitting Ctrl-P will PLAY that sentance at 20wpm, standard timing. Now on the Timing screen, check the IWR Mode checkbox, and set the IWR speed to 25 wpm, use the Edit IWR button to open the yamaIWR.txt file, cursor down to a blank line and enter the following 3 words, one per line: THE AND FOX, then SAVE and SAVE on the Timing screen. Now use PLAY and hear the difference. The words shown in [yellow::b]yellow[-:-:-] will be played at the 20 wpm Character Speed. The words in [red::b]red[-:-:-] match the IWR words so they are played at the IWR speed.
 
-[red::b]THE[yellow] QUICK BROWN[red] FOX[yellow] JUMPED OVER[red] THE[yellow] LAZY DOGS BACK[-:-:-]
+[red::b]THE[-:-:-][yellow] QUICK BROWN[-:-:-][red::b] FOX[-:-:-][yellow] JUMPED OVER[-:-:-][red::b] THE[-:-:-][yellow] LAZY DOGS BACK[-:-:-]
 
 With a much larger input, and/or multiple practice sessions, the word THE would be more comfortable as a complete new sound at a higher speed, FOX while short and unique would not likely be found very often so not a good candidate, AND had no matches in this small test sample, but it was included to demonstate that an unmatched word is no problem, and it certainly would be matched in other practice. After this practice, the DataStats (Ctrl-D) would show you the counts for all the matches. Why do this? Nobody send like this; thats correct but its a mechanism to start building up a "dictionary" of familar sounds at a much higher speed then your normal practice, just as most hams can recognize CQ, or maybe RST 5NN at a much faster rate.
 
@@ -682,8 +684,8 @@ You can see the app is not for complete beginners, nor does it attempt to compet
 You can email me at wa2nfn@gmail.com if you find something that needs clarification, a bug, a typo, or if a numerical limit causes you an issue. The sound library will not work on MAC, so that's not a consideration; a mouse will never be supported by the UI library, so that is not a consideration.
 
 73 and best of luck on your CW journey.
-[white::b]WA2NFN
-[-:-:-]`
+WA2NFN
+`
 
 	tv := tview.NewTextView().
 		SetDynamicColors(true).
@@ -694,18 +696,22 @@ You can email me at wa2nfn@gmail.com if you find something that needs clarificat
 
 	form := tview.NewForm().
 		AddButton("Save to yama_help.html", func() {
+			app.EnableMouse(false)
+			defer app.EnableMouse(true)
 
 			htmlText := strings.ReplaceAll(helpText, "<", "&lt;")
 			htmlText = strings.ReplaceAll(htmlText, ">", "&gt;")
 
 			htmlText = strings.ReplaceAll(htmlText, "[yellow::b]", "<span style='color: #FFD700; font-weight: bold;'>")
-			htmlText = strings.ReplaceAll(htmlText, "[green::b]", "<span style='color: #FFFF55; font-weight: bold;'>")
+			htmlText = strings.ReplaceAll(htmlText, "[green::b]", "<span style='color: #00AA00; font-weight: bold;'>")
+			htmlText = strings.ReplaceAll(htmlText, "[red::b]", "<span style='color: #FF0000; font-weight: bold;'>")
 			htmlText = strings.ReplaceAll(htmlText, "[white]", "<span style='color: white;'>")
 			htmlText = strings.ReplaceAll(htmlText, "[yellow]", "<span style='color: #FFD700;'>")
 			htmlText = strings.ReplaceAll(htmlText, "[#FFFF55]", "<span style='color: #FF6666;'>")
 			htmlText = strings.ReplaceAll(htmlText, "[blue]", "<span style='color: #00BFFF;'>")
 			htmlText = strings.ReplaceAll(htmlText, "[-]", "</span>")
 			htmlText = strings.ReplaceAll(htmlText, "[::-]", "</span>")
+			htmlText = strings.ReplaceAll(htmlText, "[-:-:-]", "</span>")
 
 			finalHTML := fmt.Sprintf(`<!DOCTYPE html>
 <html>
@@ -752,7 +758,7 @@ You can email me at wa2nfn@gmail.com if you find something that needs clarificat
 
 			err := os.WriteFile(exportPath, []byte(finalHTML), 0644)
 			if err == nil {
-				statusLine.SetText(" [#FFFF55]Help manual exported to " + exportPath + "![-]")
+				statusLine.SetText(" [#FFFF55]Help manual exported to " + exportPath + ".[-]")
 			} else {
 				statusLine.SetText(" [#FFFF55]Failed to export HTML file.[-]")
 			}
