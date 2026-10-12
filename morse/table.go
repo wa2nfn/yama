@@ -37,6 +37,8 @@ var basicMap = map[rune]string{
 	'/': "-..-.",
 	// ProSign Equivalents (MUST be in basic to prevent discarding)
 	'-':      "-....-", // <DU>
+	'=':      "-...-",  // <BT>
+	'+':      ".-.-.",  // <AR>
 	'\u2013': "-....-", // en dash <DU>
 	'\u2014': "-....-", // em dash <DU>
 }

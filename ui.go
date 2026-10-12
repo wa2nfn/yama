@@ -1083,7 +1083,7 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 
 	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
 	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("[yellow]Space: Tag File  •  Enter: Open/Directory[-]")
+	footerView.SetText("[yellow]Space: Tag File  -  Enter: Open/Directory[-]")
 
 	layout := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(list, 0, 1, true).
