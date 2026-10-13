@@ -219,7 +219,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			config.SaveConfig()
 
 			if OnStatusUpdate != nil {
-				OnStatusUpdate(" [red]KeyEcho requires a selected COM port! KeyEcho disabled. [yellow]Press ENTER.")
+				OnStatusUpdate(" [red]Echo requires a selected COM port! Echo disabled. [yellow]Press ENTER.")
 			}
 
 			waitMutex.Lock()
@@ -270,7 +270,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			config.SaveConfig()
 
 			if OnStatusUpdate != nil {
-				OnStatusUpdate(fmt.Sprintf(" [red]Port Error (%s) - KeyEcho disabled. [yellow]Press ENTER.", config.User.KeyerPort))
+				OnStatusUpdate(fmt.Sprintf(" [red]Port Error (%s) - Echo disabled. [yellow]Press ENTER.", config.User.KeyerPort))
 			}
 
 			waitMutex.Lock()
@@ -1040,7 +1040,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 	IsPaused = false
 	if OnStatusUpdate != nil {
 		if config.User.Echo {
-			OnStatusUpdate(" [yellow]KeyEcho Input Completed[-]")
+			OnStatusUpdate(" [yellow]Echo Input Completed[-]")
 			time.Sleep(2000 * time.Millisecond)
 		} else {
 			OnStatusUpdate("STOP")
