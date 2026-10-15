@@ -19,7 +19,7 @@ import (
 type AppState int
 
 const (
-	AppBackgroundColor = "#000000" // black
+	AppBackgroundColor = "#000000" 
 	playPauseDelay     = 200
 	Ver                = "1.6.1"
 
