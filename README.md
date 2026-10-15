@@ -23,9 +23,7 @@ Features
 
 Download YAMA
 =============
-Visit the Releases page: https://github.com/wa2nfn/yama/releases. Select the desired version,
-
-Under the ASSETS section (center screen) of the latest release, choose the appropriate archive for your operating system:
+Visit the Releases page: https://github.com/wa2nfn/yama/releases/latest Select the desired archive,
 
 * Windows: yama-windows-amd64.zip
 
@@ -76,8 +74,6 @@ chmod +x yama
 Run the application:
 
 ./yama
-
-Note: If you don't head audio, check the setting for your speaker device and make sure its: 2 channels, 40K sampling rate, 16 bit - this makes the digital signal compatible.
 
 Security Note: Because Apple blocks software not signed by a paid developer account, running it may trigger an "unidentified developer" warning. If a security popup blocks it, go to System Settings > Privacy & Security, scroll down, and click Allow Anyway next to the YAMA prompt.
 
