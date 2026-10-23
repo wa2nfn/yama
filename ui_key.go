@@ -30,12 +30,6 @@ func showKeyEchoOptions() {
 	}
 	ports = clean
 
-	echoPortDrop := tview.NewDropDown().
-		SetLabel("Echo Port").
-		SetOptions(ports, nil)
-	echoPortDrop.SetFieldBackgroundColor(tcell.ColorBlue)
-	echoPortDrop.SetFieldTextColor(tcell.ColorWhite)
-
 	// --- Tolerance ---
 	tolDrop := tview.NewDropDown().SetLabel("Tolerance (%)")
 	tolOptions := []string{}
@@ -96,27 +90,6 @@ func showKeyEchoOptions() {
 	perfectPauseCb := tview.NewCheckbox().
 		SetLabel("Perfect Match Message")
 
-	// --- Key Line Mode ---
-	keyLineOptions := []string{"CTS:8-DTR:4", "DSR:6-DTR:4", "CD:1-DTR:4", "RI:9-DTR:4", "CTS:8-RTS:7", "DSR:6-RTS:7", "CD:1-RTS:7", "RI:9-RTS:7"}
-	lineModeDrop := tview.NewDropDown().
-		SetLabel("   Key Line Interface").
-		SetOptions(keyLineOptions, nil).
-		SetCurrentOption(0)
-	lineModeDrop.SetFieldBackgroundColor(tcell.ColorBlue)
-	lineModeDrop.SetFieldTextColor(tcell.ColorWhite)
-
-	// --- Parasitic Power ---
-	parasiticCb := tview.NewCheckbox().
-		SetLabel("   Parasitic Power")
-
-	// --- Idle Polarity ---
-	idlePolDrop := tview.NewDropDown().
-		SetLabel("   Key Line Polarity").
-		SetOptions([]string{"Standard", "Inverted"}, nil).
-		SetCurrentOption(0)
-	idlePolDrop.SetFieldBackgroundColor(tcell.ColorBlue)
-	idlePolDrop.SetFieldTextColor(tcell.ColorWhite)
-
 	// RESET (init + Reset button)
 	resetState := func() {
 		// Tolerance
@@ -171,38 +144,6 @@ func showKeyEchoOptions() {
 		visualCb.SetChecked(config.User.VisualFeedback)
 		// PerfectPause Feedback
 		perfectPauseCb.SetChecked(config.User.PerfectPause)
-
-		// Key Line Mode
-		lmIndex := 0
-		for i, opt := range keyLineOptions {
-			if config.User.KeyLineMode == opt {
-				lmIndex = i
-				break
-			}
-		}
-		lineModeDrop.SetCurrentOption(lmIndex)
-
-		// Parasitic Power
-		parasiticCb.SetChecked(config.User.KeyParasiticPower)
-
-		// Polarity: false maps to Standard (0), true maps to Inverted (1)
-		if config.User.KeyLineIdlePolarity {
-			idlePolDrop.SetCurrentOption(1) // Inverted
-		} else {
-			idlePolDrop.SetCurrentOption(0) // Standard
-		}
-
-		// Port
-		if len(ports) > 0 {
-			idx := 0
-			for i, p := range ports {
-				if p == config.User.KeyerPort {
-					idx = i
-					break
-				}
-			}
-			echoPortDrop.SetCurrentOption(idx)
-		}
 	}
 
 	// Add items in order
@@ -219,11 +160,6 @@ func showKeyEchoOptions() {
 	form.AddFormItem(sideCb)
 	form.AddFormItem(visualCb)
 	form.AddFormItem(perfectPauseCb)
-	form.AddTextView("", "", 0, 1, false, false)
-	form.AddFormItem(echoPortDrop)
-	form.AddFormItem(lineModeDrop)
-	form.AddFormItem(parasiticCb)
-	form.AddFormItem(idlePolDrop)
 
 	// Init UI
 	resetState()
@@ -259,27 +195,10 @@ func showKeyEchoOptions() {
 		config.User.VisualFeedback = visualCb.IsChecked()
 		config.User.PerfectPause = perfectPauseCb.IsChecked()
 
-		lmIdx, _ := lineModeDrop.GetCurrentOption()
-		if lmIdx >= 0 && lmIdx < len(keyLineOptions) {
-			config.User.KeyLineMode = keyLineOptions[lmIdx]
-		} else {
-			config.User.KeyLineMode = "CTS:8-DTR:4"
-		}
-
-		config.User.KeyParasiticPower = parasiticCb.IsChecked()
-
-		// Save polarity as boolean (Standard/index 0 = false, Inverted/index 1 = true)
-		ipIdx, _ := idlePolDrop.GetCurrentOption()
-		config.User.KeyLineIdlePolarity = (ipIdx == 1)
-
 		config.User.AlertTone = alertTone
 		config.User.EchoRandomCount = echoRandomCountCb.IsChecked()
 		config.User.EchoTolerance = tol
 		config.User.EchoWordCount = wc
-
-		// Save selected port string
-		_, port := echoPortDrop.GetCurrentOption()
-		config.User.KeyerPort = port
 
 		config.SaveConfig()
 
@@ -292,35 +211,8 @@ func showKeyEchoOptions() {
 		app.SetFocus(inputArea)
 	}
 
-	onRefreshPorts := func() {
-		newPorts, err := morse.GetSerialPorts()
-		if err != nil || len(newPorts) == 0 {
-			newPorts = []string{"None"}
-		}
-		var clean []string
-		for _, p := range newPorts {
-			if strings.TrimSpace(p) != "" {
-				clean = append(clean, p)
-			}
-		}
-
-		echoPortDrop.SetOptions(clean, nil)
-
-		// Try to preserve the currently selected port if it still exists
-		currentPort := config.User.KeyerPort
-		idx := 0
-		for i, p := range clean {
-			if p == currentPort {
-				idx = i
-				break
-			}
-		}
-		echoPortDrop.SetCurrentOption(idx)
-	}
-
 	form.AddButton("Save", onSave)
 	form.AddButton("Reset", resetState)
-	form.AddButton("Refresh Ports", onRefreshPorts)
 	form.AddButton("Cancel", func() {
 		pages.RemovePage("keyEcho")
 		app.SetFocus(inputArea)
@@ -357,7 +249,6 @@ func showKeyEchoOptions() {
 		return event
 	})
 
-	// Widened from 42 to 55 to comfortably fit all 4 buttons in a single row
-	pages.AddPage("keyEcho", createModal(container, 65, 26), true, true)
+	pages.AddPage("keyEcho", createModal(container, 40, 20), true, true)
 	app.SetFocus(container)
 }

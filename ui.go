@@ -286,6 +286,13 @@ func updateVisibility() {
 }
 
 func updateBlueLine() {
+	if morse.IsManualOscModeActive {
+		// Only show the Character Speed and nothing else
+		speedOnlyText := fmt.Sprintf("[black] Speed: %g wpm ", config.User.CharacterSpeed)
+		blueLine.SetText(speedOnlyText)
+		return // Exit early!
+	}
+
 	iwrStatus := "N"
 	if config.User.IWREnabled {
 		iwrStatus = "Y"
@@ -352,10 +359,10 @@ func refreshUI(state AppState) {
 		}
 
 		if config.User.Echo {
-			menu = "[#FFFF55]F[white]ile  [#FFFF55]P[white]lay  [#FFFF55]T[white]iming  [#FFFF55]O[white]ption  [#FFFF55]E[white]cho  [#FFFF55]F1[white]help  [#FFFF55]A[white]bout  [#FFFF55]Q[white]uit "
+			menu = "[#FFFF55]F[white]ile  [#FFFF55]P[white]lay  [#FFFF55]T[white]iming  [#FFFF55]O[white]ption  [#FFFF55]E[white]cho  [#FFFF55]K[while]eyDevice  [#FFFF55]F1[white]help  [#FFFF55]A[white]bout  [#FFFF55]Q[white]uit "
 
 		} else {
-			menu = "[#FFFF55]F[white]ile  [#FFFF55]P[white]lay  [#FFFF55]T[white]iming  [#FFFF55]I[white]mpairments  [#FFFF55]O[white]ption  [#FFFF55]E[white]cho  [#FFFF55]F1[white]help  [#FFFF55]A[white]bout  [#FFFF55]Q[white]uit "
+			menu = "[#FFFF55]F[white]ile  [#FFFF55]P[white]lay  [#FFFF55]T[white]iming  [#FFFF55]I[white]mpairments  [#FFFF55]O[white]ption  [#FFFF55]E[white]cho  [#FFFF55]K[white]eyDevice  [#FFFF55]F1[white]help  [#FFFF55]A[white]bout  [#FFFF55]Q[white]uit "
 		}
 		if hasText {
 			menu = strings.Replace(menu, "[#FFFF55]A[white]bout  ", "", 1)
@@ -469,13 +476,14 @@ The following keys display sub menus or perform significant actions.
 Key            |  Menu Name  | Purpose
 ---------------|-------------|----------------------------------------------------------------------------------------
 Ctrl-A         | About       | App info and License.
-Ctrl-D         | DataStats   | Statistics and IWR counts. New input clears old data. During Echo the screen grades
+Ctrl-D         | DataStats   | Statistics and IWR counts. New input clears old data. In Echo the screen grades input.
                |             | your timing for dits, dahs, and spaces based on the Tolerance factor you have set.
-Ctrl-E         | Echo        | Options for sending practice. (see Echo table)
+Ctrl-E         | Echo        | Options for Echo sending practice. (see Echo table)
 Ctrl-F, F3     | File        | Open a .txt file for playback.
 F4             | (No Menu)   | Turns on a standalone Practice Oscillator.
                |             | ESC exits. (More below)
 Ctrl-I         | Impairments | Audio impacting impairments (QRN, QSB, Drift, etc.)
+Ctrl-K         | KeyDevice   | Hardware/interface setting for keying devices.
 Ctrl-L         | cLear       | Clear the current text input (aka screen clear).
 Ctrl-M         | (No Menu)   | This is a Hot-key; use anytime to Mute input sent by YAMA.
                |             | For copy practice features, YAMA continues to consume input 

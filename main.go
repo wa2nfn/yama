@@ -19,9 +19,9 @@ import (
 type AppState int
 
 const (
-	AppBackgroundColor = "#000000" 
+	AppBackgroundColor = "#000000"
 	playPauseDelay     = 200
-	Ver                = "1.6.1"
+	Ver                = "1.6.1+"
 
 	StateIdle AppState = iota
 	StatePlaying
@@ -435,6 +435,10 @@ func main() {
 			}
 		}
 
+		if morse.IsManualOscModeActive {
+			return nil
+		}
+
 		if _, isInput := app.GetFocus().(*tview.InputField); isInput {
 			return event
 		}
@@ -514,15 +518,31 @@ func main() {
 				statusLine.SetText(" [yellow]Starting Manual Oscillator...")
 
 				morse.IsStopping = false
+				morse.IsManualOscModeActive = true // 1. Set the flag
+				updateBlueLine()                    // 2. Force the blue line to update immediately
 
 				// Launch as a goroutine so it doesn't freeze the UI
 				go morse.RunManualOscillator(func(statusMsg, mainMsg string) {
 					app.QueueUpdateDraw(func() {
-						if statusMsg != "" {
-							statusLine.SetText(statusMsg)
-						}
-						if mainMsg != "" {
-							inputArea.SetText(mainMsg, false)
+						// Intercept the STOP signal sent when ESC is pressed
+						if statusMsg == "STOP" {
+							morse.IsManualOscModeActive = false
+							currentState = StateIdle // Reset state
+
+							// Clear the manual oscillator screen
+							inputArea.SetText("", false)
+							statusLine.SetText(" [green]Ready.[-]")
+
+							// Restore the full blue line!
+							updateBlueLine()
+						} else {
+							// Normal UI updates while running
+							if statusMsg != "" {
+								statusLine.SetText(statusMsg)
+							}
+							if mainMsg != "" {
+								inputArea.SetText(mainMsg, false)
+							}
 						}
 					})
 				})
@@ -543,7 +563,11 @@ func main() {
 				showKeyEchoOptions()
 			}
 			return nil
-
+		case tcell.KeyCtrlK:
+			if currentState != StatePlaying && currentState != StatePaused {
+				showKeyDeviceOptions()
+			}
+			return nil
 		case tcell.KeyCtrlD:
 			if config.User.Echo {
 				if currentEchoView != nil {

@@ -1532,7 +1532,12 @@ func showStatsEcho() *tview.Flex {
 		SetTextAlign(tview.AlignLeft)
 
 	currentProfile := morse.GetTiming(false, config.User)
-	echoStatsTextView.SetText(buildEchoStatsText(currentGroupStats, currentSessionStats, currentProfile))
+
+	if config.User.KeyDevice == "Paddle" || config.User.KeyDevice == "IambicA" {
+		echoStatsTextView.SetText(buildEchoStatsPaddleText(currentGroupStats, currentSessionStats, currentProfile))
+	} else {
+		echoStatsTextView.SetText(buildEchoStatsText(currentGroupStats, currentSessionStats, currentProfile))
+	}
 
 	container.AddItem(echoStatsTextView, 0, 1, false)
 	container.AddItem(footer, 1, 0, false)
@@ -1602,3 +1607,44 @@ func buildEchoStatsText(grp morse.EchoStats, ses morse.EchoStats, tp morse.Timin
 
 	return sb.String()
 }
+
+func buildEchoStatsPaddleText(grp morse.EchoStats, ses morse.EchoStats, tp morse.TimingProfile) string {
+	// less dit, dah and intra space since all are fixed by the keyer
+	var sb strings.Builder
+
+	// 1. Safe calculation helper for Averages
+	calcAvg := func(sumMs float64, short, perfect, long int) int {
+		totalCount := short + perfect + long
+		if totalCount > 0 {
+			return int(math.Round(sumMs / float64(totalCount)))
+		}
+		return 0
+	}
+
+	// 2. Calculate Targets in ms
+	tgtChr := int(math.Round(tp.CharSpace * 1000))
+	tgtWrd := int(math.Round(tp.WordSpace * 1000))
+
+	// 3. Calculate Session Actual Averages
+	avgChr := calcAvg(ses.SumCharGapsMs, ses.ShortCharGaps, ses.PerfectCharGaps, ses.LongCharGaps)
+	avgWrd := calcAvg(ses.SumWordGapsMs, ses.ShortWordGaps, ses.PerfectWordGaps, ses.LongWordGaps)
+
+	// Yellow headers
+	sb.WriteString("\n                     [yellow::b]CURRENT GROUP[-:-:-]                            [yellow::b]SESSION TOTALS[-:-:-]\n\n")
+
+	// --- THE FIX: Added Target and Avg Headers aligned to the right on the Spacing line ---
+	sb.WriteString("  [cyan]Spacing[-]                                                                               [cyan::b]Target(ms)    Avg(ms)[-:-:-]\n")
+	sb.WriteString(fmt.Sprintf("    Char Gap:    [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long      [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long       [white]%4d[-]       [white]%4d[-]\n",
+		grp.ShortCharGaps, grp.PerfectCharGaps, grp.LongCharGaps, ses.ShortCharGaps, ses.PerfectCharGaps, ses.LongCharGaps, tgtChr, avgChr))
+	sb.WriteString(fmt.Sprintf("    Word Gap:    [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long      [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long       [white]%4d[-]       [white]%4d[-]\n",
+		grp.ShortWordGaps, grp.PerfectWordGaps, grp.LongWordGaps, ses.ShortWordGaps, ses.PerfectWordGaps, ses.LongWordGaps, tgtWrd, avgWrd))
+
+	sb.WriteString("\n  [cyan]Accuracy[-]\n")
+	sb.WriteString(fmt.Sprintf("  Invalid (*):   [red]%3d[-]                                  [red]%3d[-]\n", grp.InvalidSymbols, ses.InvalidSymbols))
+	sb.WriteString(fmt.Sprintf("  Group Retries: [yellow]%3d[-]                                  [yellow]%3d[-]\n", grp.Retries, ses.Retries))
+	sb.WriteString(fmt.Sprintf("  Chars:         [yellow]%3d[-]                                  [yellow]%3d[-]\n", grp.TotalChars, ses.TotalChars))
+	sb.WriteString(fmt.Sprintf("  Words:         [yellow]%3d[-]                                  [yellow]%3d[-]\n", grp.TotalWords, ses.TotalWords))
+
+	return sb.String()
+}
+
