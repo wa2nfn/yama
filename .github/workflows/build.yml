@@ -27,7 +27,6 @@ jobs:
         go-version: ${{ matrix.go-version }}
 
     - name: Build YAMA
-      shell: bash
       run: |
         mkdir -p build
         export CGO_ENABLED=0

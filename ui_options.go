@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"slices"
@@ -22,14 +21,13 @@ import (
 )
 
 // OPTIONS_MENU
-// OPTIONS_MENU
 func showOptions() {
 	form := tview.NewForm()
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	form.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	form.SetItemPadding(0)
 
-	// THE FIX: Properly removes the invisible blank lines at the top and bottom of the form
+	// rmoves the blank lines at the top and bottom of the form
 	form.SetBorderPadding(0, 0, 1, 1)
 
 	useProsignsCb := tview.NewCheckbox().SetLabel("ProSign Support")
@@ -632,7 +630,7 @@ func showToneSpeed() {
 				if valStr != "" && valStr != "." {
 					if val, err := strconv.ParseFloat(valStr, 64); err == nil {
 						rounded := math.Round(val*10) / 10
-						input.SetText(fmt.Sprintf("%g", rounded))
+						input.SetText(strconv.FormatFloat(rounded, 'f', -1, 64))
 					}
 				}
 			}
@@ -655,12 +653,12 @@ func showToneSpeed() {
 		}
 		modeDropDown.SetCurrentOption(modeIdx)
 
-		charInput.SetText(fmt.Sprintf("%g", config.User.CharacterSpeed))
-		effInput.SetText(fmt.Sprintf("%g", config.User.EffectiveSpeed))
-		toneInput.SetText(fmt.Sprintf("%d", config.User.Tone))
+		charInput.SetText(strconv.FormatFloat(config.User.CharacterSpeed, 'f', -1, 64))
+		effInput.SetText(strconv.FormatFloat(config.User.EffectiveSpeed, 'f', -1, 64))
+		toneInput.SetText(strconv.Itoa(config.User.Tone))
 		iwrCheckbox.SetChecked(config.User.IWREnabled)
-		iwrSpdInput.SetText(fmt.Sprintf("%g", config.User.IWRSpeed))
-		iwrToneInput.SetText(fmt.Sprintf("%d", config.User.IWRTone))
+		iwrSpdInput.SetText(strconv.FormatFloat(config.User.IWRSpeed, 'f', -1, 64))
+		iwrToneInput.SetText(strconv.Itoa(config.User.IWRTone))
 	}
 
 	resetState()
@@ -1065,9 +1063,14 @@ func showNumWordsModal() {
 
 			// Shuffle the newly built array if checkbox is checked
 			if randomize {
-				rand.Shuffle(len(newWords), func(i, j int) {
-					newWords[i], newWords[j] = newWords[j], newWords[i]
-				})
+				// rand.Shuffle with deterministic Fisher–Yates
+				if len(newWords) > 1 {
+					for i := len(newWords) - 1; i > 0; i-- {
+						j := morse.FastIntn(i + 1)
+						newWords[i], newWords[j] = newWords[j], newWords[i]
+					}
+				}
+
 			}
 
 			isProgrammaticUpdate = true
@@ -1533,7 +1536,7 @@ func showStatsEcho() *tview.Flex {
 
 	currentProfile := morse.GetTiming(false, config.User)
 
-	if config.User.KeyDevice == "Paddle" || config.User.KeyDevice == "IambicA" {
+	if config.User.KeyDevice == "Paddle" || config.User.KeyDevice == "IambicA" || config.User.KeyDevice == "IambicB" || config.User.KeyDevice == "Ultimatic" {
 		echoStatsTextView.SetText(buildEchoStatsPaddleText(currentGroupStats, currentSessionStats, currentProfile))
 	} else {
 		echoStatsTextView.SetText(buildEchoStatsText(currentGroupStats, currentSessionStats, currentProfile))
@@ -1647,4 +1650,3 @@ func buildEchoStatsPaddleText(grp morse.EchoStats, ses morse.EchoStats, tp morse
 
 	return sb.String()
 }
-

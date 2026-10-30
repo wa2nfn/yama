@@ -391,7 +391,7 @@ func refreshUI(state AppState) {
 			menu = "[#FFFF55]R[white]esume  [#FFFF55]S[white]top  [#FFFF55]T[white]iming  [#FFFF55]I[white]mpairments  [#FFFF55]Q[white]uit "
 		}
 	}
-	header.SetText("[#55FFFF::b] YAMA - Yet Another Morse-code App\nv" + Ver + "[white::-]\n" + menu)
+	header.SetText("[#55FFFF::b] YAMA: Yet Another Morse-code App\nv" + Ver + "[white::-]\n" + menu)
 }
 
 // --- UI Components & Modals ---
@@ -480,7 +480,7 @@ Ctrl-D         | DataStats   | Statistics and IWR counts. New input clears old d
                |             | your timing for dits, dahs, and spaces based on the Tolerance factor you have set.
 Ctrl-E         | Echo        | Options for Echo sending practice. (see Echo table)
 Ctrl-F, F3     | File        | Open a .txt file for playback.
-F4             | (No Menu)   | Turns on a standalone Practice Oscillator.
+F4             | (No Menu)   | Turns on a standalone Practice Oscillator orXmtr keying.
                |             | ESC exits. (More below)
 Ctrl-I         | Impairments | Audio impacting impairments (QRN, QSB, Drift, etc.)
 Ctrl-K         | KeyDevice   | Hardware/interface setting for keying devices.
@@ -635,10 +635,18 @@ SideTone               | Use the PC sidetone for keying using the same tone as s
 Visual Feedback        | If set, your keyed symbols line up below what YAMA sent. Two identical lines indicate
                        | perfect match; * indicates invalid Morse (i.e., 7 dits) (more on this later).
 Perfect Match Message  | Brief pause on match, with a green status message. Helpful is Visual Feedback is off.
-Echo Port              | A COM port to connect your device (straight key, keyer, bug).
-Key Line Interface     | Which leads in the COM port are being used.
-Key Line Polarity      | Whether key up is silent (standard) or plays a tone (down is inverted).
-Parasitic Power        | If needed by the COM port cable (e.g., if the cable uses opto-isolators).
+
+[green::b]KeyDevice Screen (Ctrl-K) [-:-:-]
+Setting                 | Description
+------------------------|---------------------------------------------------------------------------------------------
+Key Device Type         | Device for sending. Straight/Bug, Cootie, Paddle, etc.  
+Key Device Port         | A COM port to connect your device (straight key, keyer, bug).
+Key Adapter Interface   | Which leads in the COM port are being used.
+Key Line Polarity       | Whether key up is silent (standard) or plays a tone (down is inverted).
+Parasitic Power         | If needed by the COM port cable (e.g., if the cable uses opto-isolators).
+Transmitter Port        | COM port to drive Transmitter
+Dit/Dah Side Reverse    | Reverse what paddle press sends.
+Dit/Dah Memory Threshold| How far into an elements sounding that the paddle can be switched.
 
 [green::b]Timing Screen (Ctrl-T) - Timing[-:-:-]
 Setting                | Description
@@ -814,7 +822,7 @@ WA2NFN
 
 func showAbout() {
 	app.EnableMouse(true)
-	aboutText := `About [#55FFFF]YAMA - Yet Another Morse-code App[-]
+	aboutText := `About [#55FFFF]YAMA: Yet Another Morse-code App[-]
 ` + "Version " + Ver +
 		`
 Created by: Bill Lanahan, WA2NFN

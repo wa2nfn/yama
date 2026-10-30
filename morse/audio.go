@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"io"
 	"math"
-	"math/rand"
 	"os"
 	"sync"
 	"time"
@@ -27,12 +26,11 @@ var (
 	pink1                float32
 	pink2                float32
 
-	// Inside your morse package
 	OnFatalError func(errorMessage string)
 )
 
 const SampleRate = 48000
-const bytesPerFrame = 4 // 2 channels * 2 bytes (16-bit)
+const bytesPerFrame = 2 // <--- STRICTLY MONO: 1 channel * 2 bytes (16-bit)
 
 type audioBlock struct {
 	samples []byte
@@ -84,10 +82,8 @@ func Flush() {
 		return
 	}
 
-	// Take a snapshot of the current queue and clear the global
 	blocks := queue
 
-	// 1. Calculate the exact mathematical duration of the ENTIRE word
 	totalFrames := 0
 	for i := 0; i < len(blocks); i++ {
 		totalFrames += len(blocks[i].samples) / bytesPerFrame
@@ -95,7 +91,6 @@ func Flush() {
 	expectedDuration := time.Duration(totalFrames) * time.Second / time.Duration(SampleRate)
 	timeout := time.Now().Add(expectedDuration + 5*time.Second)
 
-	// 2. Wrap our snapshot in the gapless streamer
 	reader := &gaplessReader{blocks: blocks}
 	p := otoCtx.NewPlayer(reader)
 
@@ -103,9 +98,8 @@ func Flush() {
 		p.SetVolume(0)
 	}
 
-	p.Play() // after vol set else get a blip
+	p.Play()
 
-	// 3. UI watchdog uses the same snapshot
 	go func(uiQueue []audioBlock) {
 		startTime := time.Now()
 		var elapsed time.Duration
@@ -130,7 +124,6 @@ func Flush() {
 		}
 	}(blocks)
 
-	// 4. Hardware watchdog
 	for p.IsPlaying() {
 		if IsStopping {
 			break
@@ -154,16 +147,13 @@ func Flush() {
 }
 
 // ==========================================
-// WAV EXPORT AUDIO MATH (8-Bit Unsigned)
+// WAV EXPORT AUDIO MATH (16-Bit Mono)
 // ==========================================
+
 func TonePCM16Bit(freq float64, duration int, vol float64, targetSampleRate int) PCMData {
 	buf := make([]byte, duration*bytesPerFrame)
 
-	// 1. Calculate our ideal maximum 5ms ramp
 	maxRamp := int(math.Round(0.005 * float64(targetSampleRate)))
-
-	// 2. THE QRQ MAGIC: Dynamically scale the ramp so it never consumes
-	// more than 25% of the total element length, preserving a 50% flat-top.
 	ramp := maxRamp
 	if duration/4 < maxRamp {
 		ramp = duration / 4
@@ -171,25 +161,21 @@ func TonePCM16Bit(freq float64, duration int, vol float64, targetSampleRate int)
 
 	for i := 0; i < duration; i++ {
 		angle := 2.0 * math.Pi * freq * float64(i) / float64(targetSampleRate)
-		amp := float64(vol) // Use float64 for smooth math
+		amp := float64(vol)
 
-		// 3. The Raised Cosine Envelope
 		if i < ramp {
-			// Attack Phase: 0.0 to 1.0
 			progress := float64(i) / float64(ramp)
 			amp *= (1.0 - math.Cos(progress*math.Pi)) / 2.0
 		} else if i > duration-ramp {
-			// Release Phase: 1.0 to 0.0
 			progress := float64(duration-i) / float64(ramp)
 			amp *= (1.0 - math.Cos(progress*math.Pi)) / 2.0
 		}
 
 		s := math.Sin(angle) * amp
-		v := int16(s * 32767) // Scale to 16-bit signed integer
+		v := int16(s * 32767)
 
-		// Write to Left and Right channels
-		binary.LittleEndian.PutUint16(buf[i*bytesPerFrame:], uint16(v))   // Left
-		binary.LittleEndian.PutUint16(buf[i*bytesPerFrame+2:], uint16(v)) // Right
+		// TRUE MONO: Write exactly one 16-bit value per sample
+		binary.LittleEndian.PutUint16(buf[i*bytesPerFrame:], uint16(v))
 	}
 	return PCMData{Samples: buf}
 }
@@ -228,8 +214,8 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 			s := math.Sin(angle) * amp
 			v := int16(s * 32767)
 
+			// TRUE MONO: Write exactly one 16-bit value per sample
 			binary.LittleEndian.PutUint16(buf[i*bytesPerFrame:], uint16(v))
-			binary.LittleEndian.PutUint16(buf[i*bytesPerFrame+2:], uint16(v))
 		}
 
 		SimTime += float64(duration) / float64(SampleRate)
@@ -337,17 +323,17 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 
 		if config.User.NoiseKeyClick {
 			if i < 132 || i > duration-132 {
-				s += 0.6 + (rand.Float32() * 0.4)
+				s += 0.6 + (FastFloat32() * 0.4)
 			}
 		}
 
 		if staticVol > 0 {
-			if activeCrashSamples == 0 && rand.Float32() < 0.00001 {
-				activeCrashSamples = rand.Intn(int(SampleRate / 2))
-				activeCrashIntensity = (rand.Float32() * 0.6) + (float32(config.User.NoiseStaticLevel) * 0.1)
+			if activeCrashSamples == 0 && FastFloat32() < 0.00001 {
+				activeCrashSamples = FastIntn(int(SampleRate / 2))
+				activeCrashIntensity = (FastFloat32() * 0.6) + (float32(config.User.NoiseStaticLevel) * 0.1)
 			}
 
-			noise := (rand.Float32() * 2.0) - 1.0
+			noise := FastFloatSigned32()
 			currentNoise := noise * staticVol
 
 			if activeCrashSamples > 0 {
@@ -358,15 +344,15 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 		}
 
 		if brownVol > 0 {
-			white := (rand.Float32() * 2.0) - 1.0
+			white := FastFloatSigned32()
 			lastBrown = (lastBrown * 0.95) + (white * 0.05)
 			s += lastBrown * brownVol
 		}
 
 		if pinkVol > 0 {
-			white := (rand.Float32() * 2.0) - 1.0
+			white := FastFloatSigned32()
 			pink0 = (0.99765 * pink0) + (white * 0.0990460)
-			pink1 = (0.96300 * pink2) + (white * 0.2965164)
+			pink1 = (0.96300 * pink1) + (white * 0.2965164)
 			pink2 = (0.57000 * pink2) + (white * 1.0526913)
 			pink := pink0 + pink1 + pink2 + (white * 0.1848)
 			s += (pink * 0.15) * pinkVol
@@ -375,8 +361,8 @@ func TonePCM(freq float64, duration int, vol float64) PCMData {
 		s64 := math.Tanh(float64(s))
 		v := int16(s64 * 32767)
 
+		// TRUE MONO: Write exactly one 16-bit value per sample
 		binary.LittleEndian.PutUint16(buf[i*bytesPerFrame:], uint16(v))
-		binary.LittleEndian.PutUint16(buf[i*bytesPerFrame+2:], uint16(v))
 	}
 
 	SimTime += float64(duration) / float64(SampleRate)
@@ -441,12 +427,12 @@ func SilencePCM(duration int) PCMData {
 		var s float32 = 0.0
 
 		if staticVol > 0 {
-			if activeCrashSamples == 0 && rand.Float32() < 0.00001 {
-				activeCrashSamples = rand.Intn(int(SampleRate / 2))
-				activeCrashIntensity = (rand.Float32() * 0.6) + (float32(config.User.NoiseStaticLevel) * 0.1)
+			if activeCrashSamples == 0 && FastFloat32() < 0.00001 {
+				activeCrashSamples = FastIntn(int(SampleRate / 2))
+				activeCrashIntensity = (FastFloat32() * 0.6) + (float32(config.User.NoiseStaticLevel) * 0.1)
 			}
 
-			noise := (rand.Float32() * 2.0) - 1.0
+			noise := FastFloatSigned32()
 			currentNoise := noise * staticVol
 
 			if activeCrashSamples > 0 {
@@ -457,13 +443,13 @@ func SilencePCM(duration int) PCMData {
 		}
 
 		if brownVol > 0 {
-			white := (rand.Float32() * 2.0) - 1.0
+			white := FastFloatSigned32()
 			lastBrown = (lastBrown * 0.95) + (white * 0.05)
 			s += lastBrown * brownVol
 		}
 
 		if pinkVol > 0 {
-			white := (rand.Float32() * 2.0) - 1.0
+			white := FastFloatSigned32()
 			pink0 = (0.99765 * pink0) + (white * 0.0990460)
 			pink1 = (0.96300 * pink1) + (white * 0.2965164)
 			pink2 = (0.57000 * pink2) + (white * 1.0526913)
@@ -474,8 +460,8 @@ func SilencePCM(duration int) PCMData {
 		s64 := math.Tanh(float64(s))
 		v = int16(s64 * 32767)
 
+		// TRUE MONO: Write exactly one 16-bit value per sample
 		binary.LittleEndian.PutUint16(buf[i*bytesPerFrame:], uint16(v))
-		binary.LittleEndian.PutUint16(buf[i*bytesPerFrame+2:], uint16(v))
 	}
 
 	SimTime += float64(duration) / float64(SampleRate)
@@ -498,15 +484,14 @@ func (o *LiveOscillator) Read(p []byte) (n int, err error) {
 		o.debugCount++
 	}
 
-	// 4 bytes per frame (2 channels * 2 bytes)
 	frames := len(p) / bytesPerFrame
 
 	for i := 0; i < frames; i++ {
 		s := math.Sin(o.phase * 2.0 * math.Pi)
 		val := int16(s * 0.5 * 32767)
 
+		// TRUE MONO: Write exactly one 16-bit value per sample
 		binary.LittleEndian.PutUint16(p[i*bytesPerFrame:], uint16(val))
-		binary.LittleEndian.PutUint16(p[i*bytesPerFrame+2:], uint16(val))
 
 		o.phase += o.Freq / o.SampleRate
 		if o.phase > 1.0 {
@@ -549,7 +534,7 @@ func InitAudio() error {
 func startAudioEngine() error {
 	op := &oto.NewContextOptions{
 		SampleRate:   SampleRate,
-		ChannelCount: 2,
+		ChannelCount: 1, // <--- 1 CHANNEL FOR OTO
 		Format:       oto.FormatSignedInt16LE,
 		BufferSize:   time.Millisecond * 15,
 	}

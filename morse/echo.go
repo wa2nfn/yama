@@ -81,6 +81,7 @@ func RunEcho(
 	tp TimingProfile,
 	p serial.Port,
 	idleInputState bool,
+	keyDevice string,
 ) (EchoResult, error) {
 
 	defer func() {
@@ -174,15 +175,28 @@ func RunEcho(
 	var resWordGaps []time.Duration
 
 	// --- DYNAMIC PIN CONFIGURATION ---
-	// Extract the monitor pin from config (e.g., "CD" from "CD:1-DTR:4")
-	pinParts := strings.Split(config.User.KeyLineMode, "-")
-	monitorPin := "CTS" // fallback default
-	if len(pinParts) > 0 {
-		monitorPin = strings.Split(pinParts[0], ":")[0]
+	// Determine which config string to parse based on device type
+	pinString := config.User.KeyLineWireMode
+	if strings.ToLower(keyDevice) == "cootie" {
+		pinString = config.User.KeyLineWireMode
 	}
 
-	getMonitorState := func(ms *serial.ModemStatusBits) bool {
-		switch monitorPin {
+	pinParts := strings.Split(pinString, "-")
+
+	monitorPin1 := "CTS" // Default primary (Dit / Straight Key)
+	monitorPin2 := "DSR" // Default secondary (Dah)
+
+	if len(pinParts) > 0 {
+		monitorPin1 = strings.Split(pinParts[0], ":")[0]
+	}
+	if len(pinParts) > 2 { // Format is usually Dit-Power-Dah (e.g., CTS:8-DTR:4-DSR:6)
+		monitorPin2 = strings.Split(pinParts[2], ":")[0]
+	} else if len(pinParts) > 1 {
+		monitorPin2 = strings.Split(pinParts[1], ":")[0]
+	}
+
+	getPinState := func(pin string, ms *serial.ModemStatusBits) bool {
+		switch pin {
 		case "CD", "DCD":
 			return ms.DCD
 		case "DSR":
@@ -195,11 +209,20 @@ func RunEcho(
 			return ms.CTS
 		}
 	}
-	// ---------------------------------
 
-	isKeyDown := func(currentState bool) bool {
-		return currentState != idleInputState
+	isKeyDown := func(ms *serial.ModemStatusBits) bool {
+		state1 := getPinState(monitorPin1, ms)
+		down1 := (state1 != idleInputState)
+
+		if strings.ToLower(keyDevice) == "cootie" {
+			state2 := getPinState(monitorPin2, ms)
+			down2 := (state2 != idleInputState)
+			return down1 || down2 // Cootie closes circuit on either paddle hit
+		}
+
+		return down1 // Straight key only checks the primary pin
 	}
+	// ---------------------------------
 
 	ms, err := p.GetModemStatusBits()
 	if err != nil {
@@ -219,12 +242,12 @@ func RunEcho(
 			return EchoResult{Success: false, Error: "modem read error"}, err
 		}
 
-		currentState := getMonitorState(ms) // Replaced ms.CTS
-		lastState = isKeyDown(currentState)
+		lastState = isKeyDown(ms)
 
 		if time.Since(primeStart) > 200*time.Millisecond {
-			idleInputState = currentState
-			lastState = isKeyDown(getMonitorState(ms))
+			// Re-establish baseline using primary pin
+			idleInputState = getPinState(monitorPin1, ms)
+			lastState = isKeyDown(ms)
 		}
 		time.Sleep(1 * time.Millisecond)
 	}
@@ -306,8 +329,7 @@ func RunEcho(
 			return EchoResult{Success: false, Error: "modem read error"}, err
 		}
 
-		currentState := getMonitorState(ms)
-		keyDown := isKeyDown(currentState)
+		keyDown := isKeyDown(ms)
 
 		if !started {
 			if keyDown {

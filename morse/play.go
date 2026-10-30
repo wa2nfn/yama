@@ -2,7 +2,6 @@ package morse
 
 import (
 	"fmt"
-	"math/rand"
 	"sort"
 	"strings"
 	"sync"
@@ -11,6 +10,14 @@ import (
 
 	"go.bug.st/serial"
 )
+
+// --- FAST RNG
+var fastSeed uint64 = 88172645463325252
+
+func fastRand(n int) int {
+	fastSeed = fastSeed*6364136223846793005 + 1
+	return int(fastSeed>>33) % n
+}
 
 var IsPaused bool
 var OnWordPlayed func(word string, isIWR bool)
@@ -47,6 +54,30 @@ var (
 	waitMutex       sync.RWMutex
 )
 
+func fastShuffleRunes(s string) string {
+	runes := []rune(s)
+	for i := len(runes) - 1; i > 0; i-- {
+		j := fastRand(i + 1)
+		runes[i], runes[j] = runes[j], runes[i]
+	}
+	return string(runes)
+}
+
+func fastShuffleWord(w string) string {
+	return fastShuffleRunes(w)
+}
+
+func fastShuffleSlice(words []string) {
+	for i := len(words) - 1; i > 0; i-- {
+		j := fastRand(i + 1)
+		words[i], words[j] = words[j], words[i]
+	}
+}
+
+func shuffleWord(w string) string {
+	return fastShuffleRunes(w)
+}
+
 func IsWaitingForUserKey() bool {
 	waitMutex.RLock()
 	defer waitMutex.RUnlock()
@@ -58,14 +89,6 @@ func SignalUserKey(key rune) {
 	case waitActionChan <- key:
 	default:
 	}
-}
-
-func shuffleWord(w string, r *rand.Rand) string {
-	runes := []rune(w)
-	r.Shuffle(len(runes), func(i, j int) {
-		runes[i], runes[j] = runes[j], runes[i]
-	})
-	return string(runes)
 }
 
 func isIWRMatch(word string) bool {
@@ -183,9 +206,6 @@ func buildWordBuffer(ctx PlayContext, p TimingProfile) int {
 func RunIWR(text string, iwrMan *IWRManager) {
 	defer CloseHardwarePort() // Safety net
 	var idleInputState bool
-	var isFirstEchoGroup bool = true
-
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	if config.User.Echo {
 		EchoMap = make(map[string]string)
@@ -304,26 +324,14 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			return
 		}
 
+		var useDTR, useRTS bool
 		if openErr == nil {
 
 			// ROBUST BUFFER CLEARING
 			_ = ActiveEchoPort.ResetInputBuffer()
 			_ = ActiveEchoPort.ResetOutputBuffer()
 
-			// 1. Determine active output based on the 8-option dropdown
-			var useDTR, useRTS bool
-			switch config.User.KeyLineMode {
-			case "CTS:8-DTR:4", "DSR:6-DTR:4", "CD:1-DTR:4", "RI:9-DTR:4":
-				useDTR = true
-				useRTS = false
-			case "CTS:8-RTS:7", "DSR:6-RTS:7", "CD:1-RTS:7", "RI:9-RTS:7":
-				useDTR = false
-				useRTS = true
-			default: // Fallback safety
-				useDTR = true
-				useRTS = false
-			}
-
+			// 1. already done for 2 and 3 wire
 			// 2. Apply Parasitic Power if checked
 			if config.User.KeyParasiticPower {
 				useDTR = true
@@ -411,9 +419,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 	}
 
 	if config.User.WordOrder {
-		r.Shuffle(len(words), func(i, j int) {
-			words[i], words[j] = words[j], words[i]
-		})
+		fastShuffleSlice(words)
 	}
 
 	if config.User.TextBuilder {
@@ -524,7 +530,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 		var isIwrMatchFound bool
 
 		if config.User.RandomizeWords && len(w) > 1 && !isProsign {
-			finalWord = shuffleWord(w, r)
+			finalWord = shuffleWord(w)
 			isIwrMatchFound = false
 		} else {
 			isIwrMatchFound = isIWRMatch(w)
@@ -586,7 +592,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 				}
 			}
 			if !lastIsSep {
-				selectedSep := validSeparators[r.Intn(len(validSeparators))]
+				selectedSep := validSeparators[fastRand(len(validSeparators))]
 				playlist = append(playlist, PlayContext{Word: selectedSep, IsIWR: false, HideText: false})
 			}
 		}
@@ -632,15 +638,26 @@ func RunIWR(text string, iwrMan *IWRManager) {
 	groupSize := 1
 	if config.User.Flashcard {
 		if config.User.FlashRandomCount {
-			groupSize = rand.Intn(config.User.FlashWordCount) + 1
+			groupSize = fastRand(config.User.FlashWordCount) + 1
 		} else {
 			groupSize = config.User.FlashWordCount
 		}
 	} else if config.User.Echo {
 		if config.User.EchoRandomCount {
-			groupSize = rand.Intn(config.User.EchoWordCount) + 1
+			groupSize = fastRand(config.User.EchoWordCount) + 1
 		} else {
 			groupSize = config.User.EchoWordCount
+		}
+	}
+
+	pin1, power, pin2 := "CTS", "DTR", "DSR" // Defaults
+	if config.User.KeyDevice != "none" {
+		// 1. Parse the 3-wire pin config (e.g. "CTS:8-DTR:4-DSR:6")
+		parts := strings.Split(config.User.KeyLineWireMode, "-")
+		if len(parts) == 3 {
+			pin1 = strings.Split(parts[0], ":")[0]
+			power = strings.Split(parts[1], ":")[0]
+			pin2 = strings.Split(parts[2], ":")[0]
 		}
 	}
 
@@ -707,6 +724,11 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 		Flush()
 
+		effectiveResponseMS := ResponseMS
+		if config.User.Mute {
+			effectiveResponseMS += 1000 // since no audible que give user more time
+		}
+
 		if OnWordPlayed != nil {
 			isIWRMatch := iwrMan.Match(ctx.Word)
 			OnWordPlayed(ctx.Word, isIWRMatch)
@@ -733,45 +755,76 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			idleInputState = config.User.KeyLineIdlePolarity
 
 			if ActiveEchoPort != nil {
-				// 1. GUARANTEE standard word spacing before listening, for ALL groups
-				//QueuePCM(SilencePCM(wordSpaceSamples).Samples, " ", -1)
-				alertSamples := int(p.CharSpace * 2.0 * float64(SampleRate))
-				//QueuePCM(SilencePCM(alertSamples).Samples, " ", -1)
+				if config.User.KeyDevice == "Paddle" || config.User.KeyDevice == "IambicA" || config.User.KeyDevice == "Ultimatic" || config.User.KeyDevice == "IambicB" {
 
-				// 2. Conditionally queue the alert sound based on UI: First(0), None(1), All(2)
-				switch config.User.Alert {
-				case 0: // First Group Only
-					if isFirstEchoGroup {
-						alertBytes := generateDoneAlert(alertSamples, float64(p.DitDuration*0.6))
-						QueuePCM(alertBytes, " ", -1)
-						isFirstEchoGroup = false
+					// 2. Call the new engine
+					kRes, kErr := RunKeyer(
+						config.User.KeyDevice,
+						pin1,
+						power,
+						pin2,
+						lastGroup,
+						messageDuration,
+						effectiveResponseMS,
+						baseProfile, // Still contains Wordsworth!
+						ActiveEchoPort,
+						idleInputState,
+						config.User.DitDahThreshold,
+					)
+					err = kErr
+
+					// 3. Map KeyerResult to EchoResult so the rest of iwr.go is happy
+					res = EchoResult{
+						Chars:      kRes.Chars,
+						RawTimings: kRes.RawTimings,
+						WordGaps:   kRes.WordGaps,
+						Success:    kRes.Success,
+						Error:      kRes.Error,
+
+						// --- NEW: Map every stat over so the UI gets the data! ---
+						Stats: EchoStats{
+							ShortDits:   kRes.Stats.ShortDits,
+							LongDits:    kRes.Stats.LongDits,
+							PerfectDits: kRes.Stats.PerfectDits,
+							ShortDahs:   kRes.Stats.ShortDahs,
+							LongDahs:    kRes.Stats.LongDahs,
+							PerfectDahs: kRes.Stats.PerfectDahs,
+
+							ShortElementGaps:   kRes.Stats.ShortElementGaps,
+							LongElementGaps:    kRes.Stats.LongElementGaps,
+							PerfectElementGaps: kRes.Stats.PerfectElementGaps,
+							ShortCharGaps:      kRes.Stats.ShortCharGaps,
+							LongCharGaps:       kRes.Stats.LongCharGaps,
+							PerfectCharGaps:    kRes.Stats.PerfectCharGaps,
+							ShortWordGaps:      kRes.Stats.ShortWordGaps,
+							LongWordGaps:       kRes.Stats.LongWordGaps,
+							PerfectWordGaps:    kRes.Stats.PerfectWordGaps,
+
+							SumDitMs:         kRes.Stats.SumDitMs,
+							SumDahMs:         kRes.Stats.SumDahMs,
+							SumElementGapsMs: kRes.Stats.SumElementGapsMs,
+							SumCharGapsMs:    kRes.Stats.SumCharGapsMs,
+							SumWordGapsMs:    kRes.Stats.SumWordGapsMs,
+
+							InvalidSymbols: kRes.Stats.InvalidSymbols,
+							Retries:        kRes.Stats.Retries,
+							TotalChars:     kRes.Stats.TotalChars,
+							TotalWords:     kRes.Stats.TotalWords,
+						},
 					}
-
-				case 1: // None
-					// Do nothing extra
-
-				case 2: // All Groups
-					alertBytes := generateDoneAlert(SampleRate, float64(p.DitDuration))
-					QueuePCM(alertBytes, " ", -1)
+				} else {
+					// --- ORIGINAL: Route Straight Keys & Cooties to RunEcho ---
+					res, err = RunEcho(
+						lastGroup,
+						messageDuration,
+						effectiveResponseMS,
+						baseProfile,
+						ActiveEchoPort,
+						idleInputState,
+						config.User.KeyDevice, // echo.go's signature accepts the device at the end
+						//WDL config.User.DitDahThreshold,
+					)
 				}
-
-				// 3. FLUSH universally so the padding (and any alert) actually plays before RunEcho starts!
-				Flush()
-
-				effectiveResponseMS := ResponseMS
-				if config.User.Mute {
-					effectiveResponseMS += 1000 // since no audible que give user more time
-				}
-
-				// But pass the relaxed user profile (which has Wordsworth) to the grader!
-				res, err = RunEcho(
-					lastGroup,
-					messageDuration,
-					effectiveResponseMS,
-					baseProfile, // <-- Still contains Wordsworth!
-					ActiveEchoPort,
-					idleInputState,
-				)
 			} else {
 				err = fmt.Errorf("serial port not available")
 				res = EchoResult{Success: false, Error: "no keyer"}
@@ -1046,148 +1099,4 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			OnStatusUpdate("STOP")
 		}
 	}
-}
-
-// added for manual keying
-func RunManualOscillator(updateUI func(statusMsg, mainMsg string)) {
-	// 1. Check if the user has a port configured
-	if config.User.KeyerPort == "" || config.User.KeyerPort == "None" {
-		updateUI(
-			" [red]No COM port selected.",
-			"\n\n *** MANUAL OSCILLATOR MODE ***\n\n ERROR: No COM port configured.\n Go to Options (Ctrl-K) to select a port first.\n\n Press ESC to exit.",
-		)
-		return
-	}
-
-	// 2. --- AUDIO SETUP (Initialize once for the whole session) ---
-	oscFreq := float64(config.User.Tone)
-	osc, player := StartOscillator(oscFreq)
-	if osc == nil || player == nil {
-		updateUI(
-			" [red]Audio Failure",
-			"\n\n *** MANUAL OSCILLATOR MODE ***\n\n CRITICAL FAIL - osc or player is nil!\n\n Press ESC to exit.",
-		)
-		return
-	}
-
-	player.SetVolume(0.0)
-
-	// CLEAN TEARDOWN ON ESC
-	defer func() {
-		if player != nil {
-			player.SetVolume(0.0)
-			time.Sleep(50 * time.Millisecond)
-			player.Pause()
-			player.Close()
-		}
-		if ActiveEchoPort != nil {
-			ActiveEchoPort.Close()
-		}
-	}()
-
-	mode := &serial.Mode{
-		BaudRate: config.User.KeyerPortSpeed,
-		Parity:   serial.NoParity,
-		StopBits: serial.OneStopBit,
-		DataBits: 8,
-	}
-
-	// 3. --- DYNAMIC PIN CONFIGURATION ---
-	pinParts := strings.Split(config.User.KeyLineMode, "-")
-	monitorPin := "CTS"
-	if len(pinParts) > 0 {
-		monitorPin = strings.Split(pinParts[0], ":")[0]
-	}
-
-	getMonitorState := func(ms *serial.ModemStatusBits) bool {
-		switch monitorPin {
-		case "CD", "DCD":
-			return ms.DCD
-		case "DSR":
-			return ms.DSR
-		case "RI":
-			return ms.RI
-		case "CTS":
-			fallthrough
-		default:
-			return ms.CTS
-		}
-	}
-
-	idleInputState := config.User.KeyLineIdlePolarity
-	isKeyDown := func(currentState bool) bool {
-		return currentState != idleInputState
-	}
-
-	// 4. --- THE INFINITE LIFECYCLE LOOP ---
-	for !IsStopping {
-		var openErr error
-
-		// Phase A: The Connection Loop
-		for !IsStopping {
-			if ActiveEchoPort != nil {
-				ActiveEchoPort.Close()
-				ActiveEchoPort = nil
-			}
-
-			ActiveEchoPort, openErr = serial.Open(config.User.KeyerPort, mode)
-
-			if openErr != nil {
-				updateUI(
-					" [yellow]Waiting for key device...",
-					fmt.Sprintf("\n\n *** MANUAL OSCILLATOR MODE ***\n\n Waiting for port: %s\n\n Insert your key device and send, or press ESC to exit.", config.User.KeyerPort),
-				)
-				time.Sleep(1 * time.Second)
-				continue
-			}
-			break // Connected successfully!
-		}
-
-		// Check if they pressed ESC while it was searching
-		if IsStopping {
-			break
-		}
-
-		updateUI(
-			" [green]Manual Oscillator Active",
-			fmt.Sprintf("\n\n *** MANUAL OSCILLATOR MODE ***\n\n Connected to %s.\n\n Freely key now, or press ESC to exit.", config.User.KeyerPort),
-		)
-
-		wasDown := false
-
-		// Phase B: The Polling Loop (Tight, fast, no limits)
-		for !IsStopping {
-			ms, err := ActiveEchoPort.GetModemStatusBits()
-			if err != nil {
-				// The cable was unplugged mid-session!
-				// Kill the tone, alert the user, and break back to Phase A
-				player.SetVolume(0.0)
-				wasDown = false
-				updateUI(
-					" [red]Device disconnected...",
-					"\n\n *** MANUAL OSCILLATOR MODE ***\n\n Connection lost.\n\n Reinsert your key device, or press ESC to exit.",
-				)
-				time.Sleep(500 * time.Millisecond) // brief pause before reconnect attempt
-				break
-			}
-
-			currentState := getMonitorState(ms)
-			keyDown := isKeyDown(currentState)
-
-			if keyDown && !wasDown {
-				player.SetVolume(1.0)
-				wasDown = true
-			} else if !keyDown && wasDown {
-				player.SetVolume(0.0)
-				wasDown = false
-			}
-
-			// Micro-sleep to prevent 100% CPU usage
-			time.Sleep(1 * time.Millisecond)
-		}
-	}
-
-	// The outer loop broke (ESC pressed).
-	// Defer block will safely kill the audio and close the COM port.
-	updateUI("STOP", "")
 }

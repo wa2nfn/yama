@@ -10,7 +10,73 @@ import (
 	"yama/config"
 )
 
-// Helper to generate the S20 or f20.5_15 string for filenames
+// -----------------------------------------------------------------------------
+// Global RNG (single source of randomness)
+// -----------------------------------------------------------------------------
+
+var R = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+// -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
+
+func ShuffleRunes(rng *rand.Rand, s string) string {
+	runes := []rune(s)
+	rng.Shuffle(len(runes), func(i, j int) {
+		runes[i], runes[j] = runes[j], runes[i]
+	})
+	return string(runes)
+}
+
+func CleanWord(raw string) (string, bool) {
+	var b strings.Builder
+	isPro := false
+
+	for _, t := range Tokenize(raw) {
+		if strings.HasPrefix(t, "<") && strings.HasSuffix(t, ">") {
+			lookup := strings.ToUpper(t[1 : len(t)-1])
+			if _, ok := ProSignTable[lookup]; ok {
+				b.WriteString(t)
+				isPro = true
+			}
+			continue
+		}
+
+		if len(t) > 0 {
+			r := []rune(strings.ToUpper(t))[0]
+			if _, ok := MorseTable[r]; ok {
+				b.WriteString(t)
+			}
+		}
+	}
+
+	return b.String(), isPro
+}
+
+func AppendWordBuilder(pl *[]PlayContext, w string) {
+	for i := 1; i < len(w); i++ {
+		*pl = append(*pl, PlayContext{Word: w[:i], HideText: true})
+	}
+	*pl = append(*pl, PlayContext{Word: w})
+	if config.User.IWREnabled {
+		*pl = append(*pl, PlayContext{Word: w, IsIWR: true, HideText: true})
+	}
+}
+
+func ProcessWordIWR(w string, isPro bool) (string, bool) {
+	if config.User.RandomizeWords && len(w) > 1 && !isPro {
+		return ShuffleRunes(R, w), false
+	}
+	return w, isIWRMatch(w)
+}
+
+func RampSpeed(origStart, origEnd float64, posStart, posEnd float64) (float64, float64, float64) {
+	start := origStart + (origEnd-origStart)*posStart
+	end := origStart + (origEnd-origStart)*posEnd
+	mult := start / origStart
+	return start, end, mult
+}
+
 func getSpeedBlock(charSpd, effSpd float64) string {
 	modeChar := "S"
 	if config.User.UseWordsworth {
@@ -19,29 +85,32 @@ func getSpeedBlock(charSpd, effSpd float64) string {
 		modeChar = "F"
 	}
 
-	// Round to 1 decimal place to prevent floating point garbage in filenames
 	charSpd = math.Round(charSpd*10) / 10
 	effSpd = math.Round(effSpd*10) / 10
 
-	if strings.ToUpper(modeChar) == "S" {
+	if modeChar == "S" {
 		return fmt.Sprintf("%s%g", modeChar, charSpd)
 	}
 	return fmt.Sprintf("%s%g_%g", modeChar, charSpd, effSpd)
 }
 
-// ExportWAVBatch processes global text, chunks it, and generates sequential .wav files.
-func ExportWAVBatch(fullText string, targetDir string, baseName string, maxWords int, maxFiles int) ([]string, error) {
+// -----------------------------------------------------------------------------
+// ExportWAVBatch — streamlined, operator‑correct
+// -----------------------------------------------------------------------------
+
+func ExportWAVBatch(fullText string, targetDir string, baseName string,
+	maxWords int, maxFiles int) ([]string, error) {
+
 	var generatedFiles []string
 
 	words := strings.Fields(fullText)
-	totalDocumentWords := len(words) // Track global size for speed ramping
-	if totalDocumentWords == 0 {
+	total := len(words)
+	if total == 0 {
 		return nil, fmt.Errorf("no text to export")
 	}
 
 	if config.User.WordOrder {
-		r := rand.New(rand.NewSource(time.Now().UnixNano()))
-		r.Shuffle(len(words), func(i, j int) {
+		R.Shuffle(len(words), func(i, j int) {
 			words[i], words[j] = words[j], words[i]
 		})
 	}
@@ -50,23 +119,21 @@ func ExportWAVBatch(fullText string, targetDir string, baseName string, maxWords
 		maxWords = len(words)
 	}
 
-	// --- SNAPSHOT ORIGINAL CONFIG ---
-	origCharSpd := config.User.CharacterSpeed
-	origEffSpd := config.User.EffectiveSpeed
-	origIwrSpd := config.User.IWRSpeed
-	origEndSpd := config.User.EndSpeed
+	// Snapshot original config
+	origChar := config.User.CharacterSpeed
+	origEff := config.User.EffectiveSpeed
+	origIwr := config.User.IWRSpeed
+	origEnd := config.User.EndSpeed
 
-	// Guarantee config goes back to normal if the loop crashes or completes
 	defer func() {
-		config.User.CharacterSpeed = origCharSpd
-		config.User.EffectiveSpeed = origEffSpd
-		config.User.IWRSpeed = origIwrSpd
-		config.User.EndSpeed = origEndSpd
+		config.User.CharacterSpeed = origChar
+		config.User.EffectiveSpeed = origEff
+		config.User.IWRSpeed = origIwr
+		config.User.EndSpeed = origEnd
 	}()
-	// --------------------------------
 
 	fileCount := 0
-	wordsProcessed := 0
+	processed := 0
 
 	for len(words) > 0 {
 		if fileCount >= maxFiles {
@@ -76,118 +143,75 @@ func ExportWAVBatch(fullText string, targetDir string, baseName string, maxWords
 		chunkSize := maxWords
 		if len(words) <= int(float64(maxWords)*1.10) {
 			chunkSize = len(words)
-		} else if chunkSize > len(words) {
+		}
+		if chunkSize > len(words) {
 			chunkSize = len(words)
 		}
 
-		chunkWords := words[:chunkSize]
+		chunk := words[:chunkSize]
 		words = words[chunkSize:]
 
-		// --- GLOBAL CHUNK SPEED MATH ---
-		chunkStartProgress := float64(wordsProcessed) / float64(totalDocumentWords-1)
-		chunkEndProgress := float64(wordsProcessed+len(chunkWords)-1) / float64(totalDocumentWords-1)
-		if totalDocumentWords <= 1 {
-			chunkStartProgress, chunkEndProgress = 0, 0
+		// Speed ramp
+		if total > 1 {
+			posStart := float64(processed) / float64(total-1)
+			posEnd := float64(processed+len(chunk)-1) / float64(total-1)
+
+			startSpd, endSpd, mult := RampSpeed(origChar, origEnd, posStart, posEnd)
+
+			config.User.CharacterSpeed = startSpd
+			config.User.EffectiveSpeed = origEff * mult
+			config.User.IWRSpeed = origIwr * mult
+			config.User.EndSpeed = endSpd
 		}
 
-		chunkStartCharSpd := origCharSpd + (origEndSpd-origCharSpd)*chunkStartProgress
-		chunkEndCharSpd := origCharSpd + (origEndSpd-origCharSpd)*chunkEndProgress
-		chunkStartMultiplier := chunkStartCharSpd / origCharSpd
-
-		// Temporarily apply the chunk's boundaries to the config for RenderWAVToFile
-		config.User.CharacterSpeed = chunkStartCharSpd
-		config.User.EffectiveSpeed = origEffSpd * chunkStartMultiplier
-		config.User.IWRSpeed = origIwrSpd * chunkStartMultiplier
-		config.User.EndSpeed = chunkEndCharSpd
-		// -------------------------------
-
-		playlist := buildPlaylistFromWords(chunkWords)
+		playlist := buildPlaylistFromWords(chunk)
 		if len(playlist) == 0 {
-			wordsProcessed += len(chunkWords)
+			processed += len(chunk)
 			continue
 		}
 
-		// Calculate speed block using the starting speed of THIS specific chunk
-		speedBlock := getSpeedBlock(chunkStartCharSpd, config.User.EffectiveSpeed)
+		speedBlock := getSpeedBlock(config.User.CharacterSpeed, config.User.EffectiveSpeed)
+		cleanName := fmt.Sprintf("%s_%s_%d.wav", baseName, speedBlock, fileCount+1)
+		fileName := ResolvePath(filepath.Join(targetDir, cleanName))
 
-		cleanFileName := fmt.Sprintf("%s_%s_%d.wav", baseName, speedBlock, fileCount+1)
-		fileName := ResolvePath(filepath.Join(targetDir, cleanFileName))
-
-		err := RenderWAVToFile(playlist, fileName, 11025)
-		if err != nil {
+		if err := RenderWAVToFile(playlist, fileName, 11025); err != nil {
 			return generatedFiles, err
 		}
 
 		generatedFiles = append(generatedFiles, fileName)
 		fileCount++
-		wordsProcessed += len(chunkWords)
+		processed += len(chunk)
 	}
 
 	return generatedFiles, nil
 }
 
-// buildPlaylistFromWords is a perfect clone of the top-half of RunIWR.
-// It funnels raw words through WordBuilder, RandomWords, and IWR checks.
+// -----------------------------------------------------------------------------
+// Playlist builder — streamlined, identical behavior
+// -----------------------------------------------------------------------------
+
 func buildPlaylistFromWords(words []string) []PlayContext {
-	var playlist []PlayContext
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	var pl []PlayContext
 
-	for _, rawWord := range words {
-		// === THE FUNNEL ===
-		var cleanBuilder strings.Builder
-		for _, t := range Tokenize(rawWord) {
-			if strings.HasPrefix(t, "<") && strings.HasSuffix(t, ">") {
-				lookup := strings.ToUpper(t[1 : len(t)-1])
-				if _, ok := ProSignTable[lookup]; ok {
-					cleanBuilder.WriteString(t)
-				}
-			} else {
-				if len(t) > 0 {
-					charRune := []rune(strings.ToUpper(t))[0]
-					if _, ok := MorseTable[charRune]; ok {
-						cleanBuilder.WriteString(t)
-					}
-				}
-			}
-		}
-
-		w := cleanBuilder.String()
+	for _, raw := range words {
+		w, isPro := CleanWord(raw)
 		if len(strings.TrimSpace(w)) == 0 {
 			continue
 		}
 
-		isProsign := strings.HasPrefix(w, "<") && strings.HasSuffix(w, ">")
-
-		// Feature: WordBuilder
-		if config.User.WordBuilder && len(w) > 1 && !isProsign {
-			for i := 1; i < len(w); i++ {
-				playlist = append(playlist, PlayContext{Word: w[:i], IsIWR: false, HideText: true})
-			}
-			playlist = append(playlist, PlayContext{Word: w, IsIWR: false, HideText: false})
-			if config.User.IWREnabled {
-				playlist = append(playlist, PlayContext{Word: w, IsIWR: true, HideText: true})
-			}
+		if config.User.WordBuilder && len(w) > 1 && !isPro {
+			AppendWordBuilder(&pl, w)
 			continue
 		}
 
-		// Feature: Random Words & IWR Matching
-		var finalWord = w
-		var isIwrMatchFound bool
+		final, isIwr := ProcessWordIWR(w, isPro)
 
-		if config.User.RandomizeWords && len(w) > 1 && !isProsign {
-			finalWord = shuffleWord(w, r)
-			isIwrMatchFound = false
-		} else {
-			// uses the global IWR manager naturally!
-			isIwrMatchFound = isIWRMatch(w)
-		}
-
-		playlist = append(playlist, PlayContext{
-			Word:     finalWord,
-			IsIWR:    isIwrMatchFound,
+		pl = append(pl, PlayContext{
+			Word:     final,
+			IsIWR:    isIwr,
 			HideText: false,
 		})
 	}
 
-	return playlist
+	return pl
 }

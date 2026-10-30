@@ -21,12 +21,13 @@ type AppState int
 const (
 	AppBackgroundColor = "#000000"
 	playPauseDelay     = 200
-	Ver                = "1.6.1+"
+	Ver                = "1.7-Exp"
 
 	StateIdle AppState = iota
 	StatePlaying
 	StatePaused
 	StateStopped
+	StatePromptingTx
 )
 
 var (
@@ -86,15 +87,23 @@ func main() {
 	lower := strings.ToLower(exe)
 
 	if !strings.HasPrefix(lower, "yama") {
-		fmt.Println("App's name changed, it must start with \"yama\":", exe)
+		fmt.Println("App's name changed, it must start with \"yama\"", exe)
 		os.Exit(3)
 	}
-
-	config.LoadConfig()
 
 	logPath := morse.ResolvePath("yama.log")
 	logFile, _ := os.OpenFile(logPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
 	log.SetOutput(logFile)
+	// Assuming you just opened logFile and checked for errors here...
+
+	defer func() {
+		logFile.Close()
+		if info, err := os.Stat(logPath); err == nil && info.Size() == 0 {
+			os.Remove(logPath)
+		}
+	}()
+
+	config.LoadConfig()
 
 	if err := morse.InitAudio(); err != nil {
 		log.Fatal(err)
@@ -398,7 +407,87 @@ func main() {
 
 	pages.AddPage("main", centeredAppLayout, true, true)
 
+	launchOscillator := func(enableTx bool) {
+		currentState = StatePlaying
+		morse.IsStopping = false
+		morse.IsManualOscModeActive = true
+		updateBlueLine()
+
+		// Pass the enableTx flag into RunManualOscillator
+		go morse.RunManualOscillator(func(statusMsg, mainMsg string) {
+			app.QueueUpdateDraw(func() {
+				if statusMsg == "STOP" {
+					morse.IsManualOscModeActive = false
+					currentState = StateIdle
+
+					inputArea.SetText("", false)
+					statusLine.SetText(" [green]Ready.[-]")
+					updateBlueLine()
+				} else {
+					if statusMsg != "" {
+						statusLine.SetText(statusMsg)
+					}
+					if mainMsg != "" {
+						inputArea.SetText(mainMsg, false)
+					}
+				}
+			})
+		}, enableTx) // <-- Note: enableTx passed here
+		currentState = StatePlaying
+		morse.IsStopping = false
+		morse.IsManualOscModeActive = true
+		updateBlueLine()
+
+		// Pass the enableTx flag into RunManualOscillator
+		go morse.RunManualOscillator(func(statusMsg, mainMsg string) {
+			app.QueueUpdateDraw(func() {
+				if statusMsg == "STOP" {
+					morse.IsManualOscModeActive = false
+					currentState = StateIdle
+
+					inputArea.SetText("", false)
+					statusLine.SetText(" [green]Ready.[-]")
+					updateBlueLine()
+				} else {
+					if statusMsg != "" {
+						statusLine.SetText(statusMsg)
+					}
+					if mainMsg != "" {
+						inputArea.SetText(mainMsg, false)
+					}
+				}
+			})
+		}, enableTx) // <-- Note: enableTx passed here
+	}
+
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		// Add this near the top of your app.SetInputCapture function:
+		if currentState == StatePromptingTx {
+			char := event.Rune()
+			key := event.Key()
+
+			if char == 'y' || char == 'Y' {
+				// They said YES. Launch with TX enabled.
+				statusLine.SetText(" [red]Transmitter Keying ENABLED.")
+				launchOscillator(true)
+				return nil
+			} else if char == 'n' || char == 'N' || key == tcell.KeyEnter {
+				// They said NO (or hit Enter to default to No). Launch local only.
+				statusLine.SetText(" [green]Local Practice Only.")
+				launchOscillator(false)
+				return nil
+			} else if key == tcell.KeyEscape {
+				// They panicked and hit ESC. Abort entirely.
+				currentState = StateIdle
+				inputArea.SetText("", false)
+				statusLine.SetText(" [green]Ready.[-]")
+				updateBlueLine()
+				return nil
+			}
+
+			// If they press any other key, ignore it and keep waiting for y/n
+			return nil
+		}
 
 		if event.Key() == tcell.KeyCtrlC {
 			return event
@@ -511,41 +600,20 @@ func main() {
 			}
 			return nil
 		case tcell.KeyF4:
-			if currentState == StateIdle || currentState == StateStopped {
-				currentState = StatePlaying
-
-				inputArea.SetText("\n\n *** PRACTICE OSCILLATOR MODE ***\n\n Initializing...", false)
+			if config.User.XmtrPort == "" || strings.EqualFold(config.User.XmtrPort, "none") {
+				// No TX port configured, launch local practice immediately
+				inputArea.SetText("\n\n *** OSCILLATOR MODE ***\n\n Initializing local practice...", false)
 				statusLine.SetText(" [yellow]Starting Manual Oscillator...")
+				launchOscillator(false)
+			} else {
+				// TX Port IS configured. We must ask the user.
+				// We change the state so the main loop knows to look for 'y' or 'n'
+				currentState = StatePromptingTx // (You will need to define this constant like you did StatePlaying)
 
-				morse.IsStopping = false
-				morse.IsManualOscModeActive = true // 1. Set the flag
-				updateBlueLine()                    // 2. Force the blue line to update immediately
+				statusLine.SetText(" [yellow]Do you want to key your transmitter? (y/N): ")
+				inputArea.SetText(fmt.Sprintf("\n\n *** OSCILLATOR MODE ***\n\n WARNING: port (%s) is configured and ON THE AIR!.\n\n Press 'y' to key transmitter, or 'n' / Enter for local practice only.", config.User.XmtrPort), false)
 
-				// Launch as a goroutine so it doesn't freeze the UI
-				go morse.RunManualOscillator(func(statusMsg, mainMsg string) {
-					app.QueueUpdateDraw(func() {
-						// Intercept the STOP signal sent when ESC is pressed
-						if statusMsg == "STOP" {
-							morse.IsManualOscModeActive = false
-							currentState = StateIdle // Reset state
-
-							// Clear the manual oscillator screen
-							inputArea.SetText("", false)
-							statusLine.SetText(" [green]Ready.[-]")
-
-							// Restore the full blue line!
-							updateBlueLine()
-						} else {
-							// Normal UI updates while running
-							if statusMsg != "" {
-								statusLine.SetText(statusMsg)
-							}
-							if mainMsg != "" {
-								inputArea.SetText(mainMsg, false)
-							}
-						}
-					})
-				})
+				updateBlueLine()
 			}
 			return nil
 		case tcell.KeyCtrlT:
@@ -690,11 +758,6 @@ func main() {
 			app.Stop()
 		}
 		log.Fatalf("Fatal UI Error: %v", err)
-	}
-
-	logFile.Close()
-	if info, err := os.Stat(logPath); err == nil && info.Size() == 0 {
-		os.Remove(logPath)
 	}
 }
 
