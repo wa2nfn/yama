@@ -26,6 +26,8 @@ var (
 	pink1                float32
 	pink2                float32
 
+	uiAbort              bool    // <--- DEFINED HERE: Kills the UI text rendering early
+
 	OnFatalError func(errorMessage string)
 )
 
@@ -56,7 +58,8 @@ type gaplessReader struct {
 }
 
 func (g *gaplessReader) Read(p []byte) (n int, err error) {
-	if IsStopping {
+	// If the user hit abort (ENTER/BACKSPACE/REST), stop reading audio instantly!
+	if IsStopping || ForceEchoRetry || ForceEchoFinish || ForceEchoRest {
 		return 0, io.EOF
 	}
 
@@ -82,6 +85,8 @@ func Flush() {
 		return
 	}
 
+	uiAbort = false // <--- 1. Reset the UI kill-switch at the start of the word
+
 	blocks := queue
 
 	totalFrames := 0
@@ -105,7 +110,8 @@ func Flush() {
 		var elapsed time.Duration
 
 		for _, block := range uiQueue {
-			if IsStopping {
+			// 2. The UI checks our dedicated kill-switch!
+			if IsStopping || uiAbort {
 				break
 			}
 
@@ -124,9 +130,27 @@ func Flush() {
 		}
 	}(blocks)
 
-	for p.IsPlaying() {
-		if IsStopping {
+	flushStart := time.Now()
+	for {
+
+		// 3. If the user aborts, flip the UI kill-switch before breaking!
+		if IsStopping || ForceEchoRetry || ForceEchoFinish || ForceEchoRest {
+			uiAbort = true
 			break
+		}
+
+		// oto's IsPlaying() can return false immediately after Play()
+		// if the OS audio bridge hasn't spun up yet (especially after a Pause).
+		// We enforce a sanity check against the mathematically expected duration.
+		isPlaying := p.IsPlaying()
+		elapsed := time.Since(flushStart)
+
+		if !isPlaying {
+			// If it claims it's done, but we haven't even played 90% of the expected time,
+			// the audio engine is just lagging on startup. Keep waiting!
+			if elapsed >= expectedDuration-(20*time.Millisecond) {
+				break
+			}
 		}
 
 		if time.Now().After(timeout) {
@@ -140,9 +164,17 @@ func Flush() {
 		time.Sleep(5 * time.Millisecond)
 	}
 
-	if time.Now().Before(timeout) {
+	// ---------------------------------------------------------
+	// CLEANUP & ABORT
+	// ---------------------------------------------------------
+	if p != nil {
+		// We MUST Close the player every time to free the OS audio memory!
+		// If we aborted early, this instantly kills the sound.
+		// If it finished normally, this safely recycles the RAM.
 		p.Close()
 	}
+
+	// ALWAYS wipe the queue so we have a clean slate for the next word
 	queue = nil
 }
 

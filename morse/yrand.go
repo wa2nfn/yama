@@ -24,17 +24,7 @@ func FastFloat32() float32 {
 	return float32(fastRandUint32()) / 4294967296.0
 }
 
-// FastFloat64 returns a float64 in [0, 1).
-func FastFloat64() float64 {
-	return float64(fastRandUint32()) / 4294967296.0
-}
-
 // FastFloatSigned32 returns a float32 in [-1, +1].
 func FastFloatSigned32() float32 {
 	return (FastFloat32() * 2.0) - 1.0
-}
-
-// FastFloatSigned64 returns a float64 in [-1, +1].
-func FastFloatSigned64() float64 {
-	return (FastFloat64() * 2.0) - 1.0
 }

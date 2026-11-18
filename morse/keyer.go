@@ -164,6 +164,11 @@ func RunKeyer(device string,
 		}()
 	}
 
+	useDTR := (powerPin == "DTR") || config.User.KeyParasiticPower
+	useRTS := (powerPin == "RTS") || config.User.KeyParasiticPower
+	_ = p.SetDTR(useDTR)
+	_ = p.SetRTS(useRTS)
+
 	ditPin := monitorPin1
 	dahPin := monitorPin2
 	if config.User.KeyerReversed && device != "Cootie" {

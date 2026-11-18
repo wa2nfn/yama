@@ -25,14 +25,12 @@ func showKeyDeviceOptions() {
 		"CD:1-RTS:7-RI:9",
 		"CTS:8-RTS:7-RI:9"}
 
-	// --- Port Setup (Ensure "None" is ALWAYS index 0) ---
-	ports, err := morse.GetSerialPorts()
+	// --- Port Setup ---
+	ports, _ := morse.GetSerialPorts()
 	clean := []string{"None"}
-	if err == nil {
-		for _, p := range ports {
-			if strings.TrimSpace(p) != "" && strings.TrimSpace(p) != "None" {
-				clean = append(clean, p)
-			}
+	for _, p := range ports {
+		if strings.TrimSpace(p) != "" && strings.TrimSpace(p) != "None" {
+			clean = append(clean, p)
 		}
 	}
 	ports = clean
@@ -62,33 +60,18 @@ func showKeyDeviceOptions() {
 	echoPortDrop.SetFieldBackgroundColor(tcell.ColorBlue)
 	echoPortDrop.SetFieldTextColor(tcell.ColorWhite)
 
-	// --- Transmitter Port Definition ---
 	xmtrPortDrop := tview.NewDropDown().
 		SetLabel("Transmitter Port").
 		SetOptions(ports, nil)
 	xmtrPortDrop.SetFieldBackgroundColor(tcell.ColorBlue)
 	xmtrPortDrop.SetFieldTextColor(tcell.ColorWhite)
 
-	// --- MUTUAL EXCLUSIVITY LOGIC ---
-	echoPortDrop.SetSelectedFunc(func(text string, index int) {
-		if text == "None" {
-			return
-		} // Do nothing if they select None
-		_, currXmtr := xmtrPortDrop.GetCurrentOption()
-		if text == currXmtr {
-			xmtrPortDrop.SetCurrentOption(0) // Force Xmtr Port back to "None"
-		}
-	})
-
-	xmtrPortDrop.SetSelectedFunc(func(text string, index int) {
-		if text == "None" {
-			return
-		}
-		_, currEcho := echoPortDrop.GetCurrentOption()
-		if text == currEcho {
-			echoPortDrop.SetCurrentOption(0) // Force Echo Port back to "None"
-		}
-	})
+	xmtrInterfaceDrop := tview.NewDropDown().
+		SetLabel("Transmitter Interface").
+		SetOptions([]string{"DTR:4", "RTS:7", "Both"}, nil).
+		SetCurrentOption(0)
+	xmtrInterfaceDrop.SetFieldBackgroundColor(tcell.ColorBlue)
+	xmtrInterfaceDrop.SetFieldTextColor(tcell.ColorWhite)
 
 	keyLineWireDrop := tview.NewDropDown().
 		SetLabel("Key Adapter Interface").
@@ -96,6 +79,58 @@ func showKeyDeviceOptions() {
 		SetCurrentOption(0)
 	keyLineWireDrop.SetFieldBackgroundColor(tcell.ColorBlue)
 	keyLineWireDrop.SetFieldTextColor(tcell.ColorWhite)
+
+	// --- SMART TRANSMITTER INTERFACE FILTERING ---
+	isInitializing := true
+
+	updateXmtrInterface := func(targetSelection string) {
+		_, echoPort := echoPortDrop.GetCurrentOption()
+		_, xmtrPort := xmtrPortDrop.GetCurrentOption()
+		_, adapterWire := keyLineWireDrop.GetCurrentOption()
+
+		if targetSelection == "" {
+			_, targetSelection = xmtrInterfaceDrop.GetCurrentOption()
+		}
+
+		availableOptions := []string{"DTR:4", "RTS:7", "Both"}
+
+		if echoPort == xmtrPort && echoPort != "None" && echoPort != "" {
+			if strings.Contains(adapterWire, "DTR") {
+				availableOptions = []string{"RTS:7"}
+			} else if strings.Contains(adapterWire, "RTS") {
+				availableOptions = []string{"DTR:4"}
+			}
+		}
+
+		xmtrInterfaceDrop.SetOptions(availableOptions, nil)
+
+		var newIdx int
+		for i, opt := range availableOptions {
+			if opt == targetSelection {
+				newIdx = i
+				break
+			}
+		}
+		xmtrInterfaceDrop.SetCurrentOption(newIdx)
+	}
+
+	echoPortDrop.SetSelectedFunc(func(text string, index int) {
+		if !isInitializing {
+			updateXmtrInterface("")
+		}
+	})
+
+	xmtrPortDrop.SetSelectedFunc(func(text string, index int) {
+		if !isInitializing {
+			updateXmtrInterface("")
+		}
+	})
+
+	keyLineWireDrop.SetSelectedFunc(func(text string, index int) {
+		if !isInitializing {
+			updateXmtrInterface("")
+		}
+	})
 
 	keyerReversedCb := tview.NewCheckbox().
 		SetLabel("Dit/Dah Side Reverse")
@@ -110,9 +145,11 @@ func showKeyDeviceOptions() {
 	idlePolDrop.SetFieldBackgroundColor(tcell.ColorBlue)
 	idlePolDrop.SetFieldTextColor(tcell.ColorWhite)
 
-	// RESET (init + Reset button)
+	// RESET
 	resetState := func() {
-		kdIndex := 0
+		isInitializing = true
+
+		var kdIndex int
 		for i, opt := range keyDeviceOptions {
 			if config.User.KeyDevice == opt {
 				kdIndex = i
@@ -121,7 +158,7 @@ func showKeyDeviceOptions() {
 		}
 		keyDeviceDrop.SetCurrentOption(kdIndex)
 
-		ddIndex := 5
+		var ddIndex int = 5
 		for i, val := range ditdahThresholdValues {
 			if config.User.DitDahThreshold == val {
 				ddIndex = i
@@ -130,7 +167,7 @@ func showKeyDeviceOptions() {
 		}
 		ditdahThresholdDrop.SetCurrentOption(ddIndex)
 
-		lmIndex := 0
+		var lmIndex int
 		for i, opt := range keyLineWireOptions {
 			if config.User.KeyLineWireMode == opt {
 				lmIndex = i
@@ -148,8 +185,7 @@ func showKeyDeviceOptions() {
 			idlePolDrop.SetCurrentOption(0)
 		}
 
-		// Restore Echo Port
-		echoIdx := 0
+		var echoIdx int
 		for i, p := range ports {
 			if p == config.User.KeyerPort {
 				echoIdx = i
@@ -158,15 +194,17 @@ func showKeyDeviceOptions() {
 		}
 		echoPortDrop.SetCurrentOption(echoIdx)
 
-		// Restore Xmtr Port
-		xmtrIdx := 0
+		var xmtrIdx int
 		for i, p := range ports {
-			if p == config.User.XmtrPort {
+			if p == config.User.TransmitterPort {
 				xmtrIdx = i
 				break
 			}
 		}
 		xmtrPortDrop.SetCurrentOption(xmtrIdx)
+
+		updateXmtrInterface(config.User.TransmitterInterface)
+		isInitializing = false
 	}
 
 	form.AddTextView("", "", 0, 1, false, false)
@@ -178,6 +216,7 @@ func showKeyDeviceOptions() {
 	form.AddFormItem(idlePolDrop)
 	form.AddTextView("", "", 0, 1, false, false)
 	form.AddFormItem(xmtrPortDrop)
+	form.AddFormItem(xmtrInterfaceDrop)
 	form.AddTextView("", "", 0, 1, false, false)
 	form.AddFormItem(keyerReversedCb)
 	form.AddFormItem(ditdahThresholdDrop)
@@ -186,88 +225,109 @@ func showKeyDeviceOptions() {
 
 	// SAVE
 	onSave := func() {
-		lmIdx, _ := keyLineWireDrop.GetCurrentOption()
-		if lmIdx >= 0 && lmIdx < len(keyLineWireOptions) {
-			config.User.KeyLineWireMode = keyLineWireOptions[lmIdx]
-		} else {
-			config.User.KeyLineWireMode = "CTS:8-DTR:4-DSR:6"
-		}
+		var errors []string
 
-		lmIdx, _ = keyDeviceDrop.GetCurrentOption()
-		if lmIdx >= 0 && lmIdx < len(keyDeviceOptions) {
-			config.User.KeyDevice = keyDeviceOptions[lmIdx]
-		} else {
-			config.User.KeyDevice = "Key/bug"
-		}
-
-		ddIdx, _ := ditdahThresholdDrop.GetCurrentOption()
-		if ddIdx >= 0 && ddIdx < len(ditdahThresholdValues) {
-			config.User.DitDahThreshold = ditdahThresholdValues[ddIdx]
-		} else {
-			config.User.DitDahThreshold = 0.50
-		}
-
-		config.User.KeyParasiticPower = parasiticCb.IsChecked()
-		config.User.KeyerReversed = keyerReversedCb.IsChecked()
-
-		ipIdx, _ := idlePolDrop.GetCurrentOption()
-		config.User.KeyLineIdlePolarity = (ipIdx == 1)
-
-		// Save both ports
 		_, ePort := echoPortDrop.GetCurrentOption()
-		config.User.KeyerPort = ePort
-
 		_, xPort := xmtrPortDrop.GetCurrentOption()
-		config.User.XmtrPort = xPort
 
-		config.SaveConfig()
-
-		if !config.User.Echo {
-			closeEchoStatsWindow()
+		_, adapterWire := keyLineWireDrop.GetCurrentOption()
+		if adapterWire == "" {
+			adapterWire = "CTS:8-DTR:4-DSR:6"
 		}
 
-		updateBlueLine()
-		pages.RemovePage("keyEcho")
-		app.SetFocus(inputArea)
+		_, txIfc := xmtrInterfaceDrop.GetCurrentOption()
+		if txIfc == "" {
+			txIfc = "DTR"
+		}
+
+		if ePort == xPort && ePort != "None" && ePort != "" {
+			if txIfc == "Both" {
+				errors = append(errors, "COM Port Conflict: You cannot use 'Both' for Transmitter Interface when sharing a single COM port.")
+			} else if strings.Contains(adapterWire, "DTR") && txIfc == "DTR" {
+				errors = append(errors, "COM Port Conflict: DTR is used by your Key Adapter. Please select RTS for the Transmitter Interface.")
+			} else if strings.Contains(adapterWire, "RTS") && txIfc == "RTS" {
+				errors = append(errors, "COM Port Conflict: RTS is used by your Key Adapter. Please select DTR for the Transmitter Interface.")
+			}
+		}
+
+		apply := func() {
+			config.User.KeyLineWireMode = adapterWire
+
+			_, kdText := keyDeviceDrop.GetCurrentOption()
+			if kdText != "" {
+				config.User.KeyDevice = kdText
+			} else {
+				config.User.KeyDevice = "Straight/bug"
+			}
+
+			var ddIdx int
+			ddIdx, _ = ditdahThresholdDrop.GetCurrentOption()
+			if ddIdx >= 0 && ddIdx < len(ditdahThresholdValues) {
+				config.User.DitDahThreshold = ditdahThresholdValues[ddIdx]
+			} else {
+				config.User.DitDahThreshold = 0.50
+			}
+
+			config.User.KeyParasiticPower = parasiticCb.IsChecked()
+			config.User.KeyerReversed = keyerReversedCb.IsChecked()
+
+			var ipIdx int
+			ipIdx, _ = idlePolDrop.GetCurrentOption()
+			config.User.KeyLineIdlePolarity = (ipIdx == 1)
+
+			config.User.KeyerPort = ePort
+			config.User.TransmitterPort = xPort
+			config.User.TransmitterInterface = txIfc
+
+			config.SaveConfig()
+
+			if !config.User.Echo {
+				closeEchoStatsWindow()
+			}
+
+			updateBlueLine()
+			pages.RemovePage("keyEcho")
+			app.SetFocus(inputArea)
+		}
+
+		if len(errors) > 0 {
+			showErrorModal(errors, func() { app.SetFocus(form) })
+		} else {
+			apply()
+		}
 	}
 
 	onRefreshPorts := func() {
-		newPorts, err := morse.GetSerialPorts()
-		var clean []string = []string{"None"}
-		if err == nil {
-			for _, p := range newPorts {
-				if strings.TrimSpace(p) != "" && strings.TrimSpace(p) != "None" {
-					clean = append(clean, p)
+		_, currentMonitorText := echoPortDrop.GetCurrentOption()
+		_, currentXmtrText := xmtrPortDrop.GetCurrentOption()
+
+		freshPorts, _ := morse.GetSerialPorts()
+		freshClean := []string{"None"}
+		for _, p := range freshPorts {
+			if strings.TrimSpace(p) != "" && strings.TrimSpace(p) != "None" {
+				freshClean = append(freshClean, p)
+			}
+		}
+
+		echoPortDrop.SetOptions(freshClean, nil)
+		xmtrPortDrop.SetOptions(freshClean, nil)
+
+		restoreSelection := func(dd *tview.DropDown, targetText string) {
+			var restoredIdx int
+			for i, opt := range freshClean {
+				if opt == targetText {
+					restoredIdx = i
+					break
 				}
 			}
+			dd.SetCurrentOption(restoredIdx)
 		}
 
-		echoPortDrop.SetOptions(clean, nil)
-		xmtrPortDrop.SetOptions(clean, nil)
+		restoreSelection(echoPortDrop, currentMonitorText)
+		restoreSelection(xmtrPortDrop, currentXmtrText)
 
-		// Try to preserve Echo
-		eIdx := 0
-		for i, p := range clean {
-			if p == config.User.KeyerPort {
-				eIdx = i
-				break
-			}
-		}
-		echoPortDrop.SetCurrentOption(eIdx)
-
-		// Try to preserve Xmtr
-		xIdx := 0
-		for i, p := range clean {
-			if p == config.User.XmtrPort {
-				xIdx = i
-				break
-			}
-		}
-		// Failsafe: If somehow they both ended up on the same valid port, clear Xmtr
-		if eIdx == xIdx && eIdx != 0 {
-			xIdx = 0
-		}
-		xmtrPortDrop.SetCurrentOption(xIdx)
+		_, currentXmtrIfc := xmtrInterfaceDrop.GetCurrentOption()
+		updateXmtrInterface(currentXmtrIfc)
 	}
 
 	form.AddButton("Save", onSave)

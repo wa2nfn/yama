@@ -3,33 +3,22 @@ package main
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"yama/config"
-	"yama/morse"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
 func showKeyEchoOptions() {
+	// Lobotomize the main text area so clicks don't fall through
+	inputArea.SetMouseCapture(func(action tview.MouseAction, event *tcell.EventMouse) (tview.MouseAction, *tcell.EventMouse) {
+		return action, nil
+	})
+
 	form := tview.NewForm()
 	form.SetItemPadding(0) // Removes the blank lines between form fields
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	form.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
-
-	// --- Echo Port ---
-	ports, err := morse.GetSerialPorts()
-	if err != nil || len(ports) == 0 {
-		ports = []string{"None"}
-	}
-	clean := []string{}
-	for _, p := range ports {
-		if strings.TrimSpace(p) != "" {
-			clean = append(clean, p)
-		}
-	}
-	ports = clean
-
 	// --- Tolerance ---
 	tolDrop := tview.NewDropDown().SetLabel("Tolerance (%)")
 	tolOptions := []string{}
@@ -208,6 +197,7 @@ func showKeyEchoOptions() {
 
 		updateBlueLine()
 		pages.RemovePage("keyEcho")
+		inputArea.SetMouseCapture(nil)
 		app.SetFocus(inputArea)
 	}
 
@@ -215,6 +205,7 @@ func showKeyEchoOptions() {
 	form.AddButton("Reset", resetState)
 	form.AddButton("Cancel", func() {
 		pages.RemovePage("keyEcho")
+		inputArea.SetMouseCapture(nil)
 		app.SetFocus(inputArea)
 	})
 
@@ -238,6 +229,7 @@ func showKeyEchoOptions() {
 	container.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
 			pages.RemovePage("keyEcho")
+			inputArea.SetMouseCapture(nil)
 			app.SetFocus(inputArea)
 			return nil
 		}

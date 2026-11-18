@@ -6,9 +6,9 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"strings"
 	"time"
-	"unicode"
 	"yama/config"
 	"yama/morse"
 
@@ -52,10 +52,11 @@ var (
 
 	colorTagRegex = regexp.MustCompile(`\[.*?\]`)
 
-	isProgrammaticUpdate bool
-	lastFlashcardGroup   []string
-	echoActive           bool
-	currentEchoView      tview.Primitive
+	lastFlashcardGroup []string
+	echoActive         bool
+	currentEchoView    tview.Primitive
+	
+	lastSkipTime       time.Time 
 )
 
 func checkIWRFiles() (targetPath string) {
@@ -94,7 +95,6 @@ func main() {
 	logPath := morse.ResolvePath("yama.log")
 	logFile, _ := os.OpenFile(logPath, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0666)
 	log.SetOutput(logFile)
-	// Assuming you just opened logFile and checked for errors here...
 
 	defer func() {
 		logFile.Close()
@@ -137,7 +137,7 @@ func main() {
 			if app != nil {
 				app.Stop()
 			}
-			log.Fatalf("YAMA Crashed: %v\n", r)
+			log.Fatalf("YAMA Crashed: %v\nStack Trace:\n%s\n", r, string(debug.Stack()))
 		}
 	}()
 
@@ -151,7 +151,11 @@ func main() {
 
 	app.SetAfterDrawFunc(func(s tcell.Screen) {
 		if currentState == StatePlaying {
-			s.HideCursor()
+			// Don't hide the cursor if a modal is open!
+			frontName, _ := pages.GetFrontPage()
+			if frontName == "main" || frontName == "" {
+				s.HideCursor()
+			}
 		}
 	})
 
@@ -193,63 +197,27 @@ func main() {
 	inputArea.SetPlaceholder("Enter text (or Ctrl-F select a file), then Ctrl-P to Play;\nor use function key F1 for full Help.")
 
 	inputArea.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		// 1. SWALLOW CARRIAGE RETURNS FROM WINDOWS PASTES
+		if event.Key() == tcell.KeyRune && event.Rune() == '\r' {
+			return nil
+		}
+
+		// 2. MASSIVE FILE CRASH GUARDRAIL
 		if event.Key() == tcell.KeyDelete || event.Key() == tcell.KeyBackspace || event.Key() == tcell.KeyBackspace2 {
-			txt := inputArea.GetText()
-			_, col, _, _ := inputArea.GetCursor()
-
-			if event.Key() == tcell.KeyDelete && col < len(txt) {
-				newTxt := txt[:col] + txt[col+1:]
-				inputArea.SetText(newTxt, false)
-			}
-
-			// Wait for deletion to process, then refresh
-			go func() {
-				time.Sleep(20 * time.Millisecond)
-				app.QueueUpdateDraw(func() {
-					refreshUI(currentState)
-				})
-			}()
-
-			if event.Key() == tcell.KeyDelete {
+			if len(inputArea.GetText()) > 500 {
 				return nil
 			}
 			return event
 		}
 
-		if event.Key() == tcell.KeyRune {
-			r := event.Rune()
-
-			// compress space
-			if r == ' ' {
-				current := inputArea.GetText()
-				if len(current) > 0 && current[len(current)-1] == ' ' {
-					return nil
-				}
-			}
-
-			// DEFER THE REFRESH: Let the widget process the key first!
-			go func() {
-				time.Sleep(20 * time.Millisecond)
-				app.QueueUpdateDraw(func() {
-					refreshUI(currentState)
-				})
-			}()
-
-			upper := unicode.ToUpper(r)
-			if upper != r {
-				return tcell.NewEventKey(tcell.KeyRune, upper, event.Modifiers())
-			}
-		}
-
+		// 3. LET EVERYTHING ELSE PASS THROUGH NATIVELY
 		return event
 	})
 
 	// Explicitly map the placeholder to Gray to stop PowerShell from guessing Green
 	inputArea.SetPlaceholderStyle(tcell.StyleDefault.Foreground(tcell.ColorGray).Background(tcell.ColorBlack))
 
-	inputArea.SetChangedFunc(func() {
-		// do nothing
-	})
+	inputArea.SetChangedFunc(onInputAreaChanged)
 
 	morse.OnClearFlashcardScreen = clearFlashcardScreen
 
@@ -259,7 +227,6 @@ func main() {
 		}
 
 		char = colorTagRegex.ReplaceAllString(char, "")
-
 		char = strings.TrimSpace(char)
 		if char == "" {
 			return
@@ -289,7 +256,7 @@ func main() {
 			statsIWRWords++
 			statsIWRMap[word]++
 		}
-		updateBlueLine() // for word cnt
+		updateBlueLine()
 	}
 
 	morse.ShowBlueLineTolerance = func() { updateBlueLine() }
@@ -297,7 +264,6 @@ func main() {
 	morse.OnEchoEnd = func() { echoActive = false }
 
 	morse.OnStatusUpdate = func(msg string) {
-		// ONE queue to lock the main UI thread for all the updates inside
 		app.QueueUpdateDraw(func() {
 
 			if echoActive {
@@ -305,7 +271,7 @@ func main() {
 					statusLine.SetText(msg[5:])
 				}
 				app.SetFocus(inputArea)
-				return // Exits early so the rest of the block doesn't run
+				return
 			}
 
 			if msg == "STOP" {
@@ -315,17 +281,13 @@ func main() {
 				statusLine.SetText(msg)
 			}
 
-			// We are still safely inside the first QueueUpdateDraw,
-			// so we can just set the focus directly here at the end.
 			app.SetFocus(inputArea)
 		})
 	}
 
 	morse.OnEchoReadyCursor = func(visible bool) {
 		app.QueueUpdateDraw(func() {
-			// Drop to the next line with a plain block. No color tags allowed in InputFields!
-			cursorTag := "\n█"
-
+			cursorTag := "\n\u2588"
 			currentText := inputArea.GetText()
 
 			if visible {
@@ -344,7 +306,6 @@ func main() {
 	morse.OnEchoCharDecoded = func(char string) {
 		if config.User.VisualFeedback {
 			app.QueueUpdateDraw(func() {
-				// Grab the current text from your 2nd line TextView, append the char, and set it back.
 				text := inputArea.GetText()
 				lines := strings.Split(text, "\n")
 
@@ -356,7 +317,6 @@ func main() {
 					lines[1] += char
 					inputArea.SetText(strings.Join(lines, "\n"), true)
 				}
-
 			})
 		}
 	}
@@ -365,28 +325,20 @@ func main() {
 		currentGroupStats = group
 		currentSessionStats = session
 
-		// We only check and update the SINGLE wide text view now
 		if echoStatsTextView != nil {
 			app.QueueUpdateDraw(func() {
-				// 1. Get the exact timing targets dynamically
 				currentProfile := morse.GetTiming(false, config.User)
-
-				// 2. Build the text (passing the profile in so the math works!)
 				statsText := buildEchoStatsText(currentGroupStats, currentSessionStats, currentProfile)
-
-				// 3. Update your single tview text view
 				echoStatsTextView.SetText(statsText)
 			})
 		}
 	}
 
 	morse.OnGroupCompleted = func(words []string) {
-		// Store the exact logical words of the last group
 		lastFlashcardGroup = append([]string{}, words...)
 	}
 	morse.OnFatalError = EmergencyQuit
 
-	// Inside your main setup, where you handle the UI callbacks:
 	pages = tview.NewPages()
 	pages.SetBackgroundColor(tcell.ColorBlack)
 	refreshUI(StateIdle)
@@ -399,21 +351,26 @@ func main() {
 
 	mainFlex.SetBackgroundColor(tcell.ColorBlack)
 
-	// Lock the main app inside a rigid grid so it never over-expands
 	centeredAppLayout := tview.NewGrid().
-		SetColumns(0, 120, 0). // Auto left-margin, 100-col center, Auto right-margin
-		SetRows(0, 30, 0).     // Auto top-margin, 30-row center, Auto bottom-margin
+		SetColumns(0, 120, 0).
+		SetRows(0, 30, 0).
 		AddItem(mainFlex, 1, 1, 1, 1, 0, 0, true)
 
 	pages.AddPage("main", centeredAppLayout, true, true)
 
 	launchOscillator := func(enableTx bool) {
+		closeEchoStatsWindow()
 		currentState = StatePlaying
 		morse.IsStopping = false
 		morse.IsManualOscModeActive = true
+
+		if enableTx {
+			header.SetText("[red] YAMA: LIVE TRANSMITTER[-]")
+		} else {
+			header.SetText("[red] YAMA: PRACTICE KEYING[-]")
+		}
 		updateBlueLine()
 
-		// Pass the enableTx flag into RunManualOscillator
 		go morse.RunManualOscillator(func(statusMsg, mainMsg string) {
 			app.QueueUpdateDraw(func() {
 				if statusMsg == "STOP" {
@@ -422,6 +379,8 @@ func main() {
 
 					inputArea.SetText("", false)
 					statusLine.SetText(" [green]Ready.[-]")
+
+					refreshUI(currentState)
 					updateBlueLine()
 				} else {
 					if statusMsg != "" {
@@ -432,65 +391,106 @@ func main() {
 					}
 				}
 			})
-		}, enableTx) // <-- Note: enableTx passed here
-		currentState = StatePlaying
-		morse.IsStopping = false
-		morse.IsManualOscModeActive = true
-		updateBlueLine()
+		}, enableTx)
+	}
 
-		// Pass the enableTx flag into RunManualOscillator
-		go morse.RunManualOscillator(func(statusMsg, mainMsg string) {
-			app.QueueUpdateDraw(func() {
-				if statusMsg == "STOP" {
-					morse.IsManualOscModeActive = false
-					currentState = StateIdle
+	showTransmitSafetyLock := func() {
+		warningText := " WARNING: LIVE TRANSMITTER CONTROL \n\n" +
+			"By enabling this mode, you are connectting your key to a transmitting radio.\n" +
+			"\nYou are actng as the Transmitter Control Operator and\n" +
+			"assume legal responsibility for station operation, \n" +
+			"and licensing compliance.\n\n" +
+			"DO NOT LEAVE YOUR KEY DEVICE UNATTENDED.\n\n" +
+			"ESC disables the connection and exits.\n\n"
 
-					inputArea.SetText("", false)
-					statusLine.SetText(" [green]Ready.[-]")
-					updateBlueLine()
-				} else {
-					if statusMsg != "" {
-						statusLine.SetText(statusMsg)
-					}
-					if mainMsg != "" {
-						inputArea.SetText(mainMsg, false)
-					}
-				}
+		inputForm := tview.NewForm()
+		inputForm.SetBorder(true).
+			SetTitle(" On-Air Confirmaton ").
+			SetTitleColor(tcell.ColorRed).
+			SetBorderColor(tcell.ColorRed)
+
+		inputForm.AddTextView("Warning", warningText, 65, 11, true, false)
+
+		inputField := tview.NewInputField().
+			SetLabel("Type yes to enable: ").
+			SetFieldWidth(10).
+			SetAcceptanceFunc(func(textToCheck string, lastChar rune) bool {
+				return len(textToCheck) <= 3
 			})
-		}, enableTx) // <-- Note: enableTx passed here
+
+		inputForm.AddFormItem(inputField)
+
+		onSave := func() {
+			if inputField.GetText() == "yes" {
+				pages.RemovePage("TxWarning")
+
+				inputArea.SetText(fmt.Sprintf("\n\n *** LIVE TRANSMITTER MODE ***\n\n WARNING: port (%s) is ON THE AIR!.\n\n DO NOT LEAVE KEY UNATTENDED. Press ESC to exit.", config.User.TransmitterPort), false)
+				statusLine.SetText(" [red]LIVE TRANSMIT MODE ACTIVE")
+
+				launchOscillator(true)
+			} else {
+				pages.RemovePage("TxWarning")
+			}
+		}
+
+		inputForm.AddButton("Save", onSave)
+
+		inputForm.AddButton("Cancel", func() {
+			pages.RemovePage("TxWarning")
+			app.SetFocus(inputArea)
+		})
+
+		modal := tview.NewFlex().
+			AddItem(nil, 0, 1, false).
+			AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+				AddItem(nil, 0, 1, false).
+				AddItem(inputForm, 22, 1, true).
+				AddItem(nil, 0, 1, false), 70, 1, true).
+			AddItem(nil, 0, 1, false)
+
+		modal.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+			if event.Key() == tcell.KeyCtrlS {
+				onSave()
+				return nil
+			}
+			if event.Key() == tcell.KeyCtrlC {
+				pages.RemovePage("TxWarning")
+				app.SetFocus(inputArea)
+				return nil
+			}
+			if event.Key() == tcell.KeyEscape {
+				pages.RemovePage("TxWarning")
+				app.SetFocus(inputArea)
+				return nil
+			}
+			return event
+		})
+
+		pages.AddPage("TxWarning", modal, true, true)
+		app.SetFocus(inputForm)
 	}
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		// Add this near the top of your app.SetInputCapture function:
 		if currentState == StatePromptingTx {
 			char := event.Rune()
 			key := event.Key()
 
 			if char == 'y' || char == 'Y' {
-				// They said YES. Launch with TX enabled.
 				statusLine.SetText(" [red]Transmitter Keying ENABLED.")
 				launchOscillator(true)
 				return nil
 			} else if char == 'n' || char == 'N' || key == tcell.KeyEnter {
-				// They said NO (or hit Enter to default to No). Launch local only.
 				statusLine.SetText(" [green]Local Practice Only.")
 				launchOscillator(false)
 				return nil
 			} else if key == tcell.KeyEscape {
-				// They panicked and hit ESC. Abort entirely.
 				currentState = StateIdle
 				inputArea.SetText("", false)
 				statusLine.SetText(" [green]Ready.[-]")
 				updateBlueLine()
 				return nil
 			}
-
-			// If they press any other key, ignore it and keep waiting for y/n
 			return nil
-		}
-
-		if event.Key() == tcell.KeyCtrlC {
-			return event
 		}
 
 		if event.Key() == tcell.KeyEsc {
@@ -500,8 +500,7 @@ func main() {
 				return event
 			}
 
-			// ⚡ If your echo stats window is front-most or open, close it cleanly
-			if frontName == "echoStats" || frontName == "stats" {
+			if frontName == "echoStats" {
 				closeEchoStatsWindow()
 				app.SetFocus(inputArea)
 				return nil
@@ -540,14 +539,26 @@ func main() {
 			}
 		}
 
+		// If no modal shield caught it, global Ctrl-C exits or returns nil here
+		if event.Key() == tcell.KeyCtrlC {
+			return nil
+		}
+
+
+		// ----------------------------------------------------
+		// THE SHIELD: Let modals handle their own keys!
+		// ----------------------------------------------------
+		frontName, _ := pages.GetFrontPage()
+		if frontName != "main" && frontName != "" {
+			return event 
+		}
+
 		switch event.Key() {
 		case tcell.KeyCtrlH, tcell.KeyBackspace, tcell.KeyBackspace2:
 			if currentState == StatePlaying {
-				if currentState == StatePlaying {
-					if morse.IsWaitingForUserKey() {
-						morse.SignalUserKey('B')
-						eraseLastGroupFromScreen()
-					}
+				if morse.IsWaitingForUserKey() {
+					morse.SignalUserKey('B')
+					eraseLastGroupFromScreen()
 				}
 				return nil
 			}
@@ -558,7 +569,7 @@ func main() {
 		case tcell.KeyCtrlA:
 			text := inputArea.GetText()
 			hasText := len(strings.Fields(text)) > 0
-			if currentState != StatePlaying && currentState != StatePaused && !hasText {
+			if currentState == StateIdle || currentState == StateStopped || !hasText {
 				showAbout()
 				return nil
 			}
@@ -568,17 +579,12 @@ func main() {
 				return nil
 			}
 		case tcell.KeyCtrlN:
-			if currentState != StatePlaying && len(inputArea.GetText()) > 0 {
+			if (currentState == StateIdle || currentState == StateStopped) && len(inputArea.GetText()) > 0 {
 				showNumWordsModal()
 			}
 			return nil
 		case tcell.KeyCtrlP:
-			if currentState == StateIdle || currentState == StateStopped || currentState == StatePlaying {
-				handlePlayPause(iwrMan)
-			}
-			return nil
-		case tcell.KeyCtrlR:
-			if currentState == StatePaused {
+			if currentState == StateIdle || currentState == StateStopped || currentState == StatePlaying || currentState == StatePaused {
 				handlePlayPause(iwrMan)
 			}
 			return nil
@@ -589,83 +595,70 @@ func main() {
 			}
 			return event
 		case tcell.KeyCtrlF, tcell.KeyF3:
-			if currentState != StatePlaying {
+			if currentState == StateIdle || currentState == StateStopped {
 				showFile(app, pages, inputArea)
 				clearStats()
 			}
 			return nil
 		case tcell.KeyF1:
-			if currentState != StatePlaying && currentState != StatePaused {
+			if currentState == StateIdle || currentState == StateStopped {
 				showHelp()
 			}
 			return nil
 		case tcell.KeyF4:
-			if config.User.XmtrPort == "" || strings.EqualFold(config.User.XmtrPort, "none") {
-				// No TX port configured, launch local practice immediately
-				inputArea.SetText("\n\n *** OSCILLATOR MODE ***\n\n Initializing local practice...", false)
-				statusLine.SetText(" [yellow]Starting Manual Oscillator...")
+			if currentState == StateIdle || currentState == StateStopped {
+				header.SetText(fmt.Sprintf(" YAMA - Yet Another Morse-Code App v%s\n ", Ver))
+				inputArea.SetText("\n\n *** PRACTICE OSCILLATOR ***\n\n Initializing local practice...", false)
+				statusLine.SetText(" [yellow]Starting Practice Oscillator...")
 				launchOscillator(false)
-			} else {
-				// TX Port IS configured. We must ask the user.
-				// We change the state so the main loop knows to look for 'y' or 'n'
-				currentState = StatePromptingTx // (You will need to define this constant like you did StatePlaying)
-
-				statusLine.SetText(" [yellow]Do you want to key your transmitter? (y/N): ")
-				inputArea.SetText(fmt.Sprintf("\n\n *** OSCILLATOR MODE ***\n\n WARNING: port (%s) is configured and ON THE AIR!.\n\n Press 'y' to key transmitter, or 'n' / Enter for local practice only.", config.User.XmtrPort), false)
-
-				updateBlueLine()
+			}
+			return nil
+		case tcell.KeyF5:
+			if config.User.TransmitterPort == "" || strings.EqualFold(config.User.TransmitterPort, "none") {
+				statusLine.SetText(" [red]No Transmitter Port configured in KeyDevice, Ctrl-K.[-]")
+			} else if currentState == StateIdle || currentState == StateStopped {
+				showTransmitSafetyLock()
 			}
 			return nil
 		case tcell.KeyCtrlT:
-			if currentState != StatePlaying {
+			if currentState == StateIdle || currentState == StateStopped || currentState == StatePlaying {
 				showToneSpeed()
 			}
 			return nil
 		case tcell.KeyCtrlO:
-			if currentState != StatePlaying && currentState != StatePaused {
+			if currentState == StateIdle || currentState == StateStopped {
 				showOptions()
 			}
 			return nil
 		case tcell.KeyCtrlE:
-			if currentState != StatePlaying && currentState != StatePaused {
+			if currentState == StateIdle || currentState == StateStopped {
 				showKeyEchoOptions()
 			}
 			return nil
 		case tcell.KeyCtrlK:
-			if currentState != StatePlaying && currentState != StatePaused {
+			if currentState == StateIdle || currentState == StateStopped {
 				showKeyDeviceOptions()
 			}
 			return nil
 		case tcell.KeyCtrlD:
 			if config.User.Echo {
 				if currentEchoView != nil {
-					// ECHO TOGGLE: It's already open, so destroy it!
 					mainFlex.RemoveItem(currentEchoView)
 					currentEchoView = nil
 					app.SetFocus(inputArea)
 					return nil
 				}
-
-				// Generate the raw stats view
 				statsView := showStatsEcho()
-
-				// No springs! Just assign it directly so it matches the full width
-				// of the Text Input/Output box above it.
 				currentEchoView = statsView
-
-				// Add it to the bottom of the layout (like you had originally),
-				// but now it will naturally stretch to match the parent width!
-				mainFlex.AddItem(currentEchoView, 16, 1, true)
+				mainFlex.AddItem(currentEchoView, 18, 1, true)
 				app.SetFocus(statsView)
 			} else {
 				if config.StatsTotalWords > 0 {
 					if currentState == StateIdle || currentState == StateStopped {
 						if pages.HasPage("stats") {
-							// STANDARD TOGGLE: It's open, so destroy it!
 							pages.RemovePage("stats")
 							app.SetFocus(inputArea)
 						} else {
-							// It's closed, so open it!
 							showStats()
 						}
 					}
@@ -676,7 +669,7 @@ func main() {
 			showImpairments()
 			return nil
 		case tcell.KeyCtrlL:
-			if currentState != StatePlaying {
+			if currentState == StateIdle || currentState == StateStopped {
 				actualText = ""
 				inputArea.SetText("", false)
 				clearStats()
@@ -691,7 +684,7 @@ func main() {
 			updateBlueLine()
 			return nil
 		case tcell.KeyCtrlW:
-			if currentState != StatePlaying && len(inputArea.GetText()) > 0 {
+			if (currentState == StateIdle || currentState == StateStopped) && len(inputArea.GetText()) > 0 {
 				target := currentFileDir
 				if target == "" {
 					target, _ = os.Getwd()
@@ -707,36 +700,51 @@ func main() {
 		}
 
 		if currentState == StatePlaying {
-			frontPageName, _ := pages.GetFrontPage()
-
-			if frontPageName == "impairments" {
-				return event
-			}
-
 			if event.Key() == tcell.KeyEnter {
-
 				if morse.IsWaitingForUserKey() {
 					morse.SignalUserKey('E')
 					return nil
 				}
 				if config.User.Echo {
-					morse.ForceEchoFinish = true
-					morse.AutoNextAction = 'E'
+					// DEBOUNCED
+					if time.Since(lastSkipTime) > 500*time.Millisecond {
+						lastSkipTime = time.Now()
+						morse.ForceEchoFinish = true
+						morse.AutoNextAction = 'E'
+					}
 					return nil
 				}
 			}
 
 			if event.Key() == tcell.KeyBackspace || event.Key() == tcell.KeyBackspace2 {
-
 				if morse.IsWaitingForUserKey() {
 					morse.SignalUserKey('B')
 					return nil
 				}
 				if config.User.Echo {
-					morse.ForceEchoRetry = true
+					// DEBOUNCED
+					if time.Since(lastSkipTime) > 500*time.Millisecond {
+						lastSkipTime = time.Now()
+						morse.ForceEchoRetry = true
+						morse.AutoNextAction = 'B'
+					}
 					return nil
 				}
 			}
+
+			// ----------------------------------------------------
+			// NEW: CTRL-R RESTING MODE
+			// ----------------------------------------------------
+			if event.Key() == tcell.KeyCtrlR {
+				if config.User.Echo {
+					if time.Since(lastSkipTime) > 500*time.Millisecond {
+						lastSkipTime = time.Now()
+						morse.ForceEchoRest = true
+					}
+					return nil
+				}
+			}
+			// ----------------------------------------------------
 
 			return nil
 		}
@@ -771,7 +779,7 @@ func EmergencyQuit(errorMessage string) {
 
 func getModifierWarning() string {
 	if config.User.Echo {
-		return "" // no need, need space for other echo statis
+		return ""
 	}
 
 	isModified := config.User.RandomizeWords ||
@@ -803,16 +811,13 @@ func lockPlayTime() {
 	}
 }
 
-// used by Flashcard only
 func eraseLastGroupFromScreen() {
 	if len(lastFlashcardGroup) == 0 {
 		return
 	}
 
-	// Use the same buffer the user actually sees
 	words := strings.Fields(actualText)
 
-	// Remove EXACT logical words from the end
 	for i := len(lastFlashcardGroup) - 1; i >= 0; i-- {
 		if len(words) == 0 {
 			break

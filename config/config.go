@@ -123,15 +123,16 @@ type UserSettings struct {
 	RepeatLimit int `json:"repeat_limit"`
 	StartDelay  int `json:"start_delay"`
 
-	KeyerPortSpeed      int    `json:"keyer_port_speed"`
-	KeyerPort           string `json:"keyer_port"`
-	XmtrPort            string `json:"xmtr_port"`
-	KeyLineWireMode     string `json:"key_line_wire_mode"`
-	KeyLineIdlePolarity bool   `json:"key_line_idle_polarity"`
-	KeyParasiticPower   bool   `json:"key_parastic_power"`
-	KeyTimePadding      int    `json:"key_time_padding"`
-	KeyDevice           string `json:"key_device"`
-	KeyerReversed       bool   `json:"keyer_reversed"`
+	KeyerPortSpeed       int    `json:"keyer_port_speed"`
+	KeyerPort            string `json:"keyer_port"`
+	TransmitterPort      string `json:"transmitter_port"`
+	TransmitterInterface string `json:"transmitter_interface"`
+	KeyLineWireMode      string `json:"key_line_wire_mode"`
+	KeyLineIdlePolarity  bool   `json:"key_line_idle_polarity"`
+	KeyParasiticPower    bool   `json:"key_parastic_power"`
+	KeyTimePadding       int    `json:"key_time_padding"`
+	KeyDevice            string `json:"key_device"`
+	KeyerReversed        bool   `json:"keyer_reversed"`
 
 	UseWave bool `json:"UseWave"`
 
@@ -291,6 +292,8 @@ func setDefaults() {
 
 	User.KeyerPortSpeed = 9600
 	User.KeyerPort = ""
+	User.TransmitterPort = ""
+	User.TransmitterInterface = "DTR"
 	User.KeyLineWireMode = "CTS"
 	User.KeyLineIdlePolarity = false
 	User.KeyParasiticPower = false
@@ -455,7 +458,8 @@ func encodeCompactJSON() string {
 
 	s += `"keyer_port_speed":` + intToStr(User.KeyerPortSpeed) + ","
 	s += `"keyer_port":"` + escapeUTF8(User.KeyerPort) + `",`
-	s += `"xmtr_port":"` + escapeUTF8(User.XmtrPort) + `",`
+	s += `"transmitter_port":"` + escapeUTF8(User.TransmitterPort) + `",`
+	s += `"transmitter_interface":"` + escapeUTF8(User.TransmitterInterface) + `",`
 	s += `"key_line_wire_mode":"` + escapeUTF8(User.KeyLineWireMode) + `",`
 	s += `"key_line_idle_polarity":` + boolToStr(User.KeyLineIdlePolarity) + ","
 	s += `"key_parastic_power":` + boolToStr(User.KeyParasiticPower) + ","
@@ -618,16 +622,18 @@ func decodeCompactJSON(data string) error {
 			User.EndMsg = parseBool(val)
 		case "end_msg_text":
 			User.EndMsgText = unescapeUTF8(val)
-
 		case "repeat_limit":
 			User.RepeatLimit = parseInt(val)
 		case "start_delay":
 			User.StartDelay = parseInt(val)
-
 		case "keyer_port_speed":
 			User.KeyerPortSpeed = parseInt(val)
 		case "keyer_port":
 			User.KeyerPort = unescapeUTF8(val)
+		case "transmitter_port":
+			User.TransmitterPort = unescapeUTF8(val)
+		case "transmitter_interface":
+			User.TransmitterInterface = unescapeUTF8(val)
 		case "key_line_wire_mode":
 			User.KeyLineWireMode = unescapeUTF8(val)
 		case "key_line_idle_polarity":

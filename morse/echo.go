@@ -11,6 +11,7 @@ import (
 
 var ForceEchoRetry bool
 var ForceEchoFinish bool
+var ForceEchoRest bool
 var AutoNextAction rune
 var OnEchoReadyCursor func(visible bool)
 
@@ -75,6 +76,9 @@ func decodeSymbol(pulses []Pulse, dot, dash time.Duration) string {
 
 // Takes the already-open port `p` and `idleInputState` baseline.
 func RunEcho(
+	pin1 string,
+	power string,
+	pin2 string,
 	lastGroup []string,
 	groupSendMS int,
 	responseMS int,
@@ -105,6 +109,7 @@ func RunEcho(
 	charGapEff := time.Duration(float64(charGap) * (1 - tol/2))
 	wordGapEff := time.Duration(float64(standardWordGap) * (1 - tol/2))
 	oscFreq := float64(tp.Tone)
+
 	osc, player := StartOscillator(oscFreq)
 	if osc == nil || player == nil {
 		log.Println("CRITICAL FAIL - osc or player is nil inside RunEcho!")
@@ -174,25 +179,18 @@ func RunEcho(
 	var resCharGaps []time.Duration
 	var resWordGaps []time.Duration
 
-	// --- DYNAMIC PIN CONFIGURATION ---
-	// Determine which config string to parse based on device type
-	pinString := config.User.KeyLineWireMode
-	if strings.ToLower(keyDevice) == "cootie" {
-		pinString = config.User.KeyLineWireMode
-	}
+	// 1. APPLY POWER TO THE LINE
+	useDTR := (power == "DTR") || config.User.KeyParasiticPower
+	useRTS := (power == "RTS") || config.User.KeyParasiticPower
+	_ = p.SetDTR(useDTR)
+	_ = p.SetRTS(useRTS)
 
-	pinParts := strings.Split(pinString, "-")
-
-	monitorPin1 := "CTS" // Default primary (Dit / Straight Key)
-	monitorPin2 := "DSR" // Default secondary (Dah)
-
-	if len(pinParts) > 0 {
-		monitorPin1 = strings.Split(pinParts[0], ":")[0]
-	}
-	if len(pinParts) > 2 { // Format is usually Dit-Power-Dah (e.g., CTS:8-DTR:4-DSR:6)
-		monitorPin2 = strings.Split(pinParts[2], ":")[0]
-	} else if len(pinParts) > 1 {
-		monitorPin2 = strings.Split(pinParts[1], ":")[0]
+	// 2. HANDLE KEYER REVERSE
+	ditPin := pin1
+	dahPin := pin2
+	if config.User.KeyerReversed && strings.ToLower(keyDevice) != "cootie" {
+		ditPin = pin2
+		dahPin = pin1
 	}
 
 	getPinState := func(pin string, ms *serial.ModemStatusBits) bool {
@@ -211,11 +209,11 @@ func RunEcho(
 	}
 
 	isKeyDown := func(ms *serial.ModemStatusBits) bool {
-		state1 := getPinState(monitorPin1, ms)
+		state1 := getPinState(ditPin, ms)
 		down1 := (state1 != idleInputState)
 
 		if strings.ToLower(keyDevice) == "cootie" {
-			state2 := getPinState(monitorPin2, ms)
+			state2 := getPinState(dahPin, ms)
 			down2 := (state2 != idleInputState)
 			return down1 || down2 // Cootie closes circuit on either paddle hit
 		}
@@ -230,9 +228,9 @@ func RunEcho(
 		return EchoResult{Success: false, Error: "modem read error"}, err
 	}
 
-	// Force baseline synchronization for every group to prevent cross-group state bleeding
+	// Force baseline synchronization
 	idleInputState = config.User.KeyLineIdlePolarity
-	lastState := false
+	lastState := isKeyDown(ms)
 
 	// Prime to UP loop with Auto-Correct
 	primeStart := time.Now()
@@ -246,7 +244,7 @@ func RunEcho(
 
 		if time.Since(primeStart) > 200*time.Millisecond {
 			// Re-establish baseline using primary pin
-			idleInputState = getPinState(monitorPin1, ms)
+			idleInputState = getPinState(ditPin, ms)
 			lastState = isKeyDown(ms)
 		}
 		time.Sleep(1 * time.Millisecond)

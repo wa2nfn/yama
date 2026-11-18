@@ -1,16 +1,12 @@
 package main
 
 import (
-	"cmp"
 	"fmt"
-	"log"
 	"math"
 	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
-	"time"
 	"unicode"
 	"yama/config"
 	"yama/morse"
@@ -27,7 +23,6 @@ func showOptions() {
 	form.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	form.SetItemPadding(0)
 
-	// rmoves the blank lines at the top and bottom of the form
 	form.SetBorderPadding(0, 0, 1, 1)
 
 	useProsignsCb := tview.NewCheckbox().SetLabel("ProSign Support")
@@ -72,6 +67,7 @@ func showOptions() {
 	flashWordCountList := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"}
 	flashWordCountDrop := tview.NewDropDown().SetLabel("    Word Count (1-20)").SetOptions(flashWordCountList, nil)
 	flashRandomCountCb := tview.NewCheckbox().SetLabel("    Random Value")
+
 	echoCb := tview.NewCheckbox().SetLabel("[#00BFFF]Echo Sending Mode[::-]")
 
 	startMsgCb := tview.NewCheckbox().SetLabel("Use Start Message")
@@ -88,9 +84,6 @@ func showOptions() {
 	endMsgInput.SetInputCapture(forceUppercaseInputCapture())
 	euroSkipList := config.User.EuropeanSkipList
 
-	//
-	// RESET
-	//
 	resetState := func() {
 		startMsgCb.SetChecked(config.User.StartMsg)
 
@@ -127,6 +120,7 @@ func showOptions() {
 		textBuilderSortCb.SetChecked(config.User.TextBuilderSort)
 		flashcardCb.SetChecked(config.User.Flashcard)
 		flashRandomCountCb.SetChecked(config.User.FlashRandomCount)
+
 		echoCb.SetChecked(config.User.Echo)
 
 		twIdx := 0
@@ -295,6 +289,7 @@ func showOptions() {
 			showErrorModal(errors, func() { app.SetFocus(form) })
 		} else {
 			if !echoCb.IsChecked() {
+				// The actual closeEchoStatsWindow function lives in ui.go
 				closeEchoStatsWindow()
 			}
 			apply()
@@ -319,13 +314,8 @@ func showOptions() {
 	applyFocusStyles(form)
 	form.SetBorder(false)
 
-	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
-	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("[yellow]ESC to Close  -  Ctrl-S to Save[-]")
-
 	optionsContainer = tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(form, 0, 1, true).
-		AddItem(footerView, 1, 1, false)
+		AddItem(form, 0, 1, true)
 
 	optionsContainer.SetBorder(true).SetTitle(" Options ")
 	optionsContainer.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
@@ -359,22 +349,22 @@ func showEuropeanCharSelector(parentContainer tview.Primitive, activeEuroSkip *s
 	}
 
 	extChars := []ExtChar{
-		{'Ä', "Ä (Euro: A-umlaut)"},
-		{'Ö', "Ö (Euro: O-umlaut)"},
-		{'Ü', "Ü (Euro: U-umlaut)"},
-		{'É', "É (Euro: E-acute)"},
-		{'Á', "Á (Euro: A-acute)"},
-		{'Å', "Å (Euro: A-ring)"},
-		{'Ç', "Ç (Euro: C-cedilla)"},
-		{'Ñ', "Ñ (Euro: N-tilde)"},
-		{'À', "À (Euro: A-grave)"},
-		{'È', "È (Euro: E-grave)"},
-		{'Ĉ', "Ĉ (Esp: C-circumflex)"},
-		{'Ĝ', "Ĝ (Esp: G-circumflex)"},
-		{'Ĥ', "Ĥ (Esp: H-circumflex)"},
-		{'Ĵ', "Ĵ (Esp: J-circumflex)"},
-		{'Ŝ', "Ŝ (Esp: S-circumflex)"},
-		{'Ŭ', "Ŭ (Esp: U-breve)"},
+		{'\u00C4', "Ä (Euro: A-umlaut)"},
+		{'\u00D6', "Ö (Euro: O-umlaut)"},
+		{'\u00DC', "Ü (Euro: U-umlaut)"},
+		{'\u00C9', "É (Euro: E-acute)"},
+		{'\u00C1', "Á (Euro: A-acute)"},
+		{'\u00C5', "Å (Euro: A-ring)"},
+		{'\u00C7', "Ç (Euro: C-cedilla)"},
+		{'\u00D1', "Ñ (Euro: N-tilde)"},
+		{'\u00C0', "À (Euro: A-grave)"},
+		{'\u00C8', "È (Euro: E-grave)"},
+		{'\u0108', "Ĉ (Esp: C-circumflex)"},
+		{'\u011C', "Ĝ (Esp: G-circumflex)"},
+		{'\u0124', "Ĥ (Esp: H-circumflex)"},
+		{'\u0134', "Ĵ (Esp: J-circumflex)"},
+		{'\u015C', "Ŝ (Esp: S-circumflex)"},
+		{'\u016C', "Ŭ (Esp: U-breve)"},
 	}
 
 	var checkboxes []*tview.Checkbox
@@ -418,19 +408,12 @@ func showEuropeanCharSelector(parentContainer tview.Primitive, activeEuroSkip *s
 	applyFocusStyles(form)
 	form.SetBorder(false)
 
-	// 1. Added uniform footer
-	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
-	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("\n[yellow]ESC to Cancel  -  Ctrl-S to Save[-]\n")
-
 	container := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(form, 0, 1, true).
-		AddItem(footerView, 2, 1, false)
+		AddItem(form, 0, 1, true)
 
 	container.SetBorder(true).SetTitle(" European & Esperanto Skips ")
 	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	// 2. Added input capture for Ctrl-S and ESC
 	container.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
 			pages.RemovePage("extCharSelector")
@@ -444,7 +427,7 @@ func showEuropeanCharSelector(parentContainer tview.Primitive, activeEuroSkip *s
 		return event
 	})
 
-	pages.AddPage("extCharSelector", createModal(container, 45, 24), true, true)
+	pages.AddPage("extCharSelector", createModal(container, 45, 20), true, true)
 	app.SetFocus(container)
 }
 
@@ -528,7 +511,7 @@ func showIWREditModal(parentContainer tview.Primitive) {
 		}
 
 		pages.RemovePage("iwredit")
-		app.SetFocus(parentContainer) // HERE
+		app.SetFocus(parentContainer)
 	}
 
 	form.AddButton("Save", onSave)
@@ -538,12 +521,11 @@ func showIWREditModal(parentContainer tview.Primitive) {
 	})
 
 	textArea.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		// 1. Navigation / control keys
 		switch event.Key() {
 		case tcell.KeyTab:
 			app.SetFocus(form)
 			return nil
-		case tcell.KeyCtrlS: // 2. Changed from KeyCtrlW to KeyCtrlS
+		case tcell.KeyCtrlS:
 			onSave()
 			return nil
 		case tcell.KeyEsc:
@@ -552,7 +534,6 @@ func showIWREditModal(parentContainer tview.Primitive) {
 			return nil
 		}
 
-		// 3. Force uppercase for typed runes
 		if event.Key() == tcell.KeyRune {
 			r := event.Rune()
 			upper := unicode.ToUpper(r)
@@ -564,25 +545,18 @@ func showIWREditModal(parentContainer tview.Primitive) {
 		return event
 	})
 
-	// 4. Added uniform footer
-	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
-	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("\n[yellow]ESC to Close  -  Ctrl-S to Save[-]\n")
-
 	layout := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(textArea, 0, 1, true).
-		AddItem(form, 3, 1, false).
-		AddItem(footerView, 2, 1, false)
+		AddItem(form, 3, 1, false)
 
-	// 5. Bumped height from 24 to 26 to accommodate the footer
-	pages.AddPage("iwredit", createModal(layout, 75, 26), true, true)
-	app.SetFocus(textArea)
+	pages.AddPage("iwredit", createModal(layout, 75, 20), true, true)
 }
 
 func showToneSpeed() {
 	form := tview.NewForm()
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	form.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
+	form.SetItemPadding(0)
 
 	acceptDigits := func(textToCheck string, lastChar rune) bool {
 		if textToCheck == "" {
@@ -796,17 +770,16 @@ func showToneSpeed() {
 	form.AddButton("Save", onSave)
 	form.AddButton("Reset", onReset)
 	form.AddButton("Edit IWR", onEditIWR)
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("tonespeed")
+		app.SetFocus(inputArea)
+	})
 
 	applyFocusStyles(form)
 	form.SetBorder(false)
 
-	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
-	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("\n[yellow]ESC to Close  -  Ctrl-S to Save[-]\n")
-
 	timingContainer = tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(form, 0, 1, true).
-		AddItem(footerView, 2, 1, false)
+		AddItem(form, 0, 1, true)
 
 	timingContainer.SetBorder(true).SetTitle(" Timing ")
 	timingContainer.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
@@ -824,52 +797,8 @@ func showToneSpeed() {
 		return event
 	})
 
-	pages.AddPage("tonespeed", createModal(timingContainer, 38, 23), true, true)
-	app.SetFocus(timingContainer)
-}
-
-func showSuccessModal(dir string, files []string) {
-	var sb strings.Builder
-
-	cleanDir := morse.ResolvePath(dir)
-	if absDir, err := filepath.Abs(cleanDir); err == nil {
-		cleanDir = absDir
-	}
-
-	sb.WriteString(fmt.Sprintf("[white]Saved to:\n[#00BFFF]%s[-]\n", cleanDir))
-	sb.WriteString(strings.Repeat("-", 46) + "\n")
-
-	for _, f := range files {
-		sb.WriteString(fmt.Sprintf("[white]%s\n", filepath.Base(morse.ResolvePath(f))))
-	}
-	sb.WriteString("\n[yellow]ESC to close[-]")
-
-	tv := tview.NewTextView().
-		SetDynamicColors(true).
-		SetWrap(true).
-		SetWordWrap(true).
-		SetText(sb.String())
-
-	tv.SetBackgroundColor(tcell.GetColor(AppBackgroundColor)).
-		SetBorder(true).
-		SetTitle(" Files Generated Successfully ")
-
-	tv.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEscape || event.Key() == tcell.KeyEnter {
-			pages.RemovePage("success")
-			app.SetFocus(inputArea)
-			return nil
-		}
-		return event
-	})
-
-	boxHeight := len(files) + 10
-	if boxHeight > 22 {
-		boxHeight = 22
-	}
-
-	pages.AddPage("success", createModal(tv, 55, boxHeight), true, true)
-	app.SetFocus(tv)
+	pages.AddPage("tonespeed", createModal(timingContainer, 42, 18), true, true)
+	app.SetFocus(form)
 }
 
 // IMPAIRMENTS MENU
@@ -914,32 +843,22 @@ func showImpairments() {
 	form.AddFormItem(pinkNoiseDropDown)
 
 	onSave := func() {
-		// 1. Grab the current UI selections for the noise filters
 		brownLvl, _ := brownNoiseDropDown.GetCurrentOption()
 		pinkLvl, _ := pinkNoiseDropDown.GetCurrentOption()
 
-		// 2. The Mutually Exclusive Check
-		// Index 0 is "Off". If both are > 0, the user selected both.
 		if brownLvl > 0 && pinkLvl > 0 {
-
-			// Create a warning modal
 			errorModal := tview.NewModal().
 				SetText("Brown Noise and Pink Noise cannot be active at the same time.\n\nPlease set one of them to 'Off'.").
 				AddButtons([]string{"OK"}).
 				SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-					// Close the error modal and give focus back to the impairments form
 					pages.RemovePage("noise_error")
 					app.SetFocus(container)
 				})
 
-			// Add it to the page stack so it pops up immediately
 			pages.AddPage("noise_error", errorModal, true, true)
-
-			// Exit early! Do not save the config or close the main form
 			return
 		}
 
-		// 3. If validation passes, save everything as normal
 		config.User.NoiseStaticLevel, _ = staticDropDown.GetCurrentOption()
 		config.User.NoiseFadingLevel, _ = fadingDropDown.GetCurrentOption()
 		config.User.NoiseToneDriftLevel, _ = toneDriftDropDown.GetCurrentOption()
@@ -980,39 +899,34 @@ func showImpairments() {
 	form.AddButton("Save", onSave)
 	form.AddButton("Reset", onReset)
 	form.AddButton("Clear All", onClearAll)
+	form.AddButton("Cancel", func() {
+		pages.RemovePage("impairments")
+		app.SetFocus(inputArea)
+	})
 
 	applyFocusStyles(form)
 	form.SetBorder(false)
 
-	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
-	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("\n[yellow]ESC to Close  -  Ctrl-S to Save[-]\n")
-
 	container = tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(form, 0, 1, true).
-		AddItem(footerView, 2, 1, false)
+		AddItem(form, 0, 1, true)
 
 	container.SetBorder(true).SetTitle(" Impairments ")
 	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	// Catch the ESC key specifically for this modal to close it without saving
 	container.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
 			pages.RemovePage("impairments")
 			app.SetFocus(inputArea)
-			return nil // Swallow the key
+			return nil
 		}
-
 		if event.Key() == tcell.KeyCtrlS {
 			onSave()
-			return nil // Swallow the key
+			return nil
 		}
-
-		return event // Pass all other keys (like Tab/Enter) down to the form
+		return event
 	})
 
-	// Your existing code:
-	pages.AddPage("impairments", createModal(container, 35, 16), true, true)
+	pages.AddPage("impairments", createModal(container, 40, 16), true, true)
 	app.SetFocus(container)
 }
 
@@ -1034,7 +948,6 @@ func showNumWordsModal() {
 
 	form.AddFormItem(input)
 
-	// Track the state of the randomize checkbox
 	var randomize bool
 	form.AddCheckbox("Randomize:", false, func(checked bool) {
 		randomize = checked
@@ -1049,7 +962,6 @@ func showNumWordsModal() {
 			val = 99999
 		}
 
-		// Trigger update if the count changed OR if they requested a randomize
 		if (val != currentCount || randomize) && currentCount > 0 {
 			if !isResized {
 				preResizeSnapshot = rawText
@@ -1061,22 +973,17 @@ func showNumWordsModal() {
 				newWords = append(newWords, words[i%currentCount])
 			}
 
-			// Shuffle the newly built array if checkbox is checked
 			if randomize {
-				// rand.Shuffle with deterministic Fisher–Yates
 				if len(newWords) > 1 {
 					for i := len(newWords) - 1; i > 0; i-- {
 						j := morse.FastIntn(i + 1)
 						newWords[i], newWords[j] = newWords[j], newWords[i]
 					}
 				}
-
 			}
 
-			isProgrammaticUpdate = true
 			inputArea.SetText(strings.Join(newWords, " "), false)
 			actualText = inputArea.GetText()
-			isProgrammaticUpdate = false
 
 			refreshUI(currentState)
 		}
@@ -1094,10 +1001,8 @@ func showNumWordsModal() {
 
 	if isResized {
 		form.AddButton("Undo", func() {
-			isProgrammaticUpdate = true
 			inputArea.SetText(preResizeSnapshot, false)
 			actualText = inputArea.GetText()
-			isProgrammaticUpdate = false
 
 			isResized = false
 			preResizeSnapshot = ""
@@ -1111,13 +1016,8 @@ func showNumWordsModal() {
 	applyFocusStyles(form)
 	form.SetBorder(false)
 
-	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
-	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("\n[yellow]ESC to Close  -  Ctrl-S to Save[-]\n")
-
 	container := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(form, 0, 1, true).
-		AddItem(footerView, 2, 1, false)
+		AddItem(form, 0, 1, true)
 
 	container.SetBorder(true).SetTitle(" Resize Text Input ")
 	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
@@ -1135,12 +1035,12 @@ func showNumWordsModal() {
 		return event
 	})
 
-	pages.AddPage("numWords", createModal(container, 45, 12), true, true)
+	pages.AddPage("numWords", createModal(container, 45, 10), true, true)
 	app.SetFocus(container)
 }
+
 func showWaveModal(targetDir string) {
 	rawText := inputArea.GetText()
-
 	rawText = parser.NormalizeText(rawText)
 
 	if config.User.UseSkip {
@@ -1315,6 +1215,7 @@ func showWaveModal(targetDir string) {
 					return
 				}
 				statusLine.SetText(" [#FFFF55]WAV files generated successfully!")
+				// showSuccessModal is in ui.go
 				showSuccessModal(exportDir, generatedNames)
 			})
 		}()
@@ -1325,25 +1226,20 @@ func showWaveModal(targetDir string) {
 		app.SetFocus(inputArea)
 	}
 
+	form.AddButton("Save", saveFunc)
+	form.AddButton("Cancel", cancelFunc)
+
 	applyFocusStyles(form)
 	form.SetBorder(false)
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	// 1. Add the footer view
-	footerView := tview.NewTextView().SetTextAlign(tview.AlignCenter).SetDynamicColors(true)
-	footerView.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
-	footerView.SetText("\n[yellow]ESC to Close  -  Ctrl-S to Save[-]\n")
-
-	// 2. Add the footerView to the container flex
 	container := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(infoTextView, 5, 1, false).
-		AddItem(form, 0, 1, true).
-		AddItem(footerView, 2, 1, false)
+		AddItem(form, 0, 1, true)
 
 	container.SetBorder(true).SetTitle(" Generate Wave Files ")
 	container.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 
-	// 3. Add the input capture for ESC and Ctrl-S
 	container.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
 			cancelFunc()
@@ -1356,12 +1252,12 @@ func showWaveModal(targetDir string) {
 		return event
 	})
 
+	// Height bumped to 20 so the buttons aren't squished off screen
 	layout := tview.NewFlex().
 		AddItem(nil, 0, 1, false).
 		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
 			AddItem(nil, 0, 1, false).
-			// 4. Increased container height from 18 to 21 to accommodate the new footer
-			AddItem(container, 21, 1, true).
+			AddItem(container, 20, 1, true).
 			AddItem(nil, 0, 4, false),
 			65, 1, true).
 		AddItem(nil, 0, 1, false)
@@ -1370,283 +1266,46 @@ func showWaveModal(targetDir string) {
 	app.SetFocus(container)
 }
 
-func startAudioSequence(iwrMan *morse.IWRManager) {
+func showSuccessModal(dir string, files []string) {
+	var sb strings.Builder
 
-	// 1. SAFETY LOCK: Prevent playback if the audio engine is dead
-	if morse.AudioHardwareDead {
-		statusLine.SetText(" [#FFFF55::b]FATAL: Audio hardware lost. Restart app.[::-]")
-		app.Stop()
-		log.Fatalf("FATAL: Audio hardware lost. Restart app.")
-		return
+	cleanDir := morse.ResolvePath(dir)
+	if absDir, err := filepath.Abs(cleanDir); err == nil {
+		cleanDir = absDir
 	}
 
-	// ==========================================
-	// THE GHOST THREAD ASSASSIN
-	// ==========================================
-	// Give the old goroutine 150ms to read IsStopping=true and completely
-	// exit its loop before we reset the flag. This guarantees the old
-	// thread is dead before the new one starts.
-	time.Sleep(150 * time.Millisecond)
+	sb.WriteString(fmt.Sprintf("[white]Saved to:\n[#00BFFF]%s[-]\n", cleanDir))
+	sb.WriteString(strings.Repeat("-", 46) + "\n")
 
-	morse.IsStopping = false
-	morse.IsPaused = false
-	isBlocked = false
-	clearStats()
-
-	rawInput := inputArea.GetText()
-	rawInput = colorTagRegex.ReplaceAllString(rawInput, "")
-
-	fullTextToPlay = parser.NormalizeText(rawInput)
-
-	if config.User.UseSkip {
-		parser.SetSkipList(config.User.SkipList, morse.ProSignTable)
-		fullTextToPlay = parser.ApplySkip(fullTextToPlay)
+	for _, f := range files {
+		sb.WriteString(fmt.Sprintf("[white]%s\n", filepath.Base(morse.ResolvePath(f))))
 	}
+	sb.WriteString("\n[yellow]ESC to close[-]")
 
-	actualText = ""
-	inputArea.SetText("", false)
-
-	parsedText := parser.FilterValidMorse(fullTextToPlay, morse.MorseTable)
-	parsedText = parser.CompressSpace(parsedText)
-
-	if (config.User.WordBuilder && config.User.WordBuilderSort) || (config.User.TextBuilder && config.User.TextBuilderSort) {
-		parsedText = SortByWordLength(parsedText)
-	}
-
-	// Normalize StartMsg and EndMsg to full uppercase
-	if config.User.StartMsg {
-		txt := strings.TrimSpace(config.User.StartMsgText)
-		if txt == "" {
-			txt = "VVV <KA>"
-		}
-		config.User.StartMsgText = strings.ToUpper(txt)
-	}
-
-	if config.User.EndMsg {
-		txt := strings.TrimSpace(config.User.EndMsgText)
-		if txt == "" {
-			txt = "<AR>"
-		}
-		config.User.EndMsgText = strings.ToUpper(txt)
-	}
-
-	// DO NOT inject StartMsg/EndMsg here.
-	// RunIWR will prepend/append them safely and keep them out of RandomOrder.
-	parsedText = parser.CompressSpace(parsedText)
-
-	if config.User.StartDelay > 0 {
-		go func() {
-			defer func() {
-				if r := recover(); r != nil {
-					playPauseMu.Lock()
-					isCountingDown = false
-					playPauseMu.Unlock()
-
-					app.Stop()
-					log.Fatalf("\nFATAL YAMA Crashed in delayed engine start: %v\n", r)
-				}
-			}()
-
-			for i := config.User.StartDelay; i > 0; i-- {
-				if morse.IsStopping {
-					playPauseMu.Lock()
-					isCountingDown = false
-					playPauseMu.Unlock()
-					return
-				}
-				app.QueueUpdateDraw(func() {
-					msg := fmt.Sprintf("\n\n\n     Starting in %d...", i)
-					inputArea.SetText(msg, false)
-					statusLine.SetText(" [#FFFF55]Preparing to Play...")
-				})
-				time.Sleep(1 * time.Second)
-			}
-
-			playPauseMu.Lock()
-
-			if morse.IsStopping {
-				isCountingDown = false
-				playPauseMu.Unlock()
-				return
-			}
-
-			isCountingDown = false
-			currentState = StatePlaying
-
-			app.QueueUpdateDraw(func() {
-				inputArea.SetText("", false)
-				refreshUI(StatePlaying)
-
-				morse.StartTime = time.Now()
-				go runEngine(parsedText, iwrMan)
-			})
-
-			playPauseMu.Unlock()
-		}()
-	} else {
-		currentState = StatePlaying
-		refreshUI(StatePlaying)
-
-		morse.StartTime = time.Now()
-		go runEngine(parsedText, iwrMan)
-	}
-}
-
-func SortByWordLength(text string) string {
-	// Split into words (Fields handles multiple spaces)
-	words := strings.Fields(text)
-
-	// Sort shortest to longest
-	slices.SortFunc(words, func(a, b string) int {
-		return cmp.Compare(len(a), len(b))
-	})
-
-	// Return as a single space-separated string
-	return strings.Join(words, " ")
-}
-
-// Two variables for the two columns
-var echoStatsTextView *tview.TextView
-var currentSessionStats morse.EchoStats
-
-func closeEchoStatsWindow() {
-	if currentEchoView != nil {
-		mainFlex.RemoveItem(currentEchoView)
-		currentEchoView = nil
-	}
-}
-
-func showStatsEcho() *tview.Flex {
-	footer := tview.NewTextView().
-		SetText(" [yellow]Ctrl-D to Toggle ").
+	tv := tview.NewTextView().
 		SetDynamicColors(true).
-		SetTextAlign(tview.AlignCenter)
+		SetWrap(true).
+		SetWordWrap(true).
+		SetText(sb.String())
 
-	container := tview.NewFlex().SetDirection(tview.FlexRow)
+	tv.SetBackgroundColor(tcell.GetColor(AppBackgroundColor)).
+		SetBorder(true).
+		SetTitle(" Files Generated Successfully ")
 
-	// Borders and titles are back!
-	var title = " DataStats "
-	container.SetBorder(true).
-		SetTitle(title).
-		SetTitleColor(tcell.ColorYellow)
-
-	echoStatsTextView = tview.NewTextView().
-		SetDynamicColors(true).
-		SetTextAlign(tview.AlignLeft)
-
-	currentProfile := morse.GetTiming(false, config.User)
-
-	if config.User.KeyDevice == "Paddle" || config.User.KeyDevice == "IambicA" || config.User.KeyDevice == "IambicB" || config.User.KeyDevice == "Ultimatic" {
-		echoStatsTextView.SetText(buildEchoStatsPaddleText(currentGroupStats, currentSessionStats, currentProfile))
-	} else {
-		echoStatsTextView.SetText(buildEchoStatsText(currentGroupStats, currentSessionStats, currentProfile))
-	}
-
-	container.AddItem(echoStatsTextView, 0, 1, false)
-	container.AddItem(footer, 1, 0, false)
-
-	container.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
-		if event.Key() == tcell.KeyEscape {
-			closeEchoStatsWindow() // Use the new helper!
+	tv.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyEscape || event.Key() == tcell.KeyEnter {
+			pages.RemovePage("success")
 			app.SetFocus(inputArea)
 			return nil
 		}
 		return event
 	})
 
-	app.SetFocus(container)
-	return container
-}
-
-func buildEchoStatsText(grp morse.EchoStats, ses morse.EchoStats, tp morse.TimingProfile) string {
-	var sb strings.Builder
-
-	// 1. Safe calculation helper for Averages
-	calcAvg := func(sumMs float64, short, perfect, long int) int {
-		totalCount := short + perfect + long
-		if totalCount > 0 {
-			return int(math.Round(sumMs / float64(totalCount)))
-		}
-		return 0
+	boxHeight := len(files) + 10
+	if boxHeight > 22 {
+		boxHeight = 22
 	}
 
-	// 2. Calculate Targets in ms
-	tgtDit := int(math.Round(tp.DitDuration * 1000))
-	tgtDah := int(math.Round(tp.DahDuration * 1000))
-	tgtEle := int(math.Round(tp.InterElement * 1000))
-	tgtChr := int(math.Round(tp.CharSpace * 1000))
-	tgtWrd := int(math.Round(tp.WordSpace * 1000))
-
-	// 3. Calculate Session Actual Averages
-	avgDit := calcAvg(ses.SumDitMs, ses.ShortDits, ses.PerfectDits, ses.LongDits)
-	avgDah := calcAvg(ses.SumDahMs, ses.ShortDahs, ses.PerfectDahs, ses.LongDahs)
-	avgEle := calcAvg(ses.SumElementGapsMs, ses.ShortElementGaps, ses.PerfectElementGaps, ses.LongElementGaps)
-	avgChr := calcAvg(ses.SumCharGapsMs, ses.ShortCharGaps, ses.PerfectCharGaps, ses.LongCharGaps)
-	avgWrd := calcAvg(ses.SumWordGapsMs, ses.ShortWordGaps, ses.PerfectWordGaps, ses.LongWordGaps)
-
-	// Yellow headers, kept!
-	sb.WriteString("\n                     [yellow::b]CURRENT GROUP[-:-:-]                            [yellow::b]SESSION TOTALS[-:-:-]\n\n")
-
-	// Added Target and Avg Headers aligned to the right
-	sb.WriteString("  [cyan]Elements[-]                                                                              [cyan::b]Target(ms)    Avg(ms)[-:-:-]\n")
-	sb.WriteString(fmt.Sprintf("    Dits:        [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long      [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long       [white]%4d[-]       [white]%4d[-]\n",
-		grp.ShortDits, grp.PerfectDits, grp.LongDits, ses.ShortDits, ses.PerfectDits, ses.LongDits, tgtDit, avgDit))
-	sb.WriteString(fmt.Sprintf("    Dahs:        [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long      [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long       [white]%4d[-]       [white]%4d[-]\n",
-		grp.ShortDahs, grp.PerfectDahs, grp.LongDahs, ses.ShortDahs, ses.PerfectDahs, ses.LongDahs, tgtDah, avgDah))
-
-	sb.WriteString("  [cyan]Spacing[-]\n")
-	sb.WriteString(fmt.Sprintf("    Intra-Char:  [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long      [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long       [white]%4d[-]       [white]%4d[-]\n",
-		grp.ShortElementGaps, grp.PerfectElementGaps, grp.LongElementGaps, ses.ShortElementGaps, ses.PerfectElementGaps, ses.LongElementGaps, tgtEle, avgEle))
-	sb.WriteString(fmt.Sprintf("    Char Gap:    [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long      [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long       [white]%4d[-]       [white]%4d[-]\n",
-		grp.ShortCharGaps, grp.PerfectCharGaps, grp.LongCharGaps, ses.ShortCharGaps, ses.PerfectCharGaps, ses.LongCharGaps, tgtChr, avgChr))
-	sb.WriteString(fmt.Sprintf("    Word Gap:    [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long      [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long       [white]%4d[-]       [white]%4d[-]\n",
-		grp.ShortWordGaps, grp.PerfectWordGaps, grp.LongWordGaps, ses.ShortWordGaps, ses.PerfectWordGaps, ses.LongWordGaps, tgtWrd, avgWrd))
-
-	sb.WriteString("  [cyan]Accuracy[-]\n")
-	sb.WriteString(fmt.Sprintf("  Invalid (*):   [red]%3d[-]                                  [red]%3d[-]\n", grp.InvalidSymbols, ses.InvalidSymbols))
-	sb.WriteString(fmt.Sprintf("  Group Retries: [yellow]%3d[-]                                  [yellow]%3d[-]\n", grp.Retries, ses.Retries))
-	sb.WriteString(fmt.Sprintf("  Chars:         [yellow]%3d[-]                                  [yellow]%3d[-]\n", grp.TotalChars, ses.TotalChars))
-	sb.WriteString(fmt.Sprintf("  Words:         [yellow]%3d[-]                                  [yellow]%3d[-]\n", grp.TotalWords, ses.TotalWords))
-
-	return sb.String()
-}
-
-func buildEchoStatsPaddleText(grp morse.EchoStats, ses morse.EchoStats, tp morse.TimingProfile) string {
-	// less dit, dah and intra space since all are fixed by the keyer
-	var sb strings.Builder
-
-	// 1. Safe calculation helper for Averages
-	calcAvg := func(sumMs float64, short, perfect, long int) int {
-		totalCount := short + perfect + long
-		if totalCount > 0 {
-			return int(math.Round(sumMs / float64(totalCount)))
-		}
-		return 0
-	}
-
-	// 2. Calculate Targets in ms
-	tgtChr := int(math.Round(tp.CharSpace * 1000))
-	tgtWrd := int(math.Round(tp.WordSpace * 1000))
-
-	// 3. Calculate Session Actual Averages
-	avgChr := calcAvg(ses.SumCharGapsMs, ses.ShortCharGaps, ses.PerfectCharGaps, ses.LongCharGaps)
-	avgWrd := calcAvg(ses.SumWordGapsMs, ses.ShortWordGaps, ses.PerfectWordGaps, ses.LongWordGaps)
-
-	// Yellow headers
-	sb.WriteString("\n                     [yellow::b]CURRENT GROUP[-:-:-]                            [yellow::b]SESSION TOTALS[-:-:-]\n\n")
-
-	// --- THE FIX: Added Target and Avg Headers aligned to the right on the Spacing line ---
-	sb.WriteString("  [cyan]Spacing[-]                                                                               [cyan::b]Target(ms)    Avg(ms)[-:-:-]\n")
-	sb.WriteString(fmt.Sprintf("    Char Gap:    [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long      [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long       [white]%4d[-]       [white]%4d[-]\n",
-		grp.ShortCharGaps, grp.PerfectCharGaps, grp.LongCharGaps, ses.ShortCharGaps, ses.PerfectCharGaps, ses.LongCharGaps, tgtChr, avgChr))
-	sb.WriteString(fmt.Sprintf("    Word Gap:    [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long      [red]%3d[-] Short | [green]%3d[-] Good | [red]%3d[-] Long       [white]%4d[-]       [white]%4d[-]\n",
-		grp.ShortWordGaps, grp.PerfectWordGaps, grp.LongWordGaps, ses.ShortWordGaps, ses.PerfectWordGaps, ses.LongWordGaps, tgtWrd, avgWrd))
-
-	sb.WriteString("\n  [cyan]Accuracy[-]\n")
-	sb.WriteString(fmt.Sprintf("  Invalid (*):   [red]%3d[-]                                  [red]%3d[-]\n", grp.InvalidSymbols, ses.InvalidSymbols))
-	sb.WriteString(fmt.Sprintf("  Group Retries: [yellow]%3d[-]                                  [yellow]%3d[-]\n", grp.Retries, ses.Retries))
-	sb.WriteString(fmt.Sprintf("  Chars:         [yellow]%3d[-]                                  [yellow]%3d[-]\n", grp.TotalChars, ses.TotalChars))
-	sb.WriteString(fmt.Sprintf("  Words:         [yellow]%3d[-]                                  [yellow]%3d[-]\n", grp.TotalWords, ses.TotalWords))
-
-	return sb.String()
+	pages.AddPage("success", createModal(tv, 55, boxHeight), true, true)
+	app.SetFocus(tv)
 }

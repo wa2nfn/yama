@@ -66,7 +66,6 @@ func ApplySkip(text string) string {
 		}
 	}
 
-	// Assuming CompressSpace is a helper function elsewhere in your parser package
 	return CompressSpace(sb.String())
 }
 
