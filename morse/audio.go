@@ -26,7 +26,7 @@ var (
 	pink1                float32
 	pink2                float32
 
-	uiAbort              bool    // <--- DEFINED HERE: Kills the UI text rendering early
+	uiAbort bool // <--- DEFINED HERE: Kills the UI text rendering early
 
 	OnFatalError func(errorMessage string)
 )
@@ -99,7 +99,7 @@ func Flush() {
 	reader := &gaplessReader{blocks: blocks}
 	p := otoCtx.NewPlayer(reader)
 
-	if config.User.Mute && !config.User.Echo {
+	if config.User.Mute {
 		p.SetVolume(0)
 	}
 
@@ -113,6 +113,18 @@ func Flush() {
 			// 2. The UI checks our dedicated kill-switch!
 			if IsStopping || uiAbort {
 				break
+			}
+
+			// 3. If the user aborts, flip the UI kill-switch before breaking!
+			if IsStopping || ForceEchoRetry || ForceEchoFinish || ForceEchoRest {
+				uiAbort = true
+				break
+			}
+
+			if config.User.Mute {
+				p.SetVolume(0)
+			} else {
+				p.SetVolume(1)
 			}
 
 			if block.char != "" && OnWordChange != nil {
@@ -162,16 +174,6 @@ func Flush() {
 		}
 
 		time.Sleep(5 * time.Millisecond)
-	}
-
-	// ---------------------------------------------------------
-	// CLEANUP & ABORT
-	// ---------------------------------------------------------
-	if p != nil {
-		// We MUST Close the player every time to free the OS audio memory!
-		// If we aborted early, this instantly kills the sound.
-		// If it finished normally, this safely recycles the RAM.
-		p.Close()
 	}
 
 	// ALWAYS wipe the queue so we have a clean slate for the next word

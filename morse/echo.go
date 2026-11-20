@@ -51,7 +51,6 @@ type Pulse struct {
 }
 
 var startTime time.Time
-var lastSymbolTime time.Time
 
 func GetSerialPorts() ([]string, error) {
 	return serial.GetPortsList()
@@ -122,7 +121,6 @@ func RunEcho(
 				player.SetVolume(0.0)
 				time.Sleep(50 * time.Millisecond)
 				player.Pause()
-				player.Close()
 			}
 		}()
 	}
@@ -342,7 +340,6 @@ func RunEcho(
 				}
 
 				startTime = time.Now()
-				lastSymbolTime = startTime
 				messageDeadline = startTime.Add(msgDur + tailTimeout)
 				lastChange = time.Now()
 				pulses = pulses[:0]
@@ -428,7 +425,6 @@ func RunEcho(
 				}
 
 				decodedStr := decodeSymbol(pulses, dot, dash)
-				lastSymbolTime = time.Now()
 
 				if decodedStr == "" {
 					decodedStr = "*"

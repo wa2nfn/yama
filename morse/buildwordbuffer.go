@@ -135,14 +135,17 @@ func buildWordBuffer(ctx PlayContext, p TimingProfile) int {
 				isFirstElement = false
 			}
 
-			if config.User.Mute { // Your new UI checkbox flag
-				// INSTANT UI UPDATE: Send 1 sample of silence just to carry the text label to the UI instantly
+			if config.User.Mute && config.User.Echo {
+				// INSTANT UI UPDATE for Echo mode
 				if label != "" {
 					QueuePCM(SilencePCM(1).Samples, label, i)
 				}
 			} else {
-				// NORMAL YAMA AUDIO
-				QueuePCM(TonePCM(float64(p.Tone), int(dur*float64(SampleRate)), 0.5).Samples, label, i)
+				if config.User.Mute {
+					QueuePCM(SilencePCM(int(dur*float64(SampleRate))).Samples, label, i)
+				} else {
+					QueuePCM(TonePCM(float64(p.Tone), int(dur*float64(SampleRate)), 0.5).Samples, label, i)
+				}
 
 				if j < len(pattern)-1 {
 					QueuePCM(SilencePCM(int(p.InterElement*float64(SampleRate))).Samples, "", i)
@@ -151,11 +154,10 @@ func buildWordBuffer(ctx PlayContext, p TimingProfile) int {
 		}
 
 		if i < len(tokens)-1 {
-			if !config.User.Mute {
+			if !(config.User.Mute && config.User.Echo) {
 				QueuePCM(SilencePCM(int(p.CharSpace*float64(SampleRate))).Samples, "", i)
 			}
 		}
-
 	}
 
 	totalDurationSec := 0.0

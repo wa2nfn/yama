@@ -21,7 +21,7 @@ type AppState int
 const (
 	AppBackgroundColor = "#000000"
 	playPauseDelay     = 200
-	Ver                = "1.7-Exp"
+	Ver                = "1.7"
 
 	StateIdle AppState = iota
 	StatePlaying
@@ -55,8 +55,8 @@ var (
 	lastFlashcardGroup []string
 	echoActive         bool
 	currentEchoView    tview.Primitive
-	
-	lastSkipTime       time.Time 
+
+	lastSkipTime time.Time
 )
 
 func checkIWRFiles() (targetPath string) {
@@ -137,6 +137,7 @@ func main() {
 			if app != nil {
 				app.Stop()
 			}
+
 			log.Fatalf("YAMA Crashed: %v\nStack Trace:\n%s\n", r, string(debug.Stack()))
 		}
 	}()
@@ -471,6 +472,100 @@ func main() {
 	}
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+
+		// ----------------------------------------------------
+		// 1. LIVE SPEED ADJUSTMENTS (TOP-LEVEL PRIORITY)
+		// ----------------------------------------------------
+		if currentState == StatePlaying {
+			key := event.Key()
+			handled := false
+			speedChanged := false
+
+			// PAGE UP: Character Speed UP
+			if key == tcell.KeyPgUp {
+				handled = true
+				if config.User.CharacterSpeed >= float64(config.MaxCharSpeed) {
+					statusLine.SetText(" [yellow]Max Character Speed Reached[-]")
+				} else {
+					config.User.CharacterSpeed += 1.0
+					if config.User.CharacterSpeed > float64(config.MaxCharSpeed) {
+						config.User.CharacterSpeed = float64(config.MaxCharSpeed)
+					}
+					// Snowplow IWR up to maintain separation
+					if config.User.IWREnabled && config.User.IWRSpeed <= config.User.CharacterSpeed {
+						config.User.IWRSpeed = config.User.CharacterSpeed + 1.0
+						if config.User.IWRSpeed > float64(config.MaxIWRSpeed) {
+							config.User.IWRSpeed = float64(config.MaxIWRSpeed)
+							config.User.CharacterSpeed = config.User.IWRSpeed - 1.0
+						}
+					}
+					speedChanged = true
+				}
+				// PAGE DOWN: Character Speed DOWN
+			} else if key == tcell.KeyPgDn {
+				handled = true
+				floor := float64(config.MinCharSpeed)
+				if !config.User.UseStandard && config.User.EffectiveSpeed > floor {
+					floor = config.User.EffectiveSpeed
+				}
+
+				if config.User.CharacterSpeed <= floor {
+					if !config.User.UseStandard && config.User.CharacterSpeed <= config.User.EffectiveSpeed {
+						statusLine.SetText(" [yellow]Cannot drop Character Speed below Effective Speed[-]")
+					} else {
+						statusLine.SetText(" [yellow]Min Character Speed Reached[-]")
+					}
+				} else {
+					oldSpeed := config.User.CharacterSpeed
+					config.User.CharacterSpeed -= 1.0
+					if config.User.CharacterSpeed < floor {
+						config.User.CharacterSpeed = floor
+					}
+					if config.User.EndSpeed <= oldSpeed {
+						config.User.EndSpeed = config.User.CharacterSpeed
+					}
+					speedChanged = true
+				}
+
+			// HOME: IWR Speed UP
+			} else if key == tcell.KeyHome {
+				handled = true
+				if !morse.IsManualOscModeActive {
+					// ... existing IWR Speed UP logic ...
+				}
+			} else if key == tcell.KeyEnd {
+				handled = true
+				if !morse.IsManualOscModeActive {
+					// ... existing IWR Speed DOWN logic ...
+				}
+			// END: IWR Speed DOWN
+			} else if key == tcell.KeyEnd && config.User.IWREnabled {
+				handled = true
+				floor := config.User.CharacterSpeed + 1.0
+				if floor < float64(config.MinIWRSpeed) {
+					floor = float64(config.MinIWRSpeed)
+				}
+
+				if config.User.IWRSpeed <= floor {
+					statusLine.SetText(" [yellow]IWR Speed cannot be closer to Character Speed[-]")
+				} else {
+					config.User.IWRSpeed -= 1.0
+					if config.User.IWRSpeed < floor {
+						config.User.IWRSpeed = floor
+					}
+					speedChanged = true
+				}
+			}
+
+			if speedChanged {
+				statusLine.SetText("")
+				updateBlueLine()
+			}
+			if handled {
+				return nil
+			}
+		}
+
 		if currentState == StatePromptingTx {
 			char := event.Rune()
 			key := event.Key()
@@ -539,18 +634,16 @@ func main() {
 			}
 		}
 
-		// If no modal shield caught it, global Ctrl-C exits or returns nil here
 		if event.Key() == tcell.KeyCtrlC {
 			return nil
 		}
-
 
 		// ----------------------------------------------------
 		// THE SHIELD: Let modals handle their own keys!
 		// ----------------------------------------------------
 		frontName, _ := pages.GetFrontPage()
 		if frontName != "main" && frontName != "" {
-			return event 
+			return event
 		}
 
 		switch event.Key() {
@@ -622,7 +715,7 @@ func main() {
 			return nil
 		case tcell.KeyCtrlT:
 			if currentState == StateIdle || currentState == StateStopped || currentState == StatePlaying {
-				showToneSpeed()
+				showTiming()
 			}
 			return nil
 		case tcell.KeyCtrlO:
@@ -700,13 +793,15 @@ func main() {
 		}
 
 		if currentState == StatePlaying {
+			// ----------------------------------------------------
+			// STANDARD PLAYBACK CONTROLS
+			// ----------------------------------------------------
 			if event.Key() == tcell.KeyEnter {
 				if morse.IsWaitingForUserKey() {
 					morse.SignalUserKey('E')
 					return nil
 				}
 				if config.User.Echo {
-					// DEBOUNCED
 					if time.Since(lastSkipTime) > 500*time.Millisecond {
 						lastSkipTime = time.Now()
 						morse.ForceEchoFinish = true
@@ -722,7 +817,6 @@ func main() {
 					return nil
 				}
 				if config.User.Echo {
-					// DEBOUNCED
 					if time.Since(lastSkipTime) > 500*time.Millisecond {
 						lastSkipTime = time.Now()
 						morse.ForceEchoRetry = true
@@ -732,9 +826,6 @@ func main() {
 				}
 			}
 
-			// ----------------------------------------------------
-			// NEW: CTRL-R RESTING MODE
-			// ----------------------------------------------------
 			if event.Key() == tcell.KeyCtrlR {
 				if config.User.Echo {
 					if time.Since(lastSkipTime) > 500*time.Millisecond {
@@ -744,7 +835,6 @@ func main() {
 					return nil
 				}
 			}
-			// ----------------------------------------------------
 
 			return nil
 		}

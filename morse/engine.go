@@ -280,7 +280,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			} else if ForceEchoFinish {
 				AutoNextAction = 'E'
 				ForceEchoFinish = false
-				
+
 				wordsToSkip := groupSize - originalPauseCounter - 1
 				if wordsToSkip > 0 {
 					i += wordsToSkip
@@ -325,7 +325,7 @@ func RunIWR(text string, iwrMan *IWRManager) {
 
 			// ---------------------------------------------------------
 			// THE BYPASS
-			// If we aborted or requested a rest during audio playback, 
+			// If we aborted or requested a rest during audio playback,
 			// we skip the serial port entirely and fake the result!
 			// ---------------------------------------------------------
 			if AutoNextAction == 0 {
@@ -497,7 +497,6 @@ func RunIWR(text string, iwrMan *IWRManager) {
 					time.Sleep(time.Duration(0.5 * p.DahDuration * float64(time.Second)))
 					errPlayer.SetVolume(0.0)
 					errPlayer.Pause()
-					errPlayer.Close()
 				}
 				time.Sleep(700 * time.Millisecond)
 				action = 'B'

@@ -160,7 +160,6 @@ func RunKeyer(device string,
 			player.SetVolume(0.0)
 			time.Sleep(50 * time.Millisecond)
 			player.Pause()
-			player.Close()
 		}()
 	}
 
@@ -345,7 +344,6 @@ func RunKeyer(device string,
 				OnStatusUpdate("ECHO: ")
 			}
 			startTime = time.Now()
-			lastSymbolTime = startTime
 			messageDeadline = startTime.Add(msgDur + tailTimeout)
 		} else {
 			p := Pulse{Down: false, Duration: gap}
@@ -458,7 +456,6 @@ func RunKeyer(device string,
 			gap := time.Since(lastChange)
 			if gap > charGapEff && len(currentSymbolPulses) > 0 {
 				decodedStr := decodeSymbol(currentSymbolPulses, dotDur, dashDur)
-				lastSymbolTime = time.Now()
 				if decodedStr == "" {
 					decodedStr = "*"
 				}

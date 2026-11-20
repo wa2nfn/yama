@@ -38,6 +38,7 @@ Ctrl-N         | NumWords    | Iteratively copies or truncates the current text 
 Ctrl-O         | Options     | Parser, messaging, and text processing mode toggles.
 Ctrl-P         | Play/Pause  | Start or pause the current loaded input text.
 Ctrl-Q         | Quit        | Exit YAMA completely.
+Ctrl-R         | (No Menu)   | Rest: An IMMEDIATE halt of the Echo mode feature.
 Ctrl-S         | Stop        | Halt playback immediately (cannot be resumed).
 Ctrl-T         | Timing      | Speed, Tone, and IWR (Instant Word Recognition) settings.
 Ctrl-W         | Wave        | Export current text to .wav file(s).

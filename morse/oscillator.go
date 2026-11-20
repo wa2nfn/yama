@@ -53,7 +53,6 @@ func RunManualOscillator(updateUI func(statusMsg, mainMsg string), enableTx bool
 			player.SetVolume(0.0)
 			time.Sleep(50 * time.Millisecond)
 			player.Pause()
-			player.Close()
 		}
 
 		mu.Lock()
@@ -298,7 +297,7 @@ func RunManualOscillator(updateUI func(statusMsg, mainMsg string), enableTx bool
 					if shouldBeLit && !isLit {
 						isLit = true
 						// Pass an empty string so it doesn't accidentally overwrite the main screen
-						updateUI(" [red:white:b] █ TX █ [-:-:-] LIVE ON AIR", "")
+						updateUI(" [red:white:b] \u2588 TX \u2588 [-:-:-] LIVE ON AIR", "")
 					} else if !shouldBeLit && isLit {
 						isLit = false
 						updateUI(" [white]STANDBY[-] LIVE ON AIR", "")
@@ -308,13 +307,8 @@ func RunManualOscillator(updateUI func(statusMsg, mainMsg string), enableTx bool
 			}()
 		}
 
-		tp := GetTiming(false, config.User)
-		ditDuration := time.Duration(tp.DitDuration * float64(time.Second))
-		dahDuration := time.Duration(tp.DahDuration * float64(time.Second))
-		interElementGap := time.Duration(tp.InterElement * float64(time.Second))
-
 		// Unified Element Player (Handles Audio + Tx Keying)
-		playPerfectElement := func(duration time.Duration) {
+		playPerfectElement := func(duration, gap time.Duration) {
 			mu.Lock()
 			isPlaying = true
 			elementStartTime = time.Now()
@@ -345,7 +339,7 @@ func RunManualOscillator(updateUI func(statusMsg, mainMsg string), enableTx bool
 				txLightMu.Unlock()
 			}
 			player.SetVolume(0.0)
-			time.Sleep(interElementGap)
+			time.Sleep(gap)
 		}
 
 		var wasDown bool
@@ -422,11 +416,14 @@ func RunManualOscillator(updateUI func(statusMsg, mainMsg string), enableTx bool
 				// PADDLES (Iambic A, Iambic B, Ultimatic)
 				playElement, nextLastWasDit := EvaluatePaddleAction(config.User.KeyDevice, rdit, rdah, mdit, mdah, lastWasDit, uLastDit)
 
-				if playElement == 1 {
-					playPerfectElement(ditDuration)
-					lastWasDit = nextLastWasDit
-				} else if playElement == 2 {
-					playPerfectElement(dahDuration)
+				if playElement == 1 || playElement == 2 {
+					tp := GetTiming(false, config.User)
+					gap := time.Duration(tp.InterElement * float64(time.Second))
+					if playElement == 1 {
+						playPerfectElement(time.Duration(tp.DitDuration*float64(time.Second)), gap)
+					} else {
+						playPerfectElement(time.Duration(tp.DahDuration*float64(time.Second)), gap)
+					}
 					lastWasDit = nextLastWasDit
 				}
 			}

@@ -1,17 +1,18 @@
 package main
 
 import (
-	"fmt"
-	"math"
-	"slices"
 	"cmp"
+	"fmt"
 	"log"
+	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 	"yama/config"
 	"yama/morse"
 	"yama/parser"
@@ -28,6 +29,7 @@ var currentInputFile string
 var currentFileDir string
 var playPauseMu sync.Mutex
 var isCountingDown bool
+var totalPlayWords int
 var currentGroupStats morse.EchoStats
 
 // Memory for the Ctrl-N Text Resizer Revert feature
@@ -186,9 +188,15 @@ func updateVisibility() {
 
 func updateBlueLine() {
 	if morse.IsManualOscModeActive {
-		// Only show the Character Speed and nothing else
-		speedOnlyText := fmt.Sprintf("[black] Speed: %g wpm ", config.User.CharacterSpeed)
-		blueLine.SetText(speedOnlyText)
+		// Only show the Character Speed if YAMA is actively acting as the keyer
+		if config.User.KeyDevice == "Paddle" || config.User.KeyDevice == "IambicA" ||
+			config.User.KeyDevice == "IambicB" || config.User.KeyDevice == "Ultimatic" {
+			speedOnlyText := fmt.Sprintf("[black] Speed: %g wpm ", config.User.CharacterSpeed)
+			blueLine.SetText(speedOnlyText)
+		} else {
+			// Straight key, Cootie, or Bug: The human is the timing engine.
+			blueLine.SetText("")
+		}
 		return // Exit early!
 	}
 
@@ -223,7 +231,7 @@ func updateBlueLine() {
 
 	// adjust for IWR
 	if config.User.IWREnabled && !config.User.Echo {
-		info += fmt.Sprintf("| IWR: %s (%g wpm) ", iwrStatus, config.User.IWRSpeed)
+		info += fmt.Sprintf("| IWR: %s %g wpm ", iwrStatus, config.User.IWRSpeed)
 	}
 
 	// adjust for auto retry
@@ -232,8 +240,56 @@ func updateBlueLine() {
 		info += fmt.Sprintf("| Auto Retry: %s | Tolerance: %d%% | Key Padding: %s ", retryStatus, config.User.EchoTolerance, paddingName[config.User.KeyTimePadding])
 	}
 
-	wordCount := len(strings.Fields(actualText))
-	info += fmt.Sprintf("| Word Cnt: %d ", wordCount)
+	// SMART WORD COUNT & TIME ESTIMATE: Read directly from the UI widget!
+	rawText := inputArea.GetText()
+	totalWords := len(strings.Fields(rawText))
+
+	if currentState == StatePlaying || currentState == StatePaused {
+		// Show progress during playback (e.g., 5/20)
+		info += fmt.Sprintf("| Word Cnt: %d/%d ", config.StatsTotalWords, totalPlayWords)
+	} else {
+		// Estimate playback time when idle
+		estTimeStr := ""
+		if totalWords > 0 {
+			// 1. Count actual non-space characters
+			charCount := 0
+			for _, r := range rawText {
+				if !unicode.IsSpace(r) {
+					charCount++
+				}
+			}
+
+			// 2. Convert to "Standard PARIS Words" (5 chars = 1 standard word)
+			standardWords := float64(charCount) / 5.0
+
+			activeSpeed := config.User.CharacterSpeed
+			if !config.User.UseStandard && config.User.EffectiveSpeed > 0 {
+				activeSpeed = config.User.EffectiveSpeed
+			}
+
+			if activeSpeed > 0 {
+				totalSeconds := (standardWords / activeSpeed) * 60.0
+				totalMinutes := int(math.Round(totalSeconds / 60.0))
+
+				if totalMinutes < 1 {
+					estTimeStr = " (<1m next play)"
+				} else if totalMinutes >= 60 {
+					hours := totalMinutes / 60
+					mins := totalMinutes % 60
+					if mins == 0 {
+						estTimeStr = fmt.Sprintf(" (~%dh)", hours)
+					} else {
+						estTimeStr = fmt.Sprintf(" (~%dh %dm)", hours, mins)
+					}
+				} else {
+					estTimeStr = fmt.Sprintf(" (~%dm)", totalMinutes)
+				}
+			}
+		}
+
+		// Show total words and estimated time (e.g., 20 (~22m))
+		info += fmt.Sprintf("| Word Cnt: %d%s ", totalWords, estTimeStr)
+	}
 
 	blueLine.SetText(info + getModifierWarning())
 }
@@ -258,9 +314,10 @@ func onInputAreaChanged() {
 
 	// Only refresh if we transitioned from Stopped->Idle OR Empty->Full
 	if hasText != hadText || stateChanged { // Use hadText here
-		hadText = hasText                     // And update it here
+		hadText = hasText // And update it here
 		refreshUI(currentState)
 	}
+	updateBlueLine() // for word count on manual entry
 }
 
 func refreshUI(state AppState) {
@@ -441,11 +498,19 @@ IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMA
 
 func showStats() {
 	app.EnableMouse(true)
+
 	statsIWRList = make([]string, 0, len(statsIWRMap))
 	for k := range statsIWRMap {
 		statsIWRList = append(statsIWRList, k)
 	}
-	sort.Strings(statsIWRList)
+
+	sort.Slice(statsIWRList, func(i, j int) bool {
+		ci, cj := statsIWRMap[statsIWRList[i]], statsIWRMap[statsIWRList[j]]
+		if ci != cj {
+			return ci > cj // highest count first
+		}
+		return statsIWRList[i] < statsIWRList[j] // alphabetical tie-breaker
+	})
 
 	var activePlayTime time.Duration
 	if finalPlayTime > 0 {
@@ -501,7 +566,7 @@ func showStats() {
 	tv.SetBorder(false)
 
 	form := tview.NewForm().
-		AddButton("Close (ESC)", func() {
+		AddButton("Close", func() {
 			pages.RemovePage("stats")
 			app.SetFocus(inputArea)
 		})
@@ -547,7 +612,7 @@ func showStats() {
 
 func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextArea) {
 	inputArea.SetMouseCapture(func(action tview.MouseAction, event *tcell.EventMouse) (tview.MouseAction, *tcell.EventMouse) {
-		return action, nil 
+		return action, nil
 	})
 
 	list := tview.NewList().ShowSecondaryText(false)
@@ -555,7 +620,7 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 	list.SetBorder(false)
 
 	currentDir, _ := os.Getwd()
-	selectedFiles := make(map[string]bool) 
+	selectedFiles := make(map[string]bool)
 
 	populate := func(dir string) {
 		currentIndex := list.GetCurrentItem()
@@ -695,7 +760,7 @@ func showFile(app *tview.Application, pages *tview.Pages, inputArea *tview.TextA
 			txt = parser.CompressSpace(txt)
 
 			app.QueueUpdateDraw(func() {
-				inputArea.SetChangedFunc(nil) 
+				inputArea.SetChangedFunc(nil)
 				inputArea.SetText(txt, false)
 				inputArea.SetChangedFunc(onInputAreaChanged)
 
@@ -846,6 +911,7 @@ func startAudioSequence(iwrMan *morse.IWRManager) {
 	}
 
 	parsedText = parser.CompressSpace(parsedText)
+	totalPlayWords = len(strings.Fields(parsedText))
 
 	if config.User.StartDelay > 0 {
 		go func() {

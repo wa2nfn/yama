@@ -50,7 +50,7 @@ func showOptions() {
 	wordSeparatorInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	wordSeparatorInput.SetPlaceholder("e.g. . or ,").SetPlaceholderTextColor(tcell.ColorYellow)
 	wordSeparatorInput.SetInputCapture(forceUppercaseInputCapture())
-	wordBuilderSortCb := tview.NewCheckbox().SetLabel("    Sort")
+	wordBuilderSortCb := tview.NewCheckbox().SetLabel("    Sort: Short First")
 	syllableExpansionCb := tview.NewCheckbox().SetLabel("Syllablize Words")
 
 	textBuilderCb := tview.NewCheckbox().SetLabel("[#00BFFF]Text Builder Mode[::-]")
@@ -58,7 +58,7 @@ func showOptions() {
 	textSeparatorInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 	textSeparatorInput.SetPlaceholder("e.g. <BT>.,+").SetPlaceholderTextColor(tcell.ColorYellow)
 	textSeparatorInput.SetInputCapture(forceUppercaseInputCapture())
-	textBuilderSortCb := tview.NewCheckbox().SetLabel("    Sort")
+	textBuilderSortCb := tview.NewCheckbox().SetLabel("    Sort: Short First")
 
 	textWordCountList := []string{"2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25"}
 	textWordCntDrop := tview.NewDropDown().SetLabel("    Word Count (2-25)").SetOptions(textWordCountList, nil)
@@ -552,7 +552,7 @@ func showIWREditModal(parentContainer tview.Primitive) {
 	pages.AddPage("iwredit", createModal(layout, 75, 20), true, true)
 }
 
-func showToneSpeed() {
+func showTiming() {
 	form := tview.NewForm()
 	form.SetBackgroundColor(tcell.GetColor(AppBackgroundColor))
 	form.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
@@ -576,24 +576,32 @@ func showToneSpeed() {
 
 	modeDropDown := tview.NewDropDown().SetLabel("Timing Method").SetOptions([]string{"Standard", "Farnsworth", "Wordsworth"}, nil)
 
-	charInput := tview.NewInputField().SetLabel("Character Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
-	charInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
+	charInput := tview.NewInputField().SetLabel("Character Speed (wpm)").
+		SetFieldWidth(3).SetAcceptanceFunc(acceptFloat)
+	charInput.SetFieldBackgroundColor(tcell.ColorBlue).
+		SetFieldTextColor(tcell.ColorWhite)
 
-	endSpeedInput := tview.NewInputField().SetLabel("    End Ramp Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
-	endSpeedInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
+	endSpeedInput := tview.NewInputField().SetLabel("    End Ramp Speed (wpm)").
+		SetFieldWidth(3).SetAcceptanceFunc(acceptFloat)
+	endSpeedInput.SetFieldBackgroundColor(tcell.ColorBlue).
+		SetFieldTextColor(tcell.ColorWhite)
 
-	effInput := tview.NewInputField().SetLabel("Effective Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
+	effInput := tview.NewInputField().SetLabel("Effective Speed (wpm)").
+		SetFieldWidth(3).SetAcceptanceFunc(acceptFloat)
 	effInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
-	toneInput := tview.NewInputField().SetLabel("Tone (Hz)").SetFieldWidth(5).SetAcceptanceFunc(acceptDigits)
+	toneInput := tview.NewInputField().SetLabel("Tone (Hz)").
+		SetFieldWidth(4).SetAcceptanceFunc(acceptDigits)
 	toneInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	iwrCheckbox := tview.NewCheckbox().SetLabel("[#00BFFF]Use IWR Mode[::-]")
 
-	iwrSpdInput := tview.NewInputField().SetLabel("    Speed (wpm)").SetFieldWidth(6).SetAcceptanceFunc(acceptFloat)
+	iwrSpdInput := tview.NewInputField().SetLabel("    Speed (wpm)").
+		SetFieldWidth(3).SetAcceptanceFunc(acceptFloat)
 	iwrSpdInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
-	iwrToneInput := tview.NewInputField().SetLabel("    Tone (Hz)").SetFieldWidth(5).SetAcceptanceFunc(acceptDigits)
+	iwrToneInput := tview.NewInputField().SetLabel("    Tone (Hz)").
+		SetFieldWidth(4).SetAcceptanceFunc(acceptDigits)
 	iwrToneInput.SetFieldBackgroundColor(tcell.ColorBlue).SetFieldTextColor(tcell.ColorWhite)
 
 	formatFloatOnExit := func(input *tview.InputField) {
@@ -664,12 +672,14 @@ func showToneSpeed() {
 
 		var errors []string
 
-		if effSpd < float64(config.MinEffSpeed) || effSpd > float64(config.MaxEffSpeed) {
-			errors = append(errors, fmt.Sprintf("Effective Speed clamped to %d-%d", config.MinEffSpeed, config.MaxEffSpeed))
-			if effSpd < float64(config.MinEffSpeed) {
-				effSpd = float64(config.MinEffSpeed)
-			} else {
-				effSpd = float64(config.MaxEffSpeed)
+		if optIdx != 0 {
+			if effSpd < float64(config.MinEffSpeed) || effSpd > float64(config.MaxEffSpeed) {
+				errors = append(errors, fmt.Sprintf("Effective Speed clamped to %d-%d", config.MinEffSpeed, config.MaxEffSpeed))
+				if effSpd < float64(config.MinEffSpeed) {
+					effSpd = float64(config.MinEffSpeed)
+				} else {
+					effSpd = float64(config.MaxEffSpeed)
+				}
 			}
 		}
 
@@ -703,11 +713,6 @@ func showToneSpeed() {
 			}
 		}
 
-		if charSpd <= effSpd && optIdx != 0 {
-			errors = append(errors, "Character Speed must be > Effective Speed")
-			charSpd = effSpd + 1
-		}
-
 		if tone < config.MinTone || tone > config.MaxTone {
 			errors = append(errors, fmt.Sprintf("Tone clamped to %d-%d Hz", config.MinTone, config.MaxTone))
 			if tone < config.MinTone {
@@ -738,7 +743,9 @@ func showToneSpeed() {
 			config.User.UseStandard = (optIdx == 0)
 			config.User.UseFarnsworth = (optIdx == 1)
 			config.User.UseWordsworth = (optIdx == 2)
-			config.User.EffectiveSpeed = effSpd
+			if optIdx != 0 {
+				config.User.EffectiveSpeed = effSpd
+			}
 			config.User.CharacterSpeed = charSpd
 			config.User.EndSpeed = endSpd
 			config.User.Tone = tone
@@ -748,7 +755,7 @@ func showToneSpeed() {
 			config.SaveConfig()
 
 			updateBlueLine()
-			pages.RemovePage("tonespeed")
+			pages.RemovePage("timing")
 			app.SetFocus(inputArea)
 		}
 
@@ -771,7 +778,7 @@ func showToneSpeed() {
 	form.AddButton("Reset", onReset)
 	form.AddButton("Edit IWR", onEditIWR)
 	form.AddButton("Cancel", func() {
-		pages.RemovePage("tonespeed")
+		pages.RemovePage("timing")
 		app.SetFocus(inputArea)
 	})
 
@@ -786,7 +793,7 @@ func showToneSpeed() {
 
 	timingContainer.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		if event.Key() == tcell.KeyEscape {
-			pages.RemovePage("tonespeed")
+			pages.RemovePage("timing")
 			app.SetFocus(inputArea)
 			return nil
 		}
@@ -797,7 +804,7 @@ func showToneSpeed() {
 		return event
 	})
 
-	pages.AddPage("tonespeed", createModal(timingContainer, 42, 18), true, true)
+	pages.AddPage("timing", createModal(timingContainer, 42, 13), true, true)
 	app.SetFocus(form)
 }
 
@@ -926,7 +933,7 @@ func showImpairments() {
 		return event
 	})
 
-	pages.AddPage("impairments", createModal(container, 40, 16), true, true)
+	pages.AddPage("impairments", createModal(container, 40, 13), true, true)
 	app.SetFocus(container)
 }
 

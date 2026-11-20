@@ -18,18 +18,18 @@ var StatsTotalWords int
 var ForceDefaults bool
 var StatusLine func(msg string)
 
-// -----------------------------------------------------------------------------
-// SPEED LIMIT CONSTANTS (used by UI sliders)
-// -----------------------------------------------------------------------------
+// ----------------------
+// SPEED LIMIT CONSTANTS
+// ----------------------
 
-const MinEffSpeed = 5
-const MaxEffSpeed = 40
-const MinCharSpeed = 5
-const MaxCharSpeed = 60
+const MinEffSpeed = 10
+const MaxEffSpeed = 80
+const MinCharSpeed = 10
+const MaxCharSpeed = 120
 
 // IWR speed limits
-const MinIWRSpeed = 5
-const MaxIWRSpeed = 60
+const MinIWRSpeed = 10
+const MaxIWRSpeed = 121
 
 // Tone frequency limits
 const MinTone = 300

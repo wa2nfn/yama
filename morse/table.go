@@ -19,7 +19,7 @@ var baseProSignMap = map[string]string{
 	"AR": ".-.-.", "AS": ".-...", "BT": "-...-", "KA": "-.-.-",
 	"SK": "...-.-", "VA": "...-.-", "VE": "...-.", "SN": "...-.",
 	"BK": "-... -.-", "HH": "........", "DU": "-....-",
-	"SOS": "...---...", "CH": "----",
+	"SOS": "...---...", "CH": "----", "CT": "-.-.-", "AA": ".-.-",
 }
 
 var basicMap = map[rune]string{
@@ -337,7 +337,7 @@ var EchoMapProsigns = map[string]string{
 	".-...": "<AS>", "-...-": "<BT>", ".-.-.": "<AR>",
 	"-....-": "<DU>", "-.-.-": "<KA>", "...-.-": "<SK>",
 	"........": "<HH>", "...---...": "<SOS>", "----": "<CH>",
-	"...-.": "<VE>", "-...-.-": "<BK>",
+	"...-.": "<VE>", "-...-.-": "<BK>", ".-.-": "<AA>",
 }
 
 // EchoMapEuropean fixed to output true UTF-8 strings instead of mojibake
