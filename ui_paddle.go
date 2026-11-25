@@ -35,11 +35,12 @@ func showKeyDeviceOptions() {
 	}
 	ports = clean
 
-	keyDeviceOptions := []string{"Straight/bug", "Paddle", "Cootie", "IambicA", "IambicB", "Ultimatic"}
+	keyDeviceLabels := []string{"Straight/Bug/Cootie (2 wire)", "Paddle", "Cootie (3 wire)", "IambicA", "IambicB", "Ultimatic"}
+	keyDeviceValues := []string{"Straight/Bug", "Paddle", "Cootie", "IambicA", "IambicB", "Ultimatic"}
 
 	keyDeviceDrop := tview.NewDropDown().
 		SetLabel("Key Device Type").
-		SetOptions(keyDeviceOptions, nil).
+		SetOptions(keyDeviceLabels, nil).
 		SetCurrentOption(0)
 	keyDeviceDrop.SetFieldBackgroundColor(tcell.ColorBlue)
 	keyDeviceDrop.SetFieldTextColor(tcell.ColorWhite)
@@ -150,7 +151,7 @@ func showKeyDeviceOptions() {
 		isInitializing = true
 
 		var kdIndex int
-		for i, opt := range keyDeviceOptions {
+		for i, opt := range keyDeviceValues {
 			if config.User.KeyDevice == opt {
 				kdIndex = i
 				break
@@ -253,11 +254,11 @@ func showKeyDeviceOptions() {
 		apply := func() {
 			config.User.KeyLineWireMode = adapterWire
 
-			_, kdText := keyDeviceDrop.GetCurrentOption()
-			if kdText != "" {
-				config.User.KeyDevice = kdText
+			kdIdx, _ := keyDeviceDrop.GetCurrentOption()
+			if kdIdx >= 0 && kdIdx < len(keyDeviceValues) {
+				config.User.KeyDevice = keyDeviceValues[kdIdx]
 			} else {
-				config.User.KeyDevice = "Straight/bug"
+				config.User.KeyDevice = "Straight/Bug"
 			}
 
 			var ddIdx int

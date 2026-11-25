@@ -102,6 +102,7 @@ type UserSettings struct {
 	Flashcard        bool `json:"flashcard"`
 	FlashWordCount   int  `json:"flash_word_count"`
 	FlashRandomCount bool `json:"flash_random_count"`
+	FlashAutoAdvance int  `json:"flash_auto_advance"`
 
 	Echo            bool `json:"echo"`
 	EchoWordCount   int  `json:"echo_word_count"`
@@ -269,6 +270,7 @@ func setDefaults() {
 	User.Flashcard = false
 	User.FlashWordCount = 1
 	User.FlashRandomCount = false
+	User.FlashAutoAdvance = 0
 
 	User.Echo = false
 	User.EchoWordCount = 1
@@ -435,6 +437,7 @@ func encodeCompactJSON() string {
 	s += `"flashcard":` + boolToStr(User.Flashcard) + ","
 	s += `"flash_word_count":` + intToStr(User.FlashWordCount) + ","
 	s += `"flash_random_count":` + boolToStr(User.FlashRandomCount) + ","
+	s += `"flash_auto_advance":` + intToStr(User.FlashAutoAdvance) + ","
 
 	s += `"echo":` + boolToStr(User.Echo) + ","
 	s += `"echo_word_count":` + intToStr(User.EchoWordCount) + ","
@@ -591,6 +594,8 @@ func decodeCompactJSON(data string) error {
 			User.FlashWordCount = parseInt(val)
 		case "flash_random_count":
 			User.FlashRandomCount = parseBool(val)
+		case "flash_auto_advance":
+			User.FlashAutoAdvance = parseInt(val)
 
 		case "echo":
 			User.Echo = parseBool(val)

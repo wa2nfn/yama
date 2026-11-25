@@ -570,25 +570,48 @@ func RunIWR(text string, iwrMan *IWRManager) {
 			default:
 			}
 
+			autoAdvanceSec := config.User.FlashAutoAdvance
+			maxWait := time.Duration(autoAdvanceSec) * time.Second
+			var elapsed time.Duration
+
 			waitMutex.Lock()
 			isWaitingForKey = true
-			OnStatusUpdate(" [yellow]Flashcard: ENTER to continue, BACKSPACE to repeat group")
+			if OnStatusUpdate != nil {
+				if autoAdvanceSec > 0 {
+					OnStatusUpdate(fmt.Sprintf(" [yellow]Flashcard (Auto %ds): ENTER to continue, BACKSPACE to repeat", autoAdvanceSec))
+				} else {
+					OnStatusUpdate(" [yellow]Flashcard: ENTER to continue, BACKSPACE to repeat group")
+				}
+			}
 			waitMutex.Unlock()
 
 			var action rune
 
 		WaitLoop:
-			for !IsStopping && !IsPaused {
+			for !IsStopping {
+				if IsPaused {
+					time.Sleep(50 * time.Millisecond)
+					continue
+				}
 				select {
 				case action = <-waitActionChan:
 					break WaitLoop
 				case <-time.After(50 * time.Millisecond):
+					if autoAdvanceSec > 0 {
+						elapsed += 50 * time.Millisecond
+						if elapsed >= maxWait {
+							action = 'E'
+							break WaitLoop
+						}
+					}
 				}
 			}
 
 			waitMutex.Lock()
 			isWaitingForKey = false
-			OnStatusUpdate(" [yellow]Playing")
+			if OnStatusUpdate != nil {
+				OnStatusUpdate(" [yellow]Playing")
+			}
 			waitMutex.Unlock()
 
 			pauseCounter = 0
@@ -602,11 +625,13 @@ func RunIWR(text string, iwrMan *IWRManager) {
 					startIndex = 0
 				}
 				i = startIndex - 1
-
-				if OnClearFlashcardScreen != nil {
-					OnClearFlashcardScreen()
-				}
 			}
+
+			if OnClearFlashcardScreen != nil {
+				OnClearFlashcardScreen()
+			}
+
+			lastGroup = lastGroup[:0]
 
 			if i == len(playlist)-1 && action != 'B' {
 				break

@@ -527,7 +527,7 @@ func main() {
 					speedChanged = true
 				}
 
-			// HOME: IWR Speed UP
+				// HOME: IWR Speed UP
 			} else if key == tcell.KeyHome {
 				handled = true
 				if !morse.IsManualOscModeActive {
@@ -538,7 +538,7 @@ func main() {
 				if !morse.IsManualOscModeActive {
 					// ... existing IWR Speed DOWN logic ...
 				}
-			// END: IWR Speed DOWN
+				// END: IWR Speed DOWN
 			} else if key == tcell.KeyEnd && config.User.IWREnabled {
 				handled = true
 				floor := config.User.CharacterSpeed + 1.0

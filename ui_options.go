@@ -65,10 +65,12 @@ func showOptions() {
 
 	flashcardCb := tview.NewCheckbox().SetLabel("[#00BFFF]Flashcard Mode[::-]")
 	flashWordCountList := []string{"1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"}
+	flashAutoAdvanceList := []string{"Off", "1", "2", "3", "4", "5"}
 	flashWordCountDrop := tview.NewDropDown().SetLabel("    Word Count (1-20)").SetOptions(flashWordCountList, nil)
 	flashRandomCountCb := tview.NewCheckbox().SetLabel("    Random Value")
+	flashAutoAdvanceDrop := tview.NewDropDown().SetLabel("    Auto-Advance (sec)").SetOptions(flashAutoAdvanceList, nil).SetCurrentOption(0)
 
-	echoCb := tview.NewCheckbox().SetLabel("[#00BFFF]Echo Sending Mode[::-]")
+	echoCb := tview.NewCheckbox().SetLabel("[#00BFFF]Echo Mode (sending)[::-]")
 
 	startMsgCb := tview.NewCheckbox().SetLabel("Use Start Message")
 	startMsgInput := tview.NewInputField().SetLabel("    Message Text").SetFieldWidth(35)
@@ -158,6 +160,11 @@ func showOptions() {
 			}
 		}
 		flashWordCountDrop.SetCurrentOption(fIdx)
+		faIdx := config.User.FlashAutoAdvance
+		if faIdx < 0 || faIdx >= len(flashAutoAdvanceList) {
+			faIdx = 0
+		}
+		flashAutoAdvanceDrop.SetCurrentOption(faIdx)
 
 		euroSkipList = config.User.EuropeanSkipList
 	}
@@ -174,6 +181,7 @@ func showOptions() {
 	form.AddFormItem(flashcardCb)
 	form.AddFormItem(flashWordCountDrop)
 	form.AddFormItem(flashRandomCountCb)
+	form.AddFormItem(flashAutoAdvanceDrop)
 	form.AddFormItem(echoCb)
 	form.AddTextView(" ", "", 0, 1, false, false)
 
@@ -271,8 +279,10 @@ func showOptions() {
 			config.User.RepeatLimit, _ = strconv.Atoi(repeatOptions[rIdx])
 			config.User.Flashcard = flashcardCb.IsChecked()
 			fIdx, _ := flashWordCountDrop.GetCurrentOption()
+			faIdx, _ := flashAutoAdvanceDrop.GetCurrentOption()
 			config.User.FlashWordCount, _ = strconv.Atoi(flashWordCountList[fIdx])
 			config.User.FlashRandomCount = flashRandomCountCb.IsChecked()
+			config.User.FlashAutoAdvance = faIdx
 
 			config.User.WordBuilderSort = wordBuilderSortCb.IsChecked()
 			config.User.Echo = echoCb.IsChecked()
